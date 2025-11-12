@@ -213,12 +213,12 @@ export default function Home() {
                   Starting Content Generation...
                 </span>
               ) : (
-                '🚀 Generate 50 Blog Posts'
+                '🚀 Generate 30 Blog Posts'
               )}
             </button>
 
             <p className="text-xs text-gray-500 text-center">
-              Estimated time: 10-15 minutes • This will generate 50 unique blog posts
+              Estimated time: 8-12 minutes • This will generate 30 unique, research-backed blog posts
             </p>
           </form>
         </div>

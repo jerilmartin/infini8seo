@@ -160,19 +160,31 @@ Return ONLY valid JSON, nothing else.`;
     
     console.log('   Raw response preview:', text.substring(0, 200));
     
-    // Try to parse as JSON
+    // Try to parse as JSON (using same logic as Phase A)
     let parsed;
     try {
       parsed = JSON.parse(text);
     } catch (e) {
-      // Try to extract JSON from markdown
-      const match = text.match(/```json\s*([\s\S]*?)\s*```/) || 
-                    text.match(/```\s*([\s\S]*?)\s*```/) ||
-                    text.match(/\{[\s\S]*\}/);
-      if (match) {
-        parsed = JSON.parse(match[1] || match[0]);
-      } else {
-        throw new Error('Could not parse or extract JSON from response');
+      // Remove markdown blocks
+      let cleaned = text.trim();
+      if (cleaned.startsWith('```json')) {
+        cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+
+      // Handle multiple JSON objects - take first one
+      if (cleaned.includes('}\n{') || cleaned.includes('} {')) {
+        const splitPoint = cleaned.indexOf('}\n{');
+        if (splitPoint > 0) {
+          cleaned = cleaned.substring(0, splitPoint + 1);
+        }
+      }
+
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch (e2) {
+        throw new Error(`Could not parse JSON: ${e2.message}`);
       }
     }
 

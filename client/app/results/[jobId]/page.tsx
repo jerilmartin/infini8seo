@@ -166,15 +166,15 @@ export default function ResultsPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="card text-center">
-            <div className="text-3xl font-bold text-blue-600">{contentData.stats.totalPosts}</div>
+            <div className="text-3xl font-bold text-blue-600">{contentData.stats?.totalPosts || 0}</div>
             <div className="text-sm text-gray-600 mt-1">Blog Posts Generated</div>
           </div>
           <div className="card text-center">
-            <div className="text-3xl font-bold text-indigo-600">{contentData.stats.avgWordCount}</div>
+            <div className="text-3xl font-bold text-indigo-600">{contentData.stats?.avgWordCount || 0}</div>
             <div className="text-sm text-gray-600 mt-1">Average Word Count</div>
           </div>
           <div className="card text-center">
-            <div className="text-3xl font-bold text-purple-600">{contentData.stats.totalWords.toLocaleString()}</div>
+            <div className="text-3xl font-bold text-purple-600">{(contentData.stats?.totalWords || 0).toLocaleString()}</div>
             <div className="text-sm text-gray-600 mt-1">Total Words Generated</div>
           </div>
         </div>

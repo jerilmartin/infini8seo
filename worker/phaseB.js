@@ -41,7 +41,7 @@ export async function executePhaseB({
   tone,
   progressCallback
 }) {
-  logger.info(`Phase B: Starting generation of ${scenarios.length} blog posts`);
+  logger.info(`Phase B: Starting generation of ${scenarios.length} blog posts (was 50, now 30 for reliability)`);
 
   // Initialize Gemini client if not already done
   if (!genAI) {
@@ -160,55 +160,147 @@ async function generateSingleBlogPost({ scenario, niche, valuePropositions, tone
     genAI = initGemini();
   }
   
+  // Use gemini-2.5-flash - Higher quota limits than 2.0-flash-exp
+  // This model supports Google Search and has better rate limits
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash-exp',
+    model: 'gemini-2.5-flash',
     generationConfig: {
-      temperature: 0.7,
-      topP: 0.9,
-      topK: 40,
+      temperature: 0.9, // Higher for creative, engaging writing
+      topP: 0.95,
+      topK: 64,
       maxOutputTokens: 8192
-    }
+    },
+    tools: [{
+      googleSearch: {}
+    }]
   });
 
-  const systemInstruction = `You are a professional, authoritative, and ${tone} content writer for a business in the ${niche} industry. Your primary objective is to write a single, complete, highly detailed blog post, strictly between 950 and 1050 words. The content must directly address the specific persona, structure, and integration requirement below.`;
+  const systemInstruction = `You are an EXPERT ${tone} content writer and thought leader in the ${niche} industry. You have deep expertise, years of experience, and a talent for creating comprehensive, insightful content that resonates with readers and ranks highly in search engines.
+
+YOUR WRITING STYLE:
+- ${tone.charAt(0).toUpperCase() + tone.slice(1)} but authoritative
+- Data-driven with real examples
+- Actionable and practical
+- Engaging storytelling that connects emotionally
+- SEO-optimized but natural
+- Premium quality that readers want to share`;
 
   const userPrompt = `
-TONE: ${tone}
+ASSIGNMENT: Write a PREMIUM, IN-DEPTH blog post that will become the definitive resource on this topic.
 
-TARGET AUDIENCE: ${scenario.persona_archetype}
+TARGET READER:
+- Persona: ${scenario.persona_name}
+- Type: ${scenario.persona_archetype}
+- Pain Point: ${scenario.pain_point_detail}
+- Goal: ${scenario.goal_focus}
+${scenario.research_insight ? `- Market Context: ${scenario.research_insight}` : ''}
 
-PERSONA NAME: ${scenario.persona_name}
+BLOG HEADLINE: 
+# ${scenario.blog_topic_headline}
 
-PAIN POINT: ${scenario.pain_point_detail}
+SEO KEYWORDS (integrate naturally): ${scenario.target_keywords.join(', ')}
 
-GOAL: ${scenario.goal_focus}
+BUSINESS SOLUTION: ${valuePropositions[0]}
 
-HEADLINE: ${scenario.blog_topic_headline}
+CONTENT REQUIREMENTS:
 
-KEYWORDS: ${scenario.target_keywords.join(', ')}
+**LENGTH:** 1200-1400 words (aim for comprehensive, not rushed)
 
-BUSINESS VALUE PROPOSITION: ${valuePropositions[0]}
+**RESEARCH:** Use Google Search to find:
+- Current statistics and data relevant to this topic
+- Real-world examples or case studies
+- Latest trends or developments
+- Expert insights or quotes
+- Common misconceptions to address
 
-INSTRUCTIONS:
+**STRUCTURE:**
 
-1. **Strict Length:** Output must be between 950 and 1050 words. This is critical.
+## Introduction (150-200 words)
+- Start with a compelling hook (question, statistic, or story)
+- Paint a vivid picture of the ${scenario.persona_archetype}'s pain point
+- Make it deeply relatable - they should think "This is exactly me!"
+- Preview the value they'll get from this article
+- Include primary keyword naturally
 
-2. **Formatting:** Use valid **Markdown**. Start with the H1 (# ${scenario.blog_topic_headline}), then use H2 (##) for major sections, and H3 (###) for sub-points. Use lists for readability where appropriate.
+## The Real Problem: Understanding [Topic] (250-300 words)
+- Deep dive into WHY this problem exists
+- Explain the root causes most people miss
+- Include relevant statistics or data you found through research
+- Discuss why common approaches fail
+- Connect to their goal: ${scenario.goal_focus}
+- Address misconceptions
 
-3. **Structure:** The post must flow logically and contain these four mandatory H2 sections:
-   * **## Introduction:** Hook the reader by vividly describing the **PAIN POINT** (${scenario.pain_point_detail}). Make it relatable and emotional.
-   * **## Understanding the Challenge:** Explore the root causes of the problem and the path to the **GOAL** (${scenario.goal_focus}). Provide context and analysis.
-   * **## Actionable Steps to Get Started:** Provide 3-5 concrete, general tips (not related to our product) on how to begin solving the problem. Make these practical and immediately applicable.
-   * **## The Ultimate Solution:** Dedicate this section to explaining how the **BUSINESS VALUE PROPOSITION** (${valuePropositions[0]}) is the ultimate, inevitable solution to the persona's dilemma. Connect the dots between their pain point, their goal, and how this value proposition bridges that gap. Be persuasive but not overtly salesy.
-   * **## Conclusion:** Strong summary and a final Call-to-Action encouraging them to take the next step.
+## The High-Level Strategy (200-250 words)
+- Explain the overall approach that actually works
+- Reference industry trends or expert consensus
+- Outline the key principles they need to understand
+- Set expectations realistically
+- Build credibility with research-backed insights
 
-4. **SEO:** Naturally incorporate the keywords [${scenario.target_keywords.join(', ')}] throughout the text. Don't force them, but ensure they appear in key places like headers and body text.
+## Step-by-Step: How to [Achieve Goal] (400-500 words)
+Provide 5-7 detailed, actionable steps:
 
-5. **Quality:** Write in a ${tone} tone. Be engaging, informative, and valuable. The reader should feel they've gained real insights after reading.
+### Step 1: [Specific Action]
+- What to do (be specific and tactical)
+- Why it works (explain the reasoning)
+- Pro tip or common mistake to avoid
 
-6. **CRITICAL:** Count your words carefully. The final output must be between 950-1050 words.
+### Step 2: [Specific Action]
+(Continue pattern)
 
-Now write the complete blog post in Markdown format. Return ONLY the blog post content, no additional commentary.
+Each step should be:
+- Immediately actionable
+- Explained with reasoning
+- Backed by logic or data
+- Include practical examples
+
+## The Accelerator: [Value Proposition Integration] (200-250 words)
+- Explain how ${valuePropositions[0]} takes this to the next level
+- Position it as the logical evolution, not just a sales pitch
+- Show how it solves the hardest parts of the manual approach
+- Include specific benefits related to their pain point
+- Make the ROI clear (time saved, results improved, etc.)
+- Natural transition, not jarring pitch
+
+## Conclusion & Next Steps (150-200 words)
+- Summarize the key insights
+- Reframe their situation with new understanding
+- Provide clear, specific next action
+- Inspirational but realistic closing
+- Final CTA that feels helpful, not pushy
+
+**QUALITY STANDARDS:**
+
+1. **Depth Over Fluff:** Every paragraph should provide value. No filler content.
+
+2. **Research-Backed:** Include actual data, trends, or insights from your Google Search research. Cite "recent studies show..." or "industry data indicates..." when relevant.
+
+3. **Specific & Tactical:** Replace generic advice with specific, actionable guidance. Instead of "create a strategy," say "map out your first 30 days with these three milestones..."
+
+4. **Natural SEO:** Keywords should flow naturally. Don't stuff them awkwardly.
+
+5. **Engaging Writing:** Use:
+   - Short and long sentences for rhythm
+   - Rhetorical questions to engage
+   - Real-world examples or scenarios
+   - Analogies to clarify complex concepts
+   - Bold text for key points
+
+6. **Professional Formatting:** 
+   - Use ### for subsections within steps
+   - Use bullet points for lists
+   - Bold important concepts
+   - Keep paragraphs 2-4 sentences max
+
+7. **Authenticity:** Write like you genuinely want to help this person succeed. They should feel you understand their struggle.
+
+**CRITICAL:** 
+- Word count: 1200-1400 words
+- Use Google Search to enhance content with real data
+- Return ONLY the blog post in Markdown
+- No preamble, no "here's your blog post", just the content
+
+BEGIN WRITING NOW.
 `;
 
   // Retry logic for blog generation
@@ -242,12 +334,12 @@ Now write the complete blog post in Markdown format. Return ONLY the blog post c
       // Validate word count
       const wordCount = countWords(blogContent);
       
-      if (wordCount < 700) {
+      if (wordCount < 1000) {
         logger.warn(`Blog post ${scenario.scenario_id} too short (${wordCount} words), retrying...`);
         attempts++;
         if (attempts >= maxAttempts) {
           // Accept it anyway rather than failing
-          logger.warn(`⚠️ Accepting short blog post ${scenario.scenario_id} after ${maxAttempts} attempts`);
+          logger.warn(`⚠️ Accepting short blog post ${scenario.scenario_id} after ${maxAttempts} attempts (${wordCount} words)`);
           return blogContent;
         }
         continue;
@@ -257,18 +349,27 @@ Now write the complete blog post in Markdown format. Return ONLY the blog post c
 
       return blogContent;
 
-    } catch (error) {
-      attempts++;
-      if (attempts >= maxAttempts) {
-        throw new Error(`Failed to generate blog post after ${maxAttempts} attempts: ${error.message}`);
+      } catch (error) {
+        attempts++;
+        
+        // Check if it's a rate limit error
+        const isRateLimit = error.message && (
+          error.message.includes('429') || 
+          error.message.includes('quota') ||
+          error.message.includes('Too Many Requests')
+        );
+        
+        if (attempts >= maxAttempts) {
+          throw new Error(`Failed to generate blog post after ${maxAttempts} attempts: ${error.message}`);
+        }
+        
+        logger.warn(`⚠️ Blog generation attempt ${attempts}/${maxAttempts} failed for scenario ${scenario.scenario_id}: ${error.message}`);
+        
+        // If rate limit, wait longer; otherwise exponential backoff
+        const backoffMs = isRateLimit ? 60000 : (1000 * Math.pow(2, attempts));
+        logger.info(`Retrying in ${backoffMs/1000}s...`);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
       }
-      logger.warn(`⚠️ Blog generation attempt ${attempts}/${maxAttempts} failed for scenario ${scenario.scenario_id}: ${error.message}`);
-      
-      // Exponential backoff
-      const backoffMs = 1000 * Math.pow(2, attempts);
-      logger.info(`Retrying in ${backoffMs}ms...`);
-      await new Promise(resolve => setTimeout(resolve, backoffMs));
-    }
   }
 }
 

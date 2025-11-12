@@ -249,21 +249,23 @@ app.get('/api/content/:jobId', async (req, res) => {
       });
     }
 
-    // Calculate statistics
+    // Calculate statistics (use snake_case as returned from database)
     const stats = {
       totalPosts: content.length,
-      avgWordCount: Math.round(
-        content.reduce((sum, post) => sum + post.wordCount, 0) / content.length
-      ),
-      totalWords: content.reduce((sum, post) => sum + post.wordCount, 0),
-      avgGenerationTimeMs: content.filter(p => p.generationTimeMs).length > 0
+      avgWordCount: content.length > 0 
+        ? Math.round(
+            content.reduce((sum, post) => sum + (post.word_count || 0), 0) / content.length
+          )
+        : 0,
+      totalWords: content.reduce((sum, post) => sum + (post.word_count || 0), 0),
+      avgGenerationTimeMs: content.filter(p => p.generation_time_ms).length > 0
         ? Math.round(
             content
-              .filter(p => p.generationTimeMs)
-              .reduce((sum, post) => sum + post.generationTimeMs, 0) /
-            content.filter(p => p.generationTimeMs).length
+              .filter(p => p.generation_time_ms)
+              .reduce((sum, post) => sum + (post.generation_time_ms || 0), 0) /
+            content.filter(p => p.generation_time_ms).length
           )
-        : null
+        : 0
     };
 
     // Return complete content
