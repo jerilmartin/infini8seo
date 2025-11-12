@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: content-factory-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: content-factory
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - content-factory-network
+
+  # Redis Queue
+  redis:
+    image: redis:7-alpine
+    container_name: content-factory-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - content-factory-network
+    command: redis-server --appendonly yes
+
+  # API Gateway (Express Backend)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: content-factory-api
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - MONGODB_URI=mongodb://mongodb:27017/content-factory
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - FRONTEND_URL=http://localhost:3000
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - content-factory-network
+    volumes:
+      - ./logs:/app/logs
+
+  # Worker Process (BullMQ Consumer)
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: content-factory-worker
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/content-factory
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - MAX_CONCURRENT_CONTENT_GENERATION=10
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - content-factory-network
+    volumes:
+      - ./logs:/app/logs
+
+  # Next.js Frontend (Optional - can be deployed separately)
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: content-factory-client
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+    depends_on:
+      - api
+    networks:
+      - content-factory-network
+
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  content-factory-network:
+    driver: bridge
+

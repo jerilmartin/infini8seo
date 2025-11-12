@@ -1,0 +1,67 @@
+Folder PATH listing for volume Windows
+Volume serial number is 2890-EBDB
+C:.
+|   .dockerignore
+|   .env.example
+|   .gitignore
+|   CONTRIBUTING.md
+|   DEPLOYMENT.md
+|   docker-compose.yml
+|   Dockerfile.api
+|   Dockerfile.worker
+|   LICENSE
+|   package.json
+|   project-tree.txt
+|   PROJECT_STRUCTURE.md
+|   PROJECT_SUMMARY.md
+|   QUICK_REFERENCE.md
+|   README.md
+|   SETUP_GUIDE.md
+|   
++---client
+|   |   .env.local.example
+|   |   .gitignore
+|   |   Dockerfile
+|   |   next.config.js
+|   |   package.json
+|   |   postcss.config.js
+|   |   tailwind.config.js
+|   |   tsconfig.json
+|   |   
+|   \---app
+|       |   globals.css
+|       |   layout.tsx
+|       |   page.tsx
+|       |   
+|       +---progress
+|       |   \---[jobId]
+|       |           page.tsx
+|       |           
+|       \---results
+|           \---[jobId]
+|                   page.tsx
+|                   
++---config
+|       database.js
+|       redis.js
+|       
++---models
+|       Content.js
+|       Job.js
+|       
++---scripts
+|       check-health.sh
+|       cleanup.sh
+|       quick-start.sh
+|       
++---server
+|       index.js
+|       
++---utils
+|       logger.js
+|       
+\---worker
+        index.js
+        phaseA.js
+        phaseB.js
+        

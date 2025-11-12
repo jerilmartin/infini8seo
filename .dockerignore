@@ -1,0 +1,46 @@
+# Node modules
+node_modules
+client/node_modules
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Next.js
+client/.next
+client/out
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage
+.nyc_output
+
+# Documentation
+*.md
+!README.md
+
+# Docker
+docker-compose.yml
+docker-compose.override.yml
+Dockerfile*
+

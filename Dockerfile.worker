@@ -1,0 +1,22 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy application code
+COPY worker ./worker
+COPY config ./config
+COPY models ./models
+COPY utils ./utils
+
+# Create logs directory
+RUN mkdir -p /app/logs
+
+# Start the worker process
+CMD ["node", "worker/index.js"]
+

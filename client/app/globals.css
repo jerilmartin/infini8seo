@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+  }
+
+  body {
+    @apply bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50;
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-blue-600 font-semibold py-3 px-8 rounded-lg shadow-md hover:shadow-lg border-2 border-blue-600 transition-all duration-200;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-lg p-6 border border-gray-100;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors;
+  }
+
+  .progress-bar {
+    @apply h-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Animation for status badges */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Markdown styling */
+.markdown-content {
+  max-width: none;
+}
+
+.markdown-content h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #111827;
+}
+
+.markdown-content h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  margin-top: 1.5rem;
+  color: #1f2937;
+}
+
+.markdown-content h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  margin-top: 1rem;
+  color: #374151;
+}
+
+.markdown-content p {
+  margin-bottom: 1rem;
+  color: #374151;
+  line-height: 1.625;
+}
+
+.markdown-content ul, .markdown-content ol {
+  margin-bottom: 1rem;
+  margin-left: 1.5rem;
+}
+
+.markdown-content li {
+  margin-bottom: 0.5rem;
+  color: #374151;
+}
+
+.markdown-content code {
+  background-color: #f3f4f6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.markdown-content blockquote {
+  border-left: 4px solid #3b82f6;
+  padding-left: 1rem;
+  font-style: italic;
+  color: #4b5563;
+}
+
