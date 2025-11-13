@@ -17,7 +17,7 @@ let worker;
 // Main Job Processor
 // ============================================
 const processContentGenerationJob = async (job) => {
-  const { jobId, niche, valuePropositions, tone } = job.data;
+  const { jobId, niche, valuePropositions, tone, totalBlogs: payloadTotalBlogs, blogTypeAllocations: payloadAllocations } = job.data;
   
   logger.info(`🚀 Starting content generation job: ${jobId}`);
   logger.info(`Niche: ${niche}, Tone: ${tone}`);
@@ -29,6 +29,9 @@ const processContentGenerationJob = async (job) => {
     if (!jobDoc) {
       throw new Error(`Job document not found in database: ${jobId}`);
     }
+
+    const totalBlogs = payloadTotalBlogs || jobDoc.total_blogs || 50;
+    const blogTypeAllocations = payloadAllocations || jobDoc.blog_type_allocations || null;
 
     // ============================================
     // PHASE A: Deep Research (Scenario Generation)
@@ -43,7 +46,9 @@ const processContentGenerationJob = async (job) => {
     const scenarios = await executePhaseA({
       niche,
       valuePropositions,
-      tone
+      tone,
+      totalBlogs,
+      blogTypeAllocations
     });
 
     logger.info(`✅ Phase A Complete: Generated ${scenarios.length} scenarios`);
@@ -80,10 +85,12 @@ const processContentGenerationJob = async (job) => {
       niche,
       valuePropositions,
       tone,
+      totalBlogs,
+      blogTypeAllocations,
       progressCallback
     });
 
-    logger.info(`✅ Phase B Complete: Generated ${scenarios.length} blog posts`);
+    logger.info(`✅ Phase B Complete: Generated ${totalBlogs} blog posts`);
 
     // ============================================
     // Finalization
@@ -97,7 +104,7 @@ const processContentGenerationJob = async (job) => {
       success: true,
       jobId,
       scenariosGenerated: scenarios.length,
-      contentGenerated: scenarios.length
+      contentGenerated: totalBlogs
     };
 
   } catch (error) {

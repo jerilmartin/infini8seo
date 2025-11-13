@@ -60,6 +60,7 @@ class ContentRepository {
           slug: slug,
           generation_time_ms: contentData.generationTimeMs,
           model_used: contentData.modelUsed || 'gemini-2.5-flash',
+          image_urls: contentData.imageUrls || null,
           status: 'COMPLETED'
         }])
         .select()
@@ -91,6 +92,8 @@ class ContentRepository {
         keywords: contentData.keywords || [],
         blog_content: '',
         word_count: 0,
+        blog_type: contentData.blogType || null,
+        image_urls: contentData.imageUrls || null,
         status: 'FAILED',
         error_message: contentData.errorMessage
       }])

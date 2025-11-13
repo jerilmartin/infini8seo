@@ -3,6 +3,51 @@ import pLimit from 'p-limit';
 import logger from '../utils/logger.js';
 import ContentRepository from '../models/ContentRepository.js';
 
+const BLOG_TYPES = ['functional', 'transactional', 'commercial', 'informational'];
+
+function normalizeAllocations(totalBlogs, allocations = {}) {
+  const normalized = {};
+  let sum = 0;
+
+  BLOG_TYPES.forEach((type) => {
+    const value = Math.max(0, Math.floor(Number(allocations?.[type]) || 0));
+    normalized[type] = value;
+    sum += value;
+  });
+
+  if (sum === 0) {
+    const base = Math.floor(totalBlogs / BLOG_TYPES.length);
+    let remainder = totalBlogs % BLOG_TYPES.length;
+    BLOG_TYPES.forEach((type) => {
+      normalized[type] = base + (remainder > 0 ? 1 : 0);
+      if (remainder > 0) remainder -= 1;
+    });
+    return normalized;
+  }
+
+  if (sum > totalBlogs) {
+    let reductionNeeded = sum - totalBlogs;
+    const typesByCount = [...BLOG_TYPES].sort((a, b) => normalized[b] - normalized[a]);
+    for (const type of typesByCount) {
+      if (reductionNeeded <= 0) break;
+      const reducible = Math.min(normalized[type], reductionNeeded);
+      normalized[type] -= reducible;
+      reductionNeeded -= reducible;
+    }
+  } else if (sum < totalBlogs) {
+    let remaining = totalBlogs - sum;
+    while (remaining > 0) {
+      for (const type of BLOG_TYPES) {
+        if (remaining <= 0) break;
+        normalized[type] += 1;
+        remaining -= 1;
+      }
+    }
+  }
+
+  return normalized;
+}
+
 // Initialize Google Generative AI
 let genAI;
 
@@ -39,9 +84,15 @@ export async function executePhaseB({
   niche,
   valuePropositions,
   tone,
+  totalBlogs,
+  blogTypeAllocations,
   progressCallback
 }) {
-  logger.info(`Phase B: Starting generation of ${scenarios.length} blog posts (was 50, now 30 for reliability)`);
+  const targetTotal = totalBlogs || scenarios.length;
+  const allocations = normalizeAllocations(targetTotal, blogTypeAllocations);
+
+  logger.info(`Phase B: Starting generation of ${targetTotal} blog posts`);
+  logger.info(`Allocation plan: ${JSON.stringify(allocations)}`);
 
   // Initialize Gemini client if not already done
   if (!genAI) {
@@ -54,14 +105,41 @@ export async function executePhaseB({
 
   logger.info(`Using concurrency limit: ${maxConcurrency}`);
 
+  const sanitizedScenarios = scenarios.map((scenario, index) => ({
+    ...scenario,
+    scenario_id: scenario?.scenario_id || index + 1
+  }));
+
+  if (sanitizedScenarios.length === 0) {
+    throw new Error('No scenarios available from Phase A to generate content.');
+  }
+
+  const generationPlan = [];
+  let scenarioIndex = 0;
+
+  BLOG_TYPES.forEach((type) => {
+    const count = allocations[type] || 0;
+    for (let i = 0; i < count; i += 1) {
+      const sourceScenario = sanitizedScenarios[scenarioIndex % sanitizedScenarios.length];
+      scenarioIndex += 1;
+
+      generationPlan.push({
+        ...sourceScenario,
+        scenario_id: generationPlan.length + 1,
+        source_scenario_id: sourceScenario.scenario_id,
+        blog_type: type
+      });
+    }
+  });
+
+  const totalCount = generationPlan.length;
   let completedCount = 0;
-  const totalCount = scenarios.length;
 
   // Create an array of promises for concurrent execution
-  const generationPromises = scenarios.map((scenario, index) => {
+  const generationPromises = generationPlan.map((scenario) => {
     return limit(async () => {
       try {
-        logger.info(`Generating blog post ${scenario.scenario_id}/${totalCount}: "${scenario.blog_topic_headline}"`);
+        logger.info(`Generating ${scenario.blog_type} blog ${scenario.scenario_id}/${totalCount}: "${scenario.blog_topic_headline}"`);
 
         const startTime = Date.now();
         
@@ -69,10 +147,17 @@ export async function executePhaseB({
           scenario,
           niche,
           valuePropositions,
-          tone
+          tone,
+          blogType: scenario.blog_type
         });
 
         const generationTime = Date.now() - startTime;
+
+        const images = Array.isArray(scenario.image_urls) ? scenario.image_urls.slice(0, 2) : [];
+        const blogContentWithFaq = ensureFaqSection(blogContent, scenario, valuePropositions[0]);
+        const contentWithImages = scenario.scenario_id <= 2 && images.length > 0
+          ? `${images.map((img) => `![${img.alt || scenario.blog_topic_headline}](${img.url})`).join('\n\n')}\n\n${blogContentWithFaq}`
+          : blogContentWithFaq;
 
         // Save to Supabase Content table
         await ContentRepository.create({
@@ -81,28 +166,32 @@ export async function executePhaseB({
           blogTitle: scenario.blog_topic_headline,
           personaArchetype: scenario.persona_archetype,
           keywords: scenario.target_keywords,
-          blogContent,
-          wordCount: countWords(blogContent),
+          blogContent: contentWithImages,
+          wordCount: countWords(contentWithImages),
           generationTimeMs: generationTime,
-          modelUsed: 'gemini-2.5-flash'
+          modelUsed: 'gemini-2.5-flash',
+          blogType: scenario.blog_type,
+          sourceScenarioId: scenario.source_scenario_id,
+          imageUrls: images
         });
 
-        completedCount++;
+        completedCount += 1;
         
         // Report progress
         if (progressCallback) {
           await progressCallback(completedCount, totalCount);
         }
 
-        logger.info(`✅ Blog post ${scenario.scenario_id} completed and saved`);
+        logger.info(`✅ ${scenario.blog_type} blog ${scenario.scenario_id} completed and saved`);
 
         return {
           scenarioId: scenario.scenario_id,
+          blogType: scenario.blog_type,
           success: true
         };
 
       } catch (error) {
-        logger.error(`Failed to generate blog post ${scenario.scenario_id}:`, error.message);
+        logger.error(`Failed to generate ${scenario.blog_type} blog ${scenario.scenario_id}:`, error.message);
 
         // Save failed content record
         try {
@@ -112,13 +201,15 @@ export async function executePhaseB({
             blogTitle: scenario.blog_topic_headline,
             personaArchetype: scenario.persona_archetype,
             keywords: scenario.target_keywords,
+            blogType: scenario.blog_type,
+            imageUrls: scenario.image_urls || null,
             errorMessage: error.message
           });
         } catch (saveError) {
           logger.error(`Failed to save error record for scenario ${scenario.scenario_id}:`, saveError.message);
         }
 
-        completedCount++;
+        completedCount += 1;
         
         if (progressCallback) {
           await progressCallback(completedCount, totalCount);
@@ -126,6 +217,7 @@ export async function executePhaseB({
 
         return {
           scenarioId: scenario.scenario_id,
+          blogType: scenario.blog_type,
           success: false,
           error: error.message
         };
@@ -143,7 +235,7 @@ export async function executePhaseB({
   logger.info(`Phase B Complete: ${successCount} successful, ${failureCount} failed`);
 
   if (failureCount > 0) {
-    logger.warn(`Failed scenarios: ${results.filter(r => !r.success).map(r => r.scenarioId).join(', ')}`);
+    logger.warn(`Failed scenarios: ${results.filter(r => !r.success).map(r => `${r.blogType}#${r.scenarioId}`).join(', ')}`);
   }
 
   return results;
@@ -155,7 +247,7 @@ export async function executePhaseB({
  * @param {Object} params
  * @returns {Promise<string>} The generated blog content in Markdown
  */
-async function generateSingleBlogPost({ scenario, niche, valuePropositions, tone }) {
+async function generateSingleBlogPost({ scenario, niche, valuePropositions, tone, blogType }) {
   if (!genAI) {
     genAI = initGemini();
   }
@@ -186,7 +278,7 @@ YOUR WRITING STYLE:
 - Premium quality that readers want to share`;
 
   const userPrompt = `
-ASSIGNMENT: Write a PREMIUM, IN-DEPTH blog post that will become the definitive resource on this topic.
+ASSIGNMENT: Write a PREMIUM, IN-DEPTH ${blogType ? blogType.toUpperCase() : ''} blog post that will become the definitive resource on this topic.
 
 TARGET READER:
 - Persona: ${scenario.persona_name}
@@ -194,6 +286,7 @@ TARGET READER:
 - Pain Point: ${scenario.pain_point_detail}
 - Goal: ${scenario.goal_focus}
 ${scenario.research_insight ? `- Market Context: ${scenario.research_insight}` : ''}
+${blogType ? `- Blog Type Objective: Focus on a ${blogType} intent – tailor the structure, CTA, and depth to match this intent.` : ''}
 
 BLOG HEADLINE: 
 # ${scenario.blog_topic_headline}
@@ -269,6 +362,13 @@ Each step should be:
 - Inspirational but realistic closing
 - Final CTA that feels helpful, not pushy
 
+## FAQ (4-5 questions)
+- Provide 4-5 frequently asked questions that a ${scenario.persona_archetype} would naturally ask after reading the article
+- Each question should be in bold (e.g., **Question?**)
+- Each answer should be 2-3 sentences, specific, and reference ${scenario.pain_point_detail} or their goal of ${scenario.goal_focus}
+- Highlight how ${valuePropositions[0]} supports the answer wherever relevant
+- Keep the tone reassuring and authoritative
+
 **QUALITY STANDARDS:**
 
 1. **Depth Over Fluff:** Every paragraph should provide value. No filler content.
@@ -297,6 +397,7 @@ Each step should be:
 **CRITICAL:** 
 - Word count: 1200-1400 words
 - Use Google Search to enhance content with real data
+- End with the FAQ section described above—no content after it
 - Return ONLY the blog post in Markdown
 - No preamble, no "here's your blog post", just the content
 
@@ -371,6 +472,55 @@ BEGIN WRITING NOW.
         await new Promise(resolve => setTimeout(resolve, backoffMs));
       }
   }
+}
+
+function ensureFaqSection(content, scenario, primaryValueProp) {
+  if (!content || typeof content !== 'string') {
+    return '';
+  }
+
+  const hasFaq = /##\s*(faq|frequently asked questions)/i.test(content);
+  if (hasFaq) {
+    return content.trim();
+  }
+
+  const safeText = (text, fallback) =>
+    (typeof text === 'string' && text.trim().length > 0 ? text.trim() : fallback);
+
+  const persona = safeText(scenario?.persona_archetype, 'customers');
+  const painPoint = safeText(scenario?.pain_point_detail, 'their biggest challenge');
+  const goal = safeText(scenario?.goal_focus, 'their primary goal');
+  const solution = safeText(primaryValueProp, 'our solution');
+
+  const personaPhrase = persona.toLowerCase();
+  const painPointPhrase = painPoint.toLowerCase();
+
+  const fallbackFaqItems = [
+    {
+      question: `How does ${solution} support ${personaPhrase}?`,
+      answer: `${solution} helps ${personaPhrase} tackle ${painPointPhrase} by giving them structured guidance, expert-backed frameworks, and accountability loops so progress toward ${goal} becomes achievable.`
+    },
+    {
+      question: `What should I tackle first after reading this article?`,
+      answer: `Begin by implementing the first step in the action plan and document the baseline metrics tied to ${goal}. Layer ${solution} on top to automate the heavy lifting and keep momentum through reminders, templates, and coaching prompts.`
+    },
+    {
+      question: `How quickly will I see results from these strategies?`,
+      answer: `Most ${personaPhrase} notice early wins within a few weeks when they consistently execute each step and reinforce the work with ${solution}. Sustainable gains toward ${goal} follow as your new processes mature and your team stays aligned.`
+    },
+    {
+      question: `Can ${solution} work alongside my existing tools or processes?`,
+      answer: `${solution} complements the systems you already use by filling gaps that create ${painPointPhrase}. It amplifies what works, adds best-practice workflows, and keeps everyone focused on ${goal} without forcing a disruptive overhaul.`
+    }
+  ];
+
+  const faqMarkdown = [
+    '## FAQ',
+    '',
+    ...fallbackFaqItems.map((item) => `**${item.question}**\n${item.answer}`)
+  ].join('\n\n');
+
+  return `${content.trim()}\n\n${faqMarkdown}`;
 }
 
 /**

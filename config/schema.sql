@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     niche VARCHAR(500) NOT NULL,
     value_propositions TEXT[] NOT NULL,
     tone VARCHAR(50) NOT NULL CHECK (tone IN ('professional', 'conversational', 'authoritative', 'friendly', 'technical', 'casual')),
+    total_blogs INTEGER NOT NULL DEFAULT 50 CHECK (total_blogs >= 1 AND total_blogs <= 50),
+    blog_type_allocations JSONB,
     
     -- Job Status & Progress
     status VARCHAR(50) NOT NULL DEFAULT 'ENQUEUED' CHECK (status IN ('ENQUEUED', 'RESEARCHING', 'RESEARCH_COMPLETE', 'GENERATING', 'COMPLETE', 'FAILED')),
@@ -45,6 +47,8 @@ CREATE TABLE IF NOT EXISTS contents (
     blog_title VARCHAR(500) NOT NULL,
     persona_archetype VARCHAR(255) NOT NULL,
     keywords TEXT[] NOT NULL DEFAULT '{}',
+    blog_type VARCHAR(50) CHECK (blog_type IN ('functional', 'transactional', 'commercial', 'informational') OR blog_type IS NULL),
+    source_scenario_id INTEGER,
     
     -- The Core Content (Large Text Field)
     blog_content TEXT NOT NULL,
@@ -60,6 +64,7 @@ CREATE TABLE IF NOT EXISTS contents (
     -- Generation Metadata
     generation_time_ms INTEGER,
     model_used VARCHAR(100) DEFAULT 'gemini-2.5-flash',
+    image_urls JSONB,
     
     -- Status
     status VARCHAR(50) DEFAULT 'COMPLETED' CHECK (status IN ('GENERATING', 'COMPLETED', 'FAILED')),
@@ -114,4 +119,7 @@ COMMENT ON TABLE contents IS 'Stores generated blog post content';
 COMMENT ON COLUMN jobs.scenarios IS 'JSONB array of 50 persona/scenario objects from Phase A';
 COMMENT ON COLUMN jobs.value_propositions IS 'Array of business value propositions';
 COMMENT ON COLUMN contents.blog_content IS 'Full blog post content in Markdown format';
+COMMENT ON COLUMN contents.blog_type IS 'Requested blog intent/type for this post';
+COMMENT ON COLUMN contents.source_scenario_id IS 'Scenario identifier from Phase A used to seed this post';
+COMMENT ON COLUMN contents.image_urls IS 'Array of Unsplash image metadata attached to the blog post';
 

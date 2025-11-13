@@ -7,6 +7,25 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+const MAX_TOTAL_BLOGS = 50;
+const DEFAULT_TOTAL_BLOGS = 30;
+const BLOG_TYPES = [
+  { key: 'functional', label: 'Functional' },
+  { key: 'transactional', label: 'Transactional' },
+  { key: 'commercial', label: 'Commercial' },
+  { key: 'informational', label: 'Informational' }
+] as const;
+
+type BlogTypeKey = typeof BLOG_TYPES[number]['key'];
+type BlogTypeAllocations = Record<BlogTypeKey, number>;
+
+const DEFAULT_BLOG_TYPE_ALLOCATIONS: BlogTypeAllocations = {
+  functional: 8,
+  transactional: 8,
+  commercial: 7,
+  informational: 7
+};
+
 export default function Home() {
   const router = useRouter();
   const [niche, setNiche] = useState('');
@@ -14,6 +33,49 @@ export default function Home() {
   const [tone, setTone] = useState('professional');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [totalBlogs, setTotalBlogs] = useState(DEFAULT_TOTAL_BLOGS);
+  const [blogTypeAllocations, setBlogTypeAllocations] = useState<BlogTypeAllocations>(DEFAULT_BLOG_TYPE_ALLOCATIONS);
+
+  const adjustAllocationsToTotal = (allocations: BlogTypeAllocations, newTotal: number): BlogTypeAllocations => {
+    const sum = BLOG_TYPES.reduce((acc, type) => acc + allocations[type.key], 0);
+    if (sum <= newTotal) {
+      return allocations;
+    }
+
+    const updated: BlogTypeAllocations = { ...allocations };
+    let reductionNeeded = sum - newTotal;
+
+    for (const { key } of [...BLOG_TYPES].reverse()) {
+      if (reductionNeeded <= 0) break;
+      const currentValue = updated[key];
+      const reduction = Math.min(currentValue, reductionNeeded);
+      updated[key] = currentValue - reduction;
+      reductionNeeded -= reduction;
+    }
+
+    return updated;
+  };
+
+  const handleTotalBlogsChange = (value: number) => {
+    const sanitizedValue = Math.max(1, Math.min(MAX_TOTAL_BLOGS, value));
+    setTotalBlogs(sanitizedValue);
+    setBlogTypeAllocations(prev => adjustAllocationsToTotal(prev, sanitizedValue));
+  };
+
+  const handleAllocationChange = (typeKey: BlogTypeKey, value: number) => {
+    const sanitizedValue = Math.max(0, Math.min(MAX_TOTAL_BLOGS, value));
+    const otherSum = BLOG_TYPES.reduce((acc, type) => {
+      if (type.key === typeKey) return acc;
+      return acc + blogTypeAllocations[type.key];
+    }, 0);
+    const maxAllowed = Math.max(0, totalBlogs - otherSum);
+    const adjustedValue = Math.min(sanitizedValue, maxAllowed);
+
+    setBlogTypeAllocations(prev => ({
+      ...prev,
+      [typeKey]: adjustedValue
+    } as BlogTypeAllocations));
+  };
 
   const handleAddValueProp = () => {
     if (valuePropositions.length < 10) {
@@ -45,7 +107,13 @@ export default function Home() {
 
     const validValueProps = valuePropositions.filter(vp => vp.trim());
     if (validValueProps.length === 0) {
-      setError('Please enter at least one value proposition');
+      setError('Please enter at least one service specialty');
+      return;
+    }
+
+    const allocationSum = BLOG_TYPES.reduce((acc, type) => acc + (blogTypeAllocations[type.key] || 0), 0);
+    if (allocationSum !== totalBlogs) {
+      setError('Please ensure the blog type allocations add up to your total blog count');
       return;
     }
 
@@ -55,7 +123,9 @@ export default function Home() {
       const response = await axios.post(`${API_URL}/api/generate-content`, {
         niche: niche.trim(),
         valuePropositions: validValueProps,
-        tone
+        tone,
+        totalBlogs,
+        blogTypeAllocations
       });
 
       const { jobId } = response.data;
@@ -80,10 +150,10 @@ export default function Home() {
             </div>
           </div>
           <h1 className="text-5xl font-bold text-gray-900 mb-4">
-            Content Factory
+            Infini8 SEO - Generate Blog Posts 
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Generate 50 high-quality, SEO-optimized blog posts automatically with AI-powered research and content creation
+            Generate up to 50 high-quality, SEO-optimized blog posts automatically with AI-powered research and content creation
           </p>
         </div>
 
@@ -128,10 +198,10 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Value Propositions */}
+            {/* Service Specialties */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Value Propositions * (1-10)
+                Service/Specialties 
               </label>
               {valuePropositions.map((vp, index) => (
                 <div key={index} className="flex gap-2 mb-2">
@@ -139,7 +209,7 @@ export default function Home() {
                     type="text"
                     value={vp}
                     onChange={(e) => handleValuePropChange(index, e.target.value)}
-                    placeholder={`Value proposition ${index + 1}`}
+                    placeholder={`Specific point about your service `}
                     className="input-field flex-1"
                     disabled={loading}
                   />
@@ -162,12 +232,106 @@ export default function Home() {
                   className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                   disabled={loading}
                 >
-                  + Add Another Value Proposition
+                  + Add Another One
                 </button>
               )}
               <p className="text-sm text-gray-500 mt-1">
-                What unique benefits does your business offer?
+                List specific points about your service or specialty that the content should highlight.
               </p>
+            </div>
+
+            {/* Total Blog Posts */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Number of Blog Posts *
+              </label>
+              <div className="space-y-3">
+                <input
+                  type="range"
+                  min={1}
+                  max={MAX_TOTAL_BLOGS}
+                  value={totalBlogs}
+                  onChange={(e) => handleTotalBlogsChange(Number(e.target.value))}
+                  className="w-full"
+                  disabled={loading}
+                />
+                <div className="flex items-center justify-between text-sm text-gray-600">
+                  <span>1</span>
+                  <span className="font-semibold text-gray-900 text-base">{totalBlogs} posts</span>
+                  <span>{MAX_TOTAL_BLOGS}</span>
+                </div>
+                <input
+                  type="number"
+                  min={1}
+                  max={MAX_TOTAL_BLOGS}
+                  value={totalBlogs}
+                  onChange={(e) => handleTotalBlogsChange(Number(e.target.value))}
+                  className="input-field w-full"
+                  disabled={loading}
+                />
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                Choose how many posts to generate (maximum of {MAX_TOTAL_BLOGS}).
+              </p>
+            </div>
+
+            {/* Blog Type Distribution */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Blog Type Distribution
+                </label>
+                <span className={`text-xs ${totalBlogs - BLOG_TYPES.reduce((acc, type) => acc + blogTypeAllocations[type.key], 0) === 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                  Remaining: {totalBlogs - BLOG_TYPES.reduce((acc, type) => acc + blogTypeAllocations[type.key], 0)} posts
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 mb-4">
+                Allocate how many posts should be Functional, Transactional, Commercial, and Informational.
+              </p>
+              <div className="space-y-3">
+                {BLOG_TYPES.map((type) => {
+                  const currentValue = blogTypeAllocations[type.key];
+                  const remaining = totalBlogs - BLOG_TYPES.reduce((acc, t) => acc + (t.key === type.key ? 0 : blogTypeAllocations[t.key]), currentValue);
+
+                  return (
+                    <div key={type.key} className="flex items-center justify-between gap-4 bg-white border border-gray-200 rounded-xl px-4 py-3">
+                      <div className="flex flex-col">
+                        <span className="font-medium text-gray-900">{type.label}</span>
+                        <span className="text-xs text-gray-500">Currently: {currentValue} posts</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleAllocationChange(type.key, currentValue - 1)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-40"
+                          disabled={loading || currentValue === 0}
+                          aria-label={`Decrease ${type.label} posts`}
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          min={0}
+                          max={totalBlogs}
+                          value={currentValue}
+                          onChange={(e) => handleAllocationChange(type.key, Number(e.target.value))}
+                          className="w-20 text-center input-field no-spinner"
+                          disabled={loading}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleAllocationChange(type.key, currentValue + 1)}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-40"
+                          disabled={loading || remaining <= 0}
+                          aria-label={`Increase ${type.label} posts`}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Tone Selection */}
@@ -213,12 +377,12 @@ export default function Home() {
                   Starting Content Generation...
                 </span>
               ) : (
-                '🚀 Generate 30 Blog Posts'
+                `🚀 Generate ${totalBlogs} Blog Posts`
               )}
             </button>
 
             <p className="text-xs text-gray-500 text-center">
-              Estimated time: 8-12 minutes • This will generate 30 unique, research-backed blog posts
+              Estimated time: 8-15 minutes • This will generate {totalBlogs} unique, research-backed blog posts
             </p>
           </form>
         </div>

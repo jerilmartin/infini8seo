@@ -6,7 +6,7 @@
 ![AI Powered](https://img.shields.io/badge/AI-Powered-purple?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Production_Ready-success?style=for-the-badge)
 
-**Autonomous AI agent that generates 50 high-quality, SEO-optimized blog posts through intelligent two-phase research and production pipeline.**
+**Autonomous AI agent that generates up to 50 high-quality, SEO-optimized blog posts through intelligent two-phase research and production pipeline.**
 
 [Features](#features) • [Architecture](#architecture) • [Quick Start](#quick-start) • [Documentation](#documentation) • [Deployment](#deployment)
 
@@ -18,8 +18,8 @@
 
 Content Factory is a production-grade SaaS platform that automates the entire content strategy and creation process. By providing just your business niche and value propositions, the system:
 
-1. **Phase A (Research Foundation)**: Executes deep market research with real-time Google Search data to generate 50 unique, structured persona/scenario data points
-2. **Phase B (Mass Production)**: Leverages those insights to concurrently generate 50 corresponding, high-quality, 1000-word blog posts
+1. **Phase A (Research Foundation)**: Executes deep market research with real-time Google Search data to generate a bank of structured persona/scenario data points tailored to your target volume
+2. **Phase B (Mass Production)**: Leverages those insights to concurrently generate up to 50 corresponding, high-quality, 1000-word blog posts based on the blog-type mix you choose
 
 ### Key Differentiators
 
@@ -40,7 +40,9 @@ Content Factory is a production-grade SaaS platform that automates the entire co
 | **Deep Market Research** | AI analyzes your niche with Google Search to identify real pain points |
 | **50 Unique Personas** | Generates diverse customer archetypes and scenarios |
 | **Concurrent Generation** | Produces 50 blog posts in parallel with rate limiting |
+| **Custom Blog Mix** | Allocate up to 50 posts across Functional, Transactional, Commercial, and Informational intents |
 | **SEO Optimization** | Each post includes keywords, meta descriptions, and proper structure |
+| **Stock Images** | Automatically attaches relevant Unsplash imagery to generated posts |
 | **Real-time Progress** | Client-side polling shows live updates during generation |
 | **Markdown Export** | Download individual posts or entire collections |
 | **Professional UI** | Beautiful Next.js frontend with Tailwind CSS |
@@ -106,7 +108,7 @@ Content Factory is a production-grade SaaS platform that automates the entire co
 4. **Client polls** → Requests `/api/status/:jobId` every 3 seconds
 5. **Worker picks up job** → Executes Phase A (research) with Gemini Pro
 6. **Worker saves scenarios** → Updates job status to `RESEARCH_COMPLETE`
-7. **Worker executes Phase B** → Generates 50 posts concurrently with Gemini Flash
+7. **Worker executes Phase B** → Generates your requested mix of blog posts concurrently with Gemini Flash
 8. **Worker saves content** → Each post saved to Content collection
 9. **Worker marks complete** → Job status set to `COMPLETE`
 10. **Client redirects** → Automatically navigates to results page
@@ -146,6 +148,9 @@ MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/content-factory
 
 # Google Gemini AI
 GEMINI_API_KEY=your_api_key_here
+
+# Unsplash stock images
+UNSPLASH_ACCESS_KEY=your_unsplash_access_key
 
 # Redis (defaults work for local)
 REDIS_HOST=localhost

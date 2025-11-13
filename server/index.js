@@ -12,6 +12,8 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const MAX_TOTAL_BLOGS = 50;
+const BLOG_TYPES = ['functional', 'transactional', 'commercial', 'informational'];
 
 // Middleware
 app.use(cors({
@@ -46,7 +48,13 @@ app.get('/health', (req, res) => {
 // ============================================
 app.post('/api/generate-content', async (req, res) => {
   try {
-    const { niche, valuePropositions, tone } = req.body;
+    const {
+      niche,
+      valuePropositions,
+      tone,
+      totalBlogs,
+      blogTypeAllocations
+    } = req.body;
 
     // Input validation
     if (!niche || !niche.trim()) {
@@ -70,6 +78,51 @@ app.post('/api/generate-content', async (req, res) => {
       });
     }
 
+    const sanitizedTotalBlogs = parseInt(totalBlogs, 10);
+    if (
+      Number.isNaN(sanitizedTotalBlogs) ||
+      sanitizedTotalBlogs < 1 ||
+      sanitizedTotalBlogs > MAX_TOTAL_BLOGS
+    ) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: `totalBlogs must be a number between 1 and ${MAX_TOTAL_BLOGS}`
+      });
+    }
+
+    if (
+      !blogTypeAllocations ||
+      typeof blogTypeAllocations !== 'object' ||
+      Array.isArray(blogTypeAllocations)
+    ) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'blogTypeAllocations must be an object with blog type counts'
+      });
+    }
+
+    const sanitizedAllocations = {};
+    let allocationSum = 0;
+
+    for (const type of BLOG_TYPES) {
+      const value = parseInt(blogTypeAllocations[type], 10) || 0;
+      if (value < 0) {
+        return res.status(400).json({
+          error: 'Validation Error',
+          message: 'Blog type allocations cannot be negative'
+        });
+      }
+      sanitizedAllocations[type] = value;
+      allocationSum += value;
+    }
+
+    if (allocationSum !== sanitizedTotalBlogs) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Sum of blog type allocations must equal totalBlogs'
+      });
+    }
+
     // Sanitize value propositions
     const sanitizedValueProps = valuePropositions
       .filter(prop => prop && prop.trim())
@@ -89,7 +142,9 @@ app.post('/api/generate-content', async (req, res) => {
     const job = await JobRepository.create({
       niche: niche.trim(),
       valuePropositions: sanitizedValueProps,
-      tone: tone.toLowerCase()
+      tone: tone.toLowerCase(),
+      totalBlogs: sanitizedTotalBlogs,
+      blogTypeAllocations: sanitizedAllocations
     });
 
     logger.info(`Job created with ID: ${job.id}`);
@@ -101,7 +156,9 @@ app.post('/api/generate-content', async (req, res) => {
         jobId: job.id,
         niche: job.niche,
         valuePropositions: job.value_propositions,
-        tone: job.tone
+        tone: job.tone,
+        totalBlogs: job.total_blogs || sanitizedTotalBlogs,
+        blogTypeAllocations: job.blog_type_allocations || sanitizedAllocations
       },
       {
         jobId: job.id, // Use Supabase UUID as BullMQ job ID for tracking
@@ -118,6 +175,8 @@ app.post('/api/generate-content', async (req, res) => {
       message: 'Content generation job initiated successfully',
       jobId: job.id,
       status: job.status,
+      totalBlogs: job.total_blogs || sanitizedTotalBlogs,
+      blogTypeAllocations: job.blog_type_allocations || sanitizedAllocations,
       estimatedTimeMinutes: 15 // Rough estimate for 50 blog posts
     });
 
@@ -160,10 +219,12 @@ app.get('/api/status/:jobId', async (req, res) => {
 
     // Calculate estimated time remaining (rough estimate)
     let estimatedSecondsRemaining = null;
+    const totalBlogsForJob = job.total_blogs || MAX_TOTAL_BLOGS;
+
     if (job.status === 'RESEARCHING') {
       estimatedSecondsRemaining = 60; // Research phase ~1 minute
     } else if (job.status === 'GENERATING') {
-      const remainingContent = 50 - (job.total_content_generated || 0);
+      const remainingContent = Math.max(0, totalBlogsForJob - (job.total_content_generated || 0));
       estimatedSecondsRemaining = remainingContent * 10; // ~10 seconds per blog post
     }
 
@@ -174,6 +235,8 @@ app.get('/api/status/:jobId', async (req, res) => {
       status: job.status,
       progress: job.progress,
       totalContentGenerated: job.total_content_generated || 0,
+      totalBlogs: totalBlogsForJob,
+      blogTypeAllocations: job.blog_type_allocations || null,
       createdAt: job.created_at,
       startedAt: job.started_at,
       completedAt: job.completed_at
@@ -274,6 +337,8 @@ app.get('/api/content/:jobId', async (req, res) => {
       jobId: job.id,
       niche: job.niche,
       tone: job.tone,
+      totalBlogs: job.total_blogs || content.length,
+      blogTypeAllocations: job.blog_type_allocations || null,
       completedAt: job.completed_at,
       stats,
       content: content.map(post => ({
@@ -284,7 +349,9 @@ app.get('/api/content/:jobId', async (req, res) => {
         content: post.blog_content,
         wordCount: post.word_count,
         slug: post.slug,
-        metaDescription: post.meta_description
+        metaDescription: post.meta_description,
+        blogType: post.blog_type,
+        sourceScenarioId: post.source_scenario_id
       }))
     });
 

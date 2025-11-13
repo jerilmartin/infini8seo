@@ -17,6 +17,13 @@ interface BlogPost {
   wordCount: number;
   slug: string;
   metaDescription: string;
+  blogType?: string;
+  imageUrls?: Array<{
+    url: string;
+    alt?: string;
+    photographer?: string;
+    photographerUrl?: string;
+  }>;
 }
 
 interface ContentData {
@@ -219,9 +226,14 @@ export default function ResultsPage() {
                       <span className="inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded mr-2">
                         #{post.scenarioId}
                       </span>
-                      <span className="inline-block bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-1 rounded">
+                      <span className="inline-block bg-purple-100 text-purple-800 text-xs font-semibold px-2 py-1 rounded mr-2">
                         {post.personaArchetype}
                       </span>
+                      {post.blogType && (
+                        <span className="inline-block bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded">
+                          {post.blogType.charAt(0).toUpperCase() + post.blogType.slice(1)}
+                        </span>
+                      )}
                     </div>
                     <h2 className="text-xl font-bold text-gray-900 mb-2">{post.title}</h2>
                     <div className="flex items-center text-sm text-gray-600">
@@ -279,6 +291,39 @@ export default function ResultsPage() {
                       <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                         <h4 className="text-sm font-semibold text-gray-700 mb-1">Meta Description:</h4>
                         <p className="text-sm text-gray-600">{post.metaDescription}</p>
+                      </div>
+                    )}
+
+                    {/* Image Credits */}
+                    {post.imageUrls && post.imageUrls.length > 0 && (
+                      <div className="mb-6 p-4 bg-blue-50 rounded-lg text-sm text-blue-800 space-y-2">
+                        <h4 className="font-semibold">Image Sources</h4>
+                        {post.imageUrls.map((image, idx) => (
+                          <div key={idx}>
+                            <span>Photo by </span>
+                            {image.photographerUrl ? (
+                              <a
+                                href={image.photographerUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline"
+                              >
+                                {image.photographer || 'Unsplash photographer'}
+                              </a>
+                            ) : (
+                              <span>{image.photographer || 'Unsplash photographer'}</span>
+                            )}
+                            <span> on </span>
+                            <a
+                              href="https://unsplash.com"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline"
+                            >
+                              Unsplash
+                            </a>
+                          </div>
+                        ))}
                       </div>
                     )}
 

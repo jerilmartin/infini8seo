@@ -1,20 +1,6 @@
 version: '3.8'
 
-services:
-  # MongoDB Database
-  mongodb:
-    image: mongo:7.0
-    container_name: content-factory-mongodb
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_DATABASE: content-factory
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - content-factory-network
-
+services: 
   # Redis Queue
   redis:
     image: redis:7-alpine
@@ -40,13 +26,15 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - MONGODB_URI=mongodb://mongodb:27017/content-factory
+      - MONGODB_URI=${MONGODB_URI}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - FRONTEND_URL=http://localhost:3000
+      - UNSPLASH_ACCESS_KEY=${UNSPLASH_ACCESS_KEY}
     depends_on:
-      - mongodb
       - redis
     networks:
       - content-factory-network
@@ -62,13 +50,15 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      - MONGODB_URI=mongodb://mongodb:27017/content-factory
+      - MONGODB_URI=${MONGODB_URI}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - MAX_CONCURRENT_CONTENT_GENERATION=10
+      - UNSPLASH_ACCESS_KEY=${UNSPLASH_ACCESS_KEY}
     depends_on:
-      - mongodb
       - redis
     networks:
       - content-factory-network
@@ -92,8 +82,6 @@ services:
       - content-factory-network
 
 volumes:
-  mongodb_data:
-    driver: local
   redis_data:
     driver: local
 

@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import logger from '../utils/logger.js';
+import { fetchScenarioImageUrls } from './utils/images.js';
 
 // Initialize Google Generative AI
 let genAI;
@@ -199,8 +200,16 @@ function extractJSON(text) {
  * @param {string} params.tone - Content tone
  * @returns {Promise<Array>} Array of 50 scenario objects
  */
-export async function executePhaseA({ niche, valuePropositions, tone }) {
+export async function executePhaseA({ niche, valuePropositions, tone, totalBlogs, blogTypeAllocations }) {
   logger.info(`Phase A: Initiating deep research for niche: ${niche}`);
+
+  if (totalBlogs) {
+    logger.info(`Phase A: Target total blogs -> ${totalBlogs}`);
+  }
+
+  if (blogTypeAllocations) {
+    logger.info(`Phase A: Blog type allocations -> ${JSON.stringify(blogTypeAllocations)}`);
+  }
 
   try {
     // Initialize Gemini client if not already done
@@ -208,11 +217,10 @@ export async function executePhaseA({ niche, valuePropositions, tone }) {
       genAI = initGemini();
     }
     
-    // Use gemini-2.5-flash - Higher quota limits than 2.0-flash-exp
-    // This model supports Google Search and has better rate limits
+    // Use gemini-2.5-pro - higher reasoning ability with search grounding support
     // NOTE: Can't use responseMimeType with tools, so we'll parse JSON manually
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.5-pro',
       generationConfig: {
         temperature: 1.0, // Higher for creative, diverse research insights
         topP: 0.95,
@@ -239,6 +247,7 @@ BUSINESS CONTEXT:
 - Industry: ${niche}
 - Value Propositions: ${valuePropositions.join(', ')}
 - Content Tone: ${tone}
+- Blog Allocation Targets: ${blogTypeAllocations ? JSON.stringify(blogTypeAllocations) : 'Not specified'}
 
 RESEARCH REQUIREMENTS (USE GOOGLE SEARCH EXTENSIVELY):
 1. **Industry Trends**: Search for latest trends, statistics, and market changes in ${niche}
@@ -424,7 +433,7 @@ BEGIN YOUR RESEARCH NOW.`;
     logger.info(`Validating ${scenarios.length} scenarios...`);
 
     // Validate and fix each scenario
-    const validatedScenarios = scenarios.slice(0, 30).map((scenario, index) => {
+    const validatedScenarios = await Promise.all(scenarios.slice(0, 30).map(async (scenario, index) => {
       // Auto-fix missing required fields
       if (!scenario.scenario_id) scenario.scenario_id = index + 1;
       if (!scenario.persona_name) scenario.persona_name = `Persona ${index + 1}`;
@@ -433,6 +442,13 @@ BEGIN YOUR RESEARCH NOW.`;
       if (!scenario.target_keywords || !Array.isArray(scenario.target_keywords)) {
         scenario.target_keywords = [`${niche}`, 'solution', 'guide'];
       }
+
+      // Fetch Unsplash imagery for this scenario
+      const images = await fetchScenarioImageUrls({
+        keywords: scenario.target_keywords,
+        personaName: scenario.persona_name,
+      });
+      scenario.image_urls = images;
 
       // Validate critical fields
       if (!scenario.pain_point_detail || scenario.pain_point_detail.trim().length < 10) {
@@ -446,7 +462,7 @@ BEGIN YOUR RESEARCH NOW.`;
       }
 
       return scenario;
-    });
+    }));
 
     logger.info(`✅ Phase A Complete: Successfully validated ${validatedScenarios.length} scenarios`);
 

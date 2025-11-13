@@ -34,12 +34,18 @@ class JobRepository {
         throw new Error('Missing required fields: niche, valuePropositions, tone');
       }
 
+      if (typeof jobData.totalBlogs !== 'number') {
+        throw new Error('Missing required field: totalBlogs');
+      }
+
       const { data, error } = await this.supabase
         .from(this.table)
         .insert([{
           niche: jobData.niche,
           value_propositions: jobData.valuePropositions,
           tone: jobData.tone,
+          total_blogs: jobData.totalBlogs,
+          blog_type_allocations: jobData.blogTypeAllocations || null,
           status: 'ENQUEUED',
           progress: 0,
           started_at: new Date().toISOString()
