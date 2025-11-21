@@ -38,7 +38,7 @@ class JobRepository {
         throw new Error('Missing required field: totalBlogs');
       }
 
-      const { data, error } = await this.supabase
+      const { data, error} = await this.supabase
         .from(this.table)
         .insert([{
           niche: jobData.niche,
@@ -46,6 +46,7 @@ class JobRepository {
           tone: jobData.tone,
           total_blogs: jobData.totalBlogs,
           blog_type_allocations: jobData.blogTypeAllocations || null,
+          target_word_count: jobData.targetWordCount || 1200,
           status: 'ENQUEUED',
           progress: 0,
           started_at: new Date().toISOString()

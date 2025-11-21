@@ -53,7 +53,8 @@ app.post('/api/generate-content', async (req, res) => {
       valuePropositions,
       tone,
       totalBlogs,
-      blogTypeAllocations
+      blogTypeAllocations,
+      targetWordCount
     } = req.body;
 
     // Input validation
@@ -136,6 +137,19 @@ app.post('/api/generate-content', async (req, res) => {
       });
     }
 
+    // Validate target word count
+    const sanitizedWordCount = parseInt(targetWordCount, 10);
+    if (
+      Number.isNaN(sanitizedWordCount) ||
+      sanitizedWordCount < 500 ||
+      sanitizedWordCount > 2500
+    ) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'targetWordCount must be a number between 500 and 2500'
+      });
+    }
+
     logger.info(`Creating new content generation job for niche: ${niche}`);
 
     // Create Job in Supabase
@@ -144,7 +158,8 @@ app.post('/api/generate-content', async (req, res) => {
       valuePropositions: sanitizedValueProps,
       tone: tone.toLowerCase(),
       totalBlogs: sanitizedTotalBlogs,
-      blogTypeAllocations: sanitizedAllocations
+      blogTypeAllocations: sanitizedAllocations,
+      targetWordCount: sanitizedWordCount
     });
 
     logger.info(`Job created with ID: ${job.id}`);
@@ -158,7 +173,8 @@ app.post('/api/generate-content', async (req, res) => {
         valuePropositions: job.value_propositions,
         tone: job.tone,
         totalBlogs: job.total_blogs || sanitizedTotalBlogs,
-        blogTypeAllocations: job.blog_type_allocations || sanitizedAllocations
+        blogTypeAllocations: job.blog_type_allocations || sanitizedAllocations,
+        targetWordCount: job.target_word_count || sanitizedWordCount
       },
       {
         jobId: job.id, // Use Supabase UUID as BullMQ job ID for tracking

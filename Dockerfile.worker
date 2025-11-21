@@ -5,10 +5,10 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install dependencies (production only)
 RUN npm ci --only=production
 
-# Copy application code
+# Copy application code - including worker/utils for images.js
 COPY worker ./worker
 COPY config ./config
 COPY models ./models

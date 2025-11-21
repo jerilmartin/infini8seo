@@ -265,6 +265,11 @@ Generate EXACTLY 30 scenarios that are:
 - **High-Intent**: Each should represent someone actively looking for solutions
 - **Unique**: No two scenarios should be similar - vary pain points, goals, and contexts significantly
 
+**CRITICAL AEO (Answer Engine Optimization) REQUIREMENTS:**
+- **Informational Blog Topics**: MUST be phrased as direct, high-intent questions users would ask AI (e.g., "What is the average cost of ${niche} implementation for small businesses?")
+- **Distribution**: Ensure scenarios match the allocation: ${blogTypeAllocations ? JSON.stringify(blogTypeAllocations) : 'balanced distribution'}
+- **Question Format**: All informational topics should be natural questions that AI assistants would answer
+
 QUALITY STANDARDS (KEEP CONCISE):
 - pain_point_detail: 2 sentences MAX - specific problem backed by research
 - goal_focus: 1 sentence - exact outcome they want
@@ -443,12 +448,16 @@ BEGIN YOUR RESEARCH NOW.`;
         scenario.target_keywords = [`${niche}`, 'solution', 'guide'];
       }
 
-      // Fetch Unsplash imagery for this scenario
-      const images = await fetchScenarioImageUrls({
-        keywords: scenario.target_keywords,
-        personaName: scenario.persona_name,
-      });
-      scenario.image_urls = images;
+      // Fetch Unsplash imagery ONLY for first 2 scenarios (to save API quota)
+      if (index < 2) {
+        const images = await fetchScenarioImageUrls({
+          keywords: scenario.target_keywords,
+          personaName: scenario.persona_name,
+        });
+        scenario.image_urls = images;
+      } else {
+        scenario.image_urls = [];
+      }
 
       // Validate critical fields
       if (!scenario.pain_point_detail || scenario.pain_point_detail.trim().length < 10) {

@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { Download, Copy, Check, ExternalLink, Home, ChevronDown, ChevronUp } from 'lucide-react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -329,7 +330,9 @@ export default function ResultsPage() {
 
                     {/* Blog Content */}
                     <div className="prose prose-lg max-w-none">
-                      <ReactMarkdown>{post.content}</ReactMarkdown>
+                      <ReactMarkdown rehypePlugins={[rehypeRaw]}>
+                        {post.content}
+                      </ReactMarkdown>
                     </div>
                   </div>
                 )}

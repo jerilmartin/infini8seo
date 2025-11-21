@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import pLimit from 'p-limit';
 import logger from '../utils/logger.js';
 import ContentRepository from '../models/ContentRepository.js';
+import { highlightKeywords } from './utils/highlightKeywords.js';
 
 const BLOG_TYPES = ['functional', 'transactional', 'commercial', 'informational'];
 
@@ -86,6 +87,7 @@ export async function executePhaseB({
   tone,
   totalBlogs,
   blogTypeAllocations,
+  targetWordCount,
   progressCallback
 }) {
   const targetTotal = totalBlogs || scenarios.length;
@@ -148,16 +150,42 @@ export async function executePhaseB({
           niche,
           valuePropositions,
           tone,
-          blogType: scenario.blog_type
+          blogType: scenario.blog_type,
+          targetWordCount
         });
 
         const generationTime = Date.now() - startTime;
 
         const images = Array.isArray(scenario.image_urls) ? scenario.image_urls.slice(0, 2) : [];
         const blogContentWithFaq = ensureFaqSection(blogContent, scenario, valuePropositions[0]);
-        const contentWithImages = scenario.scenario_id <= 2 && images.length > 0
-          ? `${images.map((img) => `![${img.alt || scenario.blog_topic_headline}](${img.url})`).join('\n\n')}\n\n${blogContentWithFaq}`
-          : blogContentWithFaq;
+        
+        // Highlight SEO keywords with visual styling
+        logger.info(`Highlighting keywords for blog ${scenario.scenario_id}: ${scenario.target_keywords?.join(', ')}`);
+        const contentWithKeywords = highlightKeywords(blogContentWithFaq, scenario.target_keywords, targetWordCount);
+        logger.info(`Keyword highlighting complete - added ${(contentWithKeywords.match(/<mark/g) || []).length} highlights`);
+        
+        // Add images ONLY to first 2 blog posts (to save Unsplash API quota)
+        let contentWithImages = contentWithKeywords;
+        
+        if (scenario.scenario_id <= 2 && images.length > 0) {
+          // Split content into sections (by ## headers)
+          const sections = contentWithImages.split(/(?=##\s)/);
+          
+          if (sections.length >= 3 && images.length >= 2) {
+            // Add first image after introduction (after first section)
+            sections[1] = `${images[0] ? `![${images[0].alt || scenario.blog_topic_headline}](${images[0].url})\n*Photo by [${images[0].photographer}](${images[0].photographerUrl}) on Unsplash*\n\n` : ''}${sections[1]}`;
+            
+            // Add second image in the middle (after 3rd section)
+            if (sections.length >= 4) {
+              sections[3] = `${images[1] ? `![${images[1].alt || scenario.blog_topic_headline}](${images[1].url})\n*Photo by [${images[1].photographer}](${images[1].photographerUrl}) on Unsplash*\n\n` : ''}${sections[3]}`;
+            }
+            
+            contentWithImages = sections.join('');
+          } else {
+            // Fallback: add images at the top
+            contentWithImages = `${images.map((img) => `![${img.alt || scenario.blog_topic_headline}](${img.url})\n*Photo by [${img.photographer}](${img.photographerUrl}) on Unsplash*`).join('\n\n')}\n\n${contentWithKeywords}`;
+          }
+        }
 
         // Save to Supabase Content table
         await ContentRepository.create({
@@ -247,7 +275,7 @@ export async function executePhaseB({
  * @param {Object} params
  * @returns {Promise<string>} The generated blog content in Markdown
  */
-async function generateSingleBlogPost({ scenario, niche, valuePropositions, tone, blogType }) {
+async function generateSingleBlogPost({ scenario, niche, valuePropositions, tone, blogType, targetWordCount }) {
   if (!genAI) {
     genAI = initGemini();
   }
@@ -274,8 +302,16 @@ YOUR WRITING STYLE:
 - Data-driven with real examples
 - Actionable and practical
 - Engaging storytelling that connects emotionally
-- SEO-optimized but natural
-- Premium quality that readers want to share`;
+- SEO-optimized with strategic keyword highlighting
+- Premium quality that readers want to share
+
+IMPORTANT: You MUST use HTML mark tags to highlight ${Math.floor(20 + ((targetWordCount || 1200) - 500) / 100)}-${Math.floor(25 + ((targetWordCount || 1200) - 500) / 100)} SEO keywords throughout the content.
+
+**KEYWORD HIGHLIGHTING FORMULA:**
+- For ${targetWordCount || 1200} words: Highlight approximately ${Math.floor(20 + ((targetWordCount || 1200) - 500) / 100)} keywords
+- Format: <mark style="background-color: #FFF4E6; padding: 2px 4px; border-radius: 3px;">[keyword]</mark>
+- Include PRIMARY keywords (${scenario.target_keywords.slice(0, 3).join(', ')}) AND semantic variations
+- Distribute naturally across all sections - intro, body, conclusion, FAQ`;
 
   const userPrompt = `
 ASSIGNMENT: Write a PREMIUM, IN-DEPTH ${blogType ? blogType.toUpperCase() : ''} blog post that will become the definitive resource on this topic.
@@ -297,7 +333,7 @@ BUSINESS SOLUTION: ${valuePropositions[0]}
 
 CONTENT REQUIREMENTS:
 
-**LENGTH:** 1200-1400 words (aim for comprehensive, not rushed)
+**LENGTH:** ${targetWordCount || 1200} words (±100 words is acceptable, aim for comprehensive content)
 
 **RESEARCH:** Use Google Search to find:
 - Current statistics and data relevant to this topic
@@ -315,7 +351,15 @@ CONTENT REQUIREMENTS:
 - Preview the value they'll get from this article
 - Include primary keyword naturally
 
-## The Real Problem: Understanding [Topic] (250-300 words)
+## 🎯 Quick Answer (40-60 words) **CRITICAL FOR AEO**
+**Immediately after the introduction, provide a 2-3 sentence direct answer summary:**
+- Directly address the main topic/question
+- 40-60 words, easily extractable
+- Clear, concise, and actionable
+- This enables Featured Snippets and AI Overview extraction
+- Format: Bold or highlighted for easy identification
+
+## Why Does [Problem] Happen? (250-300 words) **QUESTION-BASED HEADING**
 - Deep dive into WHY this problem exists
 - Explain the root causes most people miss
 - Include relevant statistics or data you found through research
@@ -323,22 +367,22 @@ CONTENT REQUIREMENTS:
 - Connect to their goal: ${scenario.goal_focus}
 - Address misconceptions
 
-## The High-Level Strategy (200-250 words)
+## What's the Best Approach to [Solve This]? (200-250 words) **QUESTION-BASED HEADING**
 - Explain the overall approach that actually works
 - Reference industry trends or expert consensus
 - Outline the key principles they need to understand
 - Set expectations realistically
 - Build credibility with research-backed insights
 
-## Step-by-Step: How to [Achieve Goal] (400-500 words)
-Provide 5-7 detailed, actionable steps:
+## How Do You [Achieve Goal] Step-by-Step? (400-500 words) **QUESTION-BASED HEADING**
+Provide 5-7 detailed, actionable steps (STRUCTURED DATA for HowTo Rich Snippets):
 
-### Step 1: [Specific Action]
+### Step 1: [Specific Action as Question or Clear Step]
 - What to do (be specific and tactical)
 - Why it works (explain the reasoning)
 - Pro tip or common mistake to avoid
 
-### Step 2: [Specific Action]
+### Step 2: [Specific Action as Question or Clear Step]
 (Continue pattern)
 
 Each step should be:
@@ -346,8 +390,13 @@ Each step should be:
 - Explained with reasoning
 - Backed by logic or data
 - Include practical examples
+- **Use question format where natural** (e.g., "How do I set up X?")
 
-## The Accelerator: [Value Proposition Integration] (200-250 words)
+## 🚀 E-E-A-T SIGNAL: Our Expertise (50-100 words) **CRITICAL**
+**Include a brief paragraph establishing expertise:**
+"As specialists in ${niche}, we've helped [hundreds/thousands] of clients achieve [specific outcome]. Our approach combines ${valuePropositions.join(', ')} to deliver measurable results. With [X years] of experience in the industry, we understand the unique challenges faced by ${scenario.persona_archetype} and have developed proven strategies that work."
+
+## How Can [Business Solution] Accelerate Your Results? (200-250 words) **QUESTION-BASED**
 - Explain how ${valuePropositions[0]} takes this to the next level
 - Position it as the logical evolution, not just a sales pitch
 - Show how it solves the hardest parts of the manual approach
@@ -362,12 +411,16 @@ Each step should be:
 - Inspirational but realistic closing
 - Final CTA that feels helpful, not pushy
 
-## FAQ (4-5 questions)
-- Provide 4-5 frequently asked questions that a ${scenario.persona_archetype} would naturally ask after reading the article
-- Each question should be in bold (e.g., **Question?**)
-- Each answer should be 2-3 sentences, specific, and reference ${scenario.pain_point_detail} or their goal of ${scenario.goal_focus}
+## FAQ (4-5 questions) **STRUCTURED DATA - FAQPage Schema**
+**CRITICAL FOR RICH SNIPPETS & AI EXTRACTION:**
+- Provide 4-5 frequently asked questions that a ${scenario.persona_archetype} would naturally ask
+- Each question MUST be phrased as a natural language question (e.g., "How much does X cost?", "What is the best way to Y?")
+- Each question should be in bold (e.g., **How long does it take to see results?**)
+- Each answer should be 2-3 sentences, specific, and directly answer the question
+- Reference ${scenario.pain_point_detail} or their goal of ${scenario.goal_focus}
 - Highlight how ${valuePropositions[0]} supports the answer wherever relevant
 - Keep the tone reassuring and authoritative
+- **Format for easy extraction by AI/LLMs**
 
 **QUALITY STANDARDS:**
 
@@ -394,11 +447,64 @@ Each step should be:
 
 7. **Authenticity:** Write like you genuinely want to help this person succeed. They should feel you understand their struggle.
 
-**CRITICAL:** 
-- Word count: 1200-1400 words
+8. **AEO OPTIMIZATION (Answer Engine Optimization):**
+   - Use question-based H2/H3 headings throughout
+   - Include Quick Answer section immediately after intro
+   - Structure content for easy AI extraction
+   - Use clear Q&A format in FAQ section
+   - Enable Featured Snippets and AI Overview inclusion
+   - Make answers directly extractable (40-60 word summaries)
+
+9. **KEYWORD HIGHLIGHTING FOR SEO (CRITICAL - DYNAMIC SCALING):**
+   
+   **TARGET KEYWORD COUNT BASED ON WORD COUNT:**
+   - 500-800 words: Highlight 20-25 keyword instances
+   - 800-1200 words: Highlight 25-30 keyword instances
+   - 1200-1800 words: Highlight 30-35 keyword instances
+   - 1800-2500 words: Highlight 35-40 keyword instances
+   
+   **KEYWORD STRATEGY:**
+   - Primary Keywords (from target list): ${scenario.target_keywords.join(', ')}
+   - Also identify and highlight RELATED semantic keywords naturally occurring in content
+   - Include: industry terms, action verbs, solution phrases, problem descriptors
+   - Distribute evenly throughout: intro, body sections, conclusion, FAQ
+   
+   **HIGHLIGHTING RULES:**
+   - Use HTML mark tag: \`<mark style="background-color: #FFF4E6; padding: 2px 4px; border-radius: 3px;">[keyword]</mark>\`
+   - Highlight 2-4 occurrences of each PRIMARY keyword
+   - Highlight 1-2 occurrences of SECONDARY/semantic keywords
+   - Space them naturally - don't cluster in one paragraph
+   - Prioritize: headings context, first paragraphs of sections, key explanations
+   - Mix single words and 2-3 word phrases
+   
+   **EXAMPLES:**
+   - "<mark style="background-color: #FFF4E6; padding: 2px 4px; border-radius: 3px;">digital marketing</mark>"
+   - "<mark style="background-color: #FFF4E6; padding: 2px 4px; border-radius: 3px;">ROI optimization</mark>"
+   - "<mark style="background-color: #FFF4E6; padding: 2px 4px; border-radius: 3px;">customer engagement</mark>"
+   - "<mark style="background-color: #FFF4E6; padding: 2px 4px; border-radius: 3px;">data-driven strategies</mark>"
+   
+   **BALANCE:** Natural reading flow is priority - keywords should enhance, not disrupt
+
+**CRITICAL AEO & SEO REQUIREMENTS:** 
+- Word count: ${targetWordCount || 1200} words (±100 words acceptable)
+- **MUST include Quick Answer section** (40-60 words) immediately after introduction
+- **ALL H2/H3 headings MUST be questions** or clear actionable statements
+- **E-E-A-T signal paragraph** establishing expertise in ${niche}
+- **FAQ section with 4-5 natural language questions** for FAQPage schema
+
+**KEYWORD HIGHLIGHTING (DYNAMIC SCALING):**
+- **Target: ${Math.floor(20 + ((targetWordCount || 1200) - 500) / 100)}+ keyword highlights** (scales with word count)
+- For ${targetWordCount || 1200} words: Aim for ${Math.floor(20 + ((targetWordCount || 1200) - 500) / 100)}-${Math.floor(25 + ((targetWordCount || 1200) - 500) / 100)} highlighted keywords
+- Use \`<mark style="background-color: #FFF4E6; padding: 2px 4px; border-radius: 3px;">[keyword]</mark>\`
+- Primary keywords: ${scenario.target_keywords.join(', ')}
+- Also highlight semantic/related keywords naturally in content
+- Distribute evenly throughout all sections
+- 2-4 occurrences per primary keyword, 1-2 per secondary
+- Natural placement - enhance readability, don't disrupt flow
 - Use Google Search to enhance content with real data
-- End with the FAQ section described above—no content after it
-- Return ONLY the blog post in Markdown
+- Structure for easy AI/LLM extraction
+- End with the FAQ section—no content after it
+- Return ONLY the blog post in Markdown with HTML mark tags for keywords
 - No preamble, no "here's your blog post", just the content
 
 BEGIN WRITING NOW.

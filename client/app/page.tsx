@@ -9,6 +9,9 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const MAX_TOTAL_BLOGS = 50;
 const DEFAULT_TOTAL_BLOGS = 30;
+const MIN_WORD_COUNT = 500;
+const MAX_WORD_COUNT = 2500;
+const DEFAULT_WORD_COUNT = 1200;
 const BLOG_TYPES = [
   { key: 'functional', label: 'Functional' },
   { key: 'transactional', label: 'Transactional' },
@@ -35,6 +38,7 @@ export default function Home() {
   const [error, setError] = useState('');
   const [totalBlogs, setTotalBlogs] = useState(DEFAULT_TOTAL_BLOGS);
   const [blogTypeAllocations, setBlogTypeAllocations] = useState<BlogTypeAllocations>(DEFAULT_BLOG_TYPE_ALLOCATIONS);
+  const [targetWordCount, setTargetWordCount] = useState(DEFAULT_WORD_COUNT);
 
   const adjustAllocationsToTotal = (allocations: BlogTypeAllocations, newTotal: number): BlogTypeAllocations => {
     const sum = BLOG_TYPES.reduce((acc, type) => acc + allocations[type.key], 0);
@@ -125,7 +129,8 @@ export default function Home() {
         valuePropositions: validValueProps,
         tone,
         totalBlogs,
-        blogTypeAllocations
+        blogTypeAllocations,
+        targetWordCount
       });
 
       const { jobId } = response.data;
@@ -353,6 +358,43 @@ export default function Home() {
                 <option value="technical">Technical</option>
                 <option value="casual">Casual</option>
               </select>
+            </div>
+
+            {/* Target Word Count */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Target Word Count per Blog *
+              </label>
+              <div className="space-y-3">
+                <input
+                  type="range"
+                  min={MIN_WORD_COUNT}
+                  max={MAX_WORD_COUNT}
+                  step={100}
+                  value={targetWordCount}
+                  onChange={(e) => setTargetWordCount(Number(e.target.value))}
+                  className="w-full"
+                  disabled={loading}
+                />
+                <div className="flex items-center justify-between text-sm text-gray-600">
+                  <span>{MIN_WORD_COUNT} words</span>
+                  <span className="font-semibold text-gray-900 text-base">{targetWordCount} words</span>
+                  <span>{MAX_WORD_COUNT} words</span>
+                </div>
+                <input
+                  type="number"
+                  min={MIN_WORD_COUNT}
+                  max={MAX_WORD_COUNT}
+                  step={100}
+                  value={targetWordCount}
+                  onChange={(e) => setTargetWordCount(Math.min(MAX_WORD_COUNT, Math.max(MIN_WORD_COUNT, Number(e.target.value))))}
+                  className="input-field w-full"
+                  disabled={loading}
+                />
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                Choose the approximate word count for each blog post (range: {MIN_WORD_COUNT}-{MAX_WORD_COUNT} words).
+              </p>
             </div>
 
             {/* Error Message */}

@@ -17,7 +17,7 @@ let worker;
 // Main Job Processor
 // ============================================
 const processContentGenerationJob = async (job) => {
-  const { jobId, niche, valuePropositions, tone, totalBlogs: payloadTotalBlogs, blogTypeAllocations: payloadAllocations } = job.data;
+  const { jobId, niche, valuePropositions, tone, totalBlogs: payloadTotalBlogs, blogTypeAllocations: payloadAllocations, targetWordCount: payloadWordCount } = job.data;
   
   logger.info(`🚀 Starting content generation job: ${jobId}`);
   logger.info(`Niche: ${niche}, Tone: ${tone}`);
@@ -32,6 +32,7 @@ const processContentGenerationJob = async (job) => {
 
     const totalBlogs = payloadTotalBlogs || jobDoc.total_blogs || 50;
     const blogTypeAllocations = payloadAllocations || jobDoc.blog_type_allocations || null;
+    const targetWordCount = payloadWordCount || jobDoc.target_word_count || 1200;
 
     // ============================================
     // PHASE A: Deep Research (Scenario Generation)
@@ -87,6 +88,7 @@ const processContentGenerationJob = async (job) => {
       tone,
       totalBlogs,
       blogTypeAllocations,
+      targetWordCount,
       progressCallback
     });
 

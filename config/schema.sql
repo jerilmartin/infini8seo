@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     tone VARCHAR(50) NOT NULL CHECK (tone IN ('professional', 'conversational', 'authoritative', 'friendly', 'technical', 'casual')),
     total_blogs INTEGER NOT NULL DEFAULT 50 CHECK (total_blogs >= 1 AND total_blogs <= 50),
     blog_type_allocations JSONB,
+    target_word_count INTEGER NOT NULL DEFAULT 1200 CHECK (target_word_count >= 500 AND target_word_count <= 2500),
     
     -- Job Status & Progress
     status VARCHAR(50) NOT NULL DEFAULT 'ENQUEUED' CHECK (status IN ('ENQUEUED', 'RESEARCHING', 'RESEARCH_COMPLETE', 'GENERATING', 'COMPLETE', 'FAILED')),
