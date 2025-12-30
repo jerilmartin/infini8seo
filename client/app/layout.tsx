@@ -1,15 +1,16 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Manrope } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ 
+const manrope = Manrope({ 
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-manrope',
+  weight: ['400', '500', '600', '700'],
 })
 
 export const metadata: Metadata = {
-  title: 'Content Factory | AI-Powered Blog Generation',
-  description: 'Generate high-quality, SEO-optimized blog posts with AI-powered research and content creation',
+  title: 'Content Factory | Blog Generation',
+  description: 'Generate high-quality, SEO-optimized blog posts',
 }
 
 export default function RootLayout({
@@ -19,15 +20,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} font-sans min-h-screen bg-background`}>
-        <div className="relative min-h-screen">
-          {/* Background gradient effects */}
-          <div className="fixed inset-0 -z-10 overflow-hidden">
-            <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-primary/10 via-transparent to-transparent rounded-full blur-3xl" />
-            <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-accent/10 via-transparent to-transparent rounded-full blur-3xl" />
-          </div>
-          {children}
-        </div>
+      <body className={`${manrope.variable} font-sans min-h-screen bg-background`}>
+        {children}
       </body>
     </html>
   )

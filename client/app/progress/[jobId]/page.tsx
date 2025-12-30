@@ -2,13 +2,15 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, CheckCircle2, XCircle, Brain, Pencil, Home, RefreshCw } from 'lucide-react';
+import { Loader2, Check, X, ArrowLeft, Circle } from 'lucide-react';
 import axios from 'axios';
-import dynamic from 'next/dynamic';
-
-const GridScan = dynamic(() => import('../../components/GridScan'), { ssr: false });
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+interface GeneratedTitle {
+  title: string;
+  type: string;
+}
 
 interface JobStatus {
   jobId: string;
@@ -20,6 +22,7 @@ interface JobStatus {
   errorMessage?: string;
   estimatedSecondsRemaining?: number;
   totalBlogs?: number;
+  generatedTitles?: GeneratedTitle[];
 }
 
 export default function ProgressPage() {
@@ -44,7 +47,7 @@ export default function ProgressPage() {
         setPolling(false);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch job status');
+      setError(err.response?.data?.message || 'Failed to fetch status');
       setPolling(false);
     }
   }, [jobId, router]);
@@ -59,7 +62,7 @@ export default function ProgressPage() {
   }, [jobId, polling, fetchJobStatus]);
 
   const formatTime = (seconds?: number) => {
-    if (!seconds) return '--';
+    if (!seconds) return '—';
     if (seconds < 60) return `${seconds}s`;
     return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
   };
@@ -69,8 +72,8 @@ export default function ProgressPage() {
     switch (jobStatus.status) {
       case 'ENQUEUED': return 'queued';
       case 'RESEARCHING': return 'research';
-      case 'RESEARCH_COMPLETE': return 'research-done';
-      case 'GENERATING': return 'generating';
+      case 'RESEARCH_COMPLETE': 
+      case 'GENERATING': return 'writing';
       case 'COMPLETE': return 'complete';
       case 'FAILED': return 'failed';
       default: return 'loading';
@@ -80,20 +83,34 @@ export default function ProgressPage() {
   const phase = getPhase();
   const totalTarget = jobStatus?.totalBlogs || 30;
   const progress = jobStatus?.progress || 0;
+  const generated = jobStatus?.totalContentGenerated || 0;
+  const titles = jobStatus?.generatedTitles || [];
+
+  // Determine step states
+  const getStepState = (step: string) => {
+    if (phase === 'failed') return 'failed';
+    if (phase === 'complete') return 'complete';
+    
+    const stepOrder = ['research', 'topics', 'keywords', 'writing', 'optimization'];
+    const currentIndex = phase === 'research' ? 0 : phase === 'writing' ? 3 : -1;
+    const stepIndex = stepOrder.indexOf(step);
+    
+    if (stepIndex < currentIndex) return 'complete';
+    if (stepIndex === currentIndex) return 'active';
+    return 'pending';
+  };
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 relative">
-        <div className="fixed inset-0 -z-10">
-          <GridScan linesColor="#1a1625" scanColor="#ef4444" scanOpacity={0.3} gridScale={0.08} />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/80 to-background" />
-        </div>
-        <div className="card max-w-md w-full text-center glow-box">
-          <XCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-foreground mb-2">Error</h2>
-          <p className="text-muted-foreground mb-6 text-sm">{error}</p>
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <div className="card max-w-md w-full text-center">
+          <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+            <X className="w-5 h-5 text-destructive" />
+          </div>
+          <h2 className="text-lg font-semibold text-foreground mb-2">Something went wrong</h2>
+          <p className="text-sm text-muted-foreground mb-6">{error}</p>
           <button onClick={() => router.push('/')} className="btn-primary">
-            <Home className="w-4 h-4 mr-2" /> Return Home
+            <ArrowLeft className="w-4 h-4 mr-2" /> Go back
           </button>
         </div>
       </div>
@@ -101,151 +118,245 @@ export default function ProgressPage() {
   }
 
   return (
-    <div className="min-h-screen relative">
-      <div className="fixed inset-0 -z-10">
-        <GridScan
-          linesColor="#1a1625"
-          scanColor={phase === 'complete' ? '#10b981' : '#8b5cf6'}
-          scanOpacity={0.5}
-          gridScale={0.06}
-          scanDuration={2}
-          scanDelay={0.5}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background" />
-      </div>
-
-      <div className="relative py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-lg mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8 animate-fade-in">
-            <h1 className="text-2xl font-bold text-foreground mb-1">
-              {phase === 'complete' ? 'Complete!' : 'Generating Content'}
-            </h1>
-            {jobStatus && <p className="text-sm text-muted-foreground">{jobStatus.niche}</p>}
+    <div className="min-h-screen bg-background">
+      <div className="max-w-6xl mx-auto px-8 py-10">
+        {/* Header - Expanded Status Area */}
+        <header className="mb-10 animate-fade-in">
+          <div className="text-[20px] font-medium text-foreground tracking-tight mb-6">infini8seo</div>
+          
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`w-2.5 h-2.5 rounded-full ${
+              phase === 'complete' ? 'bg-emerald-500' : 
+              phase === 'failed' ? 'bg-destructive' : 
+              'bg-primary animate-pulse'
+            }`} />
+            <span className="text-[13px] font-medium text-secondary-foreground uppercase tracking-wide">
+              {phase === 'complete' ? 'Complete' : phase === 'failed' ? 'Failed' : 'In Progress'}
+            </span>
           </div>
-
-          {/* Progress Card */}
-          <div className="card glow-box animate-fade-in-up">
-            {/* Circular Progress */}
-            <div className="flex justify-center mb-6">
-              <div className="relative w-28 h-28">
-                <svg className="w-full h-full transform -rotate-90">
-                  <circle cx="56" cy="56" r="48" stroke="hsl(var(--secondary))" strokeWidth="6" fill="none" />
-                  <circle
-                    cx="56" cy="56" r="48"
-                    stroke={phase === 'complete' ? '#10b981' : 'hsl(var(--primary))'}
-                    strokeWidth="6"
-                    fill="none"
-                    strokeDasharray={301.6}
-                    strokeDashoffset={301.6 - (301.6 * progress) / 100}
-                    strokeLinecap="round"
-                    className="transition-all duration-500"
-                    style={{ filter: 'drop-shadow(0 0 8px hsl(var(--primary) / 0.5))' }}
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-foreground">{progress}%</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Status */}
-            <div className="text-center mb-6">
-              {phase === 'queued' && (
-                <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Starting...</span>
-                </div>
-              )}
-              {phase === 'research' && (
-                <div className="flex items-center justify-center gap-2 text-primary">
-                  <Brain className="w-4 h-4 animate-pulse" />
-                  <span className="text-sm">Researching niche...</span>
-                </div>
-              )}
-              {(phase === 'research-done' || phase === 'generating') && (
-                <div className="flex items-center justify-center gap-2 text-accent">
-                  <Pencil className="w-4 h-4 animate-pulse" />
-                  <span className="text-sm">Writing posts...</span>
-                </div>
-              )}
-              {phase === 'complete' && (
-                <div className="flex items-center justify-center gap-2 text-emerald-400">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span className="text-sm">Redirecting...</span>
-                </div>
-              )}
-              {phase === 'failed' && (
-                <div className="flex items-center justify-center gap-2 text-destructive">
-                  <XCircle className="w-4 h-4" />
-                  <span className="text-sm">Failed</span>
-                </div>
-              )}
-            </div>
-
-            {/* Phase Indicators */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className={`p-3 rounded-lg border ${
-                phase === 'research' ? 'border-primary/50 bg-primary/10' :
-                ['research-done', 'generating', 'complete'].includes(phase) ? 'border-emerald-500/50 bg-emerald-500/10' :
-                'border-border/30 bg-secondary/20'
-              }`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <Brain className={`w-3 h-3 ${
-                    phase === 'research' ? 'text-primary animate-pulse' :
-                    ['research-done', 'generating', 'complete'].includes(phase) ? 'text-emerald-400' :
-                    'text-muted-foreground'
-                  }`} />
-                  <span className="text-xs font-medium">Research</span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {jobStatus?.scenariosGenerated ? `${jobStatus.scenariosGenerated} scenarios` : phase === 'research' ? 'In progress...' : 'Pending'}
-                </div>
-              </div>
-
-              <div className={`p-3 rounded-lg border ${
-                phase === 'generating' ? 'border-accent/50 bg-accent/10' :
-                phase === 'complete' ? 'border-emerald-500/50 bg-emerald-500/10' :
-                'border-border/30 bg-secondary/20'
-              }`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <Pencil className={`w-3 h-3 ${
-                    phase === 'generating' ? 'text-accent animate-pulse' :
-                    phase === 'complete' ? 'text-emerald-400' :
-                    'text-muted-foreground'
-                  }`} />
-                  <span className="text-xs font-medium">Content</span>
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {(phase === 'generating' || phase === 'complete') ? `${jobStatus?.totalContentGenerated || 0}/${totalTarget}` : 'Waiting...'}
-                </div>
-              </div>
-            </div>
-
-            {/* Time Remaining */}
-            {jobStatus?.estimatedSecondsRemaining && phase !== 'complete' && (
-              <div className="text-center text-xs text-muted-foreground">
-                ~{formatTime(jobStatus.estimatedSecondsRemaining)} remaining
-              </div>
-            )}
-
-            {/* Error */}
-            {phase === 'failed' && jobStatus?.errorMessage && (
-              <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive">
-                {jobStatus.errorMessage}
-              </div>
-            )}
-          </div>
-
-          {/* Retry Button */}
-          {phase === 'failed' && (
-            <div className="flex justify-center mt-6">
-              <button onClick={() => router.push('/')} className="btn-primary">
-                <RefreshCw className="w-4 h-4 mr-2" /> Try Again
-              </button>
-            </div>
+          
+          <h1 className="text-[28px] font-semibold text-foreground mb-2">
+            {phase === 'complete' ? 'Your content is ready' : 'Building your content engine'}
+          </h1>
+          {jobStatus && (
+            <p className="text-[16px] text-secondary-foreground">
+              for "<span className="text-foreground">{jobStatus.niche}</span>"
+            </p>
           )}
+        </header>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          {/* Left Column - Progress */}
+          <div className="animate-fade-in" style={{ animationDelay: '50ms' }}>
+            {/* Progress Card */}
+            <div className="bg-card/50 rounded-xl p-8">
+              {/* Large Progress Display */}
+              <div className="mb-8">
+                <div className="flex items-baseline justify-between mb-3">
+                  <span className="text-[14px] text-secondary-foreground">Progress</span>
+                  <span className="text-[24px] font-semibold text-foreground">{progress}%</span>
+                </div>
+                <div className="h-2.5 bg-border/60 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-700 ease-out ${
+                      phase === 'complete' ? 'bg-emerald-500' : 'bg-primary'
+                    }`}
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Step List */}
+              <div className="space-y-4">
+                {/* Research step */}
+                <StepItem 
+                  state={phase === 'research' ? 'active' : ['writing', 'complete'].includes(phase) ? 'complete' : 'pending'}
+                  title="Researching your niche"
+                  subtitle={phase === 'research' ? 'Analyzing competitors and trends...' : 
+                           jobStatus?.scenariosGenerated ? 'Competitor analysis complete' : undefined}
+                />
+                
+                {/* Topic clustering */}
+                <StepItem 
+                  state={['writing', 'complete'].includes(phase) ? 'complete' : phase === 'research' && progress > 10 ? 'active' : 'pending'}
+                  title="Topic clustering"
+                  subtitle={['writing', 'complete'].includes(phase) ? `${jobStatus?.scenariosGenerated || totalTarget} topics identified` : undefined}
+                />
+                
+                {/* Keyword mapping */}
+                <StepItem 
+                  state={['writing', 'complete'].includes(phase) ? 'complete' : 'pending'}
+                  title="Keyword mapping"
+                  subtitle={['writing', 'complete'].includes(phase) ? 'SEO keywords assigned' : undefined}
+                />
+                
+                {/* Writing */}
+                <StepItem 
+                  state={phase === 'writing' ? 'active' : phase === 'complete' ? 'complete' : 'pending'}
+                  title="Writing articles"
+                  subtitle={phase === 'writing' ? `${generated} of ${totalTarget} completed` : 
+                           phase === 'complete' ? `${generated} articles written` : undefined}
+                  highlight={phase === 'writing'}
+                />
+                
+                {/* Optimization */}
+                <StepItem 
+                  state={phase === 'complete' ? 'complete' : 'pending'}
+                  title="Structuring & optimization"
+                  subtitle={phase === 'complete' ? 'SEO optimization complete' : undefined}
+                />
+              </div>
+
+              {/* Time estimate */}
+              {jobStatus?.estimatedSecondsRemaining && phase !== 'complete' && (
+                <div className="mt-8 pt-6 border-t border-border/30">
+                  <div className="flex items-center justify-between text-[14px]">
+                    <span className="text-secondary-foreground">Estimated time remaining</span>
+                    <span className="text-foreground font-medium">{formatTime(jobStatus.estimatedSecondsRemaining)}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Error state */}
+              {phase === 'failed' && jobStatus?.errorMessage && (
+                <div className="mt-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <p className="text-[14px] text-destructive">{jobStatus.errorMessage}</p>
+                </div>
+              )}
+
+              {/* Complete state */}
+              {phase === 'complete' && (
+                <div className="mt-8 pt-6 border-t border-border/30 text-center">
+                  <p className="text-[14px] text-secondary-foreground">Redirecting to your content...</p>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            {phase === 'failed' && (
+              <div className="mt-6">
+                <button onClick={() => router.push('/')} className="btn-primary w-full justify-center">
+                  Try again
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column - Live Titles */}
+          <aside className="animate-fade-in" style={{ animationDelay: '100ms' }}>
+            <div className="bg-card/50 rounded-xl p-8">
+              <div className="flex items-center justify-between mb-6">
+                <p className="text-[12px] font-medium text-foreground/80 uppercase tracking-wide">Generated so far</p>
+                {titles.length > 0 && (
+                  <span className="text-[13px] text-secondary-foreground">{titles.length} articles</span>
+                )}
+              </div>
+
+              {/* Live Titles List */}
+              <div className="space-y-4 min-h-[300px]">
+                {titles.length === 0 && phase !== 'complete' ? (
+                  <div className="flex flex-col items-center justify-center h-[300px] text-center">
+                    {phase === 'research' ? (
+                      <>
+                        <Loader2 className="w-6 h-6 text-primary animate-spin mb-4" />
+                        <p className="text-[14px] text-secondary-foreground">Researching your niche...</p>
+                        <p className="text-[13px] text-muted-foreground mt-1">Titles will appear here soon</p>
+                      </>
+                    ) : (
+                      <>
+                        <Circle className="w-6 h-6 text-muted-foreground mb-4" />
+                        <p className="text-[14px] text-secondary-foreground">Waiting to start...</p>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {titles.slice(0, 8).map((item, i) => (
+                      <div key={i} className="flex items-start gap-3 animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
+                        <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                          <Check className="w-3 h-3 text-emerald-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[15px] text-foreground leading-snug truncate">{item.title}</p>
+                          <p className="text-[12px] text-muted-foreground mt-0.5">{item.type}</p>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Show "writing" indicator for next article */}
+                    {phase === 'writing' && titles.length < totalTarget && (
+                      <div className="flex items-start gap-3 opacity-60">
+                        <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                          <Loader2 className="w-3 h-3 text-primary animate-spin" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-[15px] text-foreground/60 leading-snug">Writing next article...</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Show remaining count */}
+                    {titles.length > 8 && (
+                      <p className="text-[13px] text-muted-foreground text-center pt-2">
+                        +{titles.length - 8} more articles
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Safe to leave message */}
+              {phase !== 'complete' && phase !== 'failed' && (
+                <div className="mt-6 pt-6 border-t border-border/30">
+                  <p className="text-[13px] text-muted-foreground text-center">
+                    You can close this tab — we'll keep working in the background
+                  </p>
+                </div>
+              )}
+            </div>
+          </aside>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Step Item Component
+function StepItem({ 
+  state, 
+  title, 
+  subtitle,
+  highlight = false
+}: { 
+  state: 'pending' | 'active' | 'complete' | 'failed';
+  title: string;
+  subtitle?: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className={`flex items-start gap-3 ${highlight ? 'bg-primary/5 -mx-3 px-3 py-2 rounded-lg' : ''}`}>
+      <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+        state === 'complete' ? 'bg-emerald-500/20' :
+        state === 'active' ? 'bg-primary/20' :
+        'bg-border/60'
+      }`}>
+        {state === 'complete' ? (
+          <Check className="w-3 h-3 text-emerald-500" />
+        ) : state === 'active' ? (
+          <Loader2 className="w-3 h-3 text-primary animate-spin" />
+        ) : (
+          <Circle className="w-2 h-2 text-muted-foreground" />
+        )}
+      </div>
+      <div className="flex-1">
+        <div className={`text-[14px] font-medium ${
+          state === 'complete' ? 'text-foreground' :
+          state === 'active' ? 'text-foreground' :
+          'text-muted-foreground'
+        }`}>{title}</div>
+        {subtitle && (
+          <div className="text-[12px] text-muted-foreground mt-0.5">{subtitle}</div>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,4 @@
-services: 
-  # Redis Queue
+services:
   redis:
     image: redis:7-alpine
     container_name: content-factory-redis
@@ -12,7 +11,6 @@ services:
       - content-factory-network
     command: redis-server --appendonly yes
 
-  # API Gateway (Express Backend)
   api:
     build:
       context: .
@@ -45,10 +43,8 @@ services:
       - ./models:/app/models
       - ./utils:/app/utils
       - ./logs:/app/logs
-      - ./package.json:/app/package.json
     command: node --watch-path=./server --watch-path=./config --watch-path=./models --watch-path=./utils server/index.js
 
-  # Worker Process (BullMQ Consumer)
   worker:
     build:
       context: .
@@ -78,14 +74,12 @@ services:
       - ./models:/app/models
       - ./utils:/app/utils
       - ./logs:/app/logs
-      - ./package.json:/app/package.json
     command: node --watch-path=./worker --watch-path=./config --watch-path=./models --watch-path=./utils worker/index.js
 
-  # Next.js Frontend (Development with hot-reload)
   client:
     build:
       context: ./client
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: content-factory-client
     restart: unless-stopped
     ports:
@@ -93,15 +87,15 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:3001
       - NODE_ENV=development
+      - WATCHPACK_POLLING=true
     depends_on:
       - api
     networks:
       - content-factory-network
     volumes:
-      - ./client/app:/app/app
-      - ./client/public:/app/public
+      - ./client:/app
+      - /app/node_modules
 
-  # Cleanup Service (runs weekly to delete old data)
   cleanup:
     build:
       context: .

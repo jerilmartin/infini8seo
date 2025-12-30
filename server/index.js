@@ -257,6 +257,20 @@ app.get('/api/status/:jobId', async (req, res) => {
       response.estimatedSecondsRemaining = estimatedSecondsRemaining;
     }
 
+    // Include generated titles for live preview
+    if (job.status === 'GENERATING' || job.status === 'COMPLETE') {
+      try {
+        const contents = await ContentRepository.getByJobId(jobId);
+        response.generatedTitles = contents.map(c => ({
+          title: c.blog_title,
+          type: c.persona_archetype || 'Article'
+        }));
+      } catch (err) {
+        logger.warn('Could not fetch generated titles:', err.message);
+        response.generatedTitles = [];
+      }
+    }
+
     res.status(200).json(response);
 
   } catch (error) {

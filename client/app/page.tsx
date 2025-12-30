@@ -1,33 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Zap, Target, TrendingUp, Plus, Minus, X, Loader2 } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import axios from 'axios';
-import dynamic from 'next/dynamic';
-
-const GridScan = dynamic(() => import('./components/GridScan'), { ssr: false });
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-const MAX_TOTAL_BLOGS = 50;
-const DEFAULT_TOTAL_BLOGS = 30;
 const MIN_WORD_COUNT = 500;
 const MAX_WORD_COUNT = 2500;
 const DEFAULT_WORD_COUNT = 1200;
+const MAX_PER_TYPE = 15;
 
-const BLOG_TYPES = [
-  { key: 'functional', label: 'Functional', desc: 'How-to guides' },
-  { key: 'transactional', label: 'Transactional', desc: 'Product content' },
-  { key: 'commercial', label: 'Commercial', desc: 'Reviews & comparisons' },
-  { key: 'informational', label: 'Informational', desc: 'Educational' }
+const CONTENT_TYPES = [
+  { key: 'informational', label: 'Educational', desc: 'In-depth guides' },
+  { key: 'functional', label: 'How-to', desc: 'Step-by-step' },
+  { key: 'commercial', label: 'Comparisons', desc: 'Reviews' },
+  { key: 'transactional', label: 'Product-led', desc: 'Solutions' },
 ] as const;
 
-type BlogTypeKey = typeof BLOG_TYPES[number]['key'];
-type BlogTypeAllocations = Record<BlogTypeKey, number>;
+type ContentTypeKey = typeof CONTENT_TYPES[number]['key'];
+type Allocations = Record<ContentTypeKey, number>;
 
-const DEFAULT_ALLOCATIONS: BlogTypeAllocations = {
-  functional: 8, transactional: 8, commercial: 7, informational: 7
+const DEFAULT_ALLOCATIONS: Allocations = {
+  informational: 10, functional: 8, commercial: 6, transactional: 6
 };
 
 const TONES = [
@@ -35,9 +31,17 @@ const TONES = [
   { value: 'conversational', label: 'Conversational' },
   { value: 'authoritative', label: 'Authoritative' },
   { value: 'friendly', label: 'Friendly' },
-  { value: 'technical', label: 'Technical' },
-  { value: 'casual', label: 'Casual' },
 ];
+
+const generatePreviewTitles = (wordCount: number) => {
+  const readTime = Math.round(wordCount / 200);
+  return [
+    { title: 'The Ultimate Guide to Ranking Higher in 2025', type: 'Educational', time: readTime },
+    { title: 'How to Create Content That Actually Converts', type: 'How-to', time: readTime + 2 },
+    { title: 'Top 10 Strategies Your Competitors Are Using', type: 'Comparison', time: readTime + 1 },
+    { title: 'Why Most Businesses Fail at Content Marketing', type: 'Product-led', time: readTime - 1 },
+  ];
+};
 
 export default function Home() {
   const router = useRouter();
@@ -46,37 +50,13 @@ export default function Home() {
   const [tone, setTone] = useState('professional');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [totalBlogs, setTotalBlogs] = useState(DEFAULT_TOTAL_BLOGS);
-  const [allocations, setAllocations] = useState<BlogTypeAllocations>(DEFAULT_ALLOCATIONS);
+  const [allocations, setAllocations] = useState<Allocations>(DEFAULT_ALLOCATIONS);
   const [targetWordCount, setTargetWordCount] = useState(DEFAULT_WORD_COUNT);
 
-  const allocationSum = BLOG_TYPES.reduce((acc, t) => acc + allocations[t.key], 0);
-  const remaining = totalBlogs - allocationSum;
+  const totalPosts = CONTENT_TYPES.reduce((acc, t) => acc + allocations[t.key], 0);
 
-  const adjustAllocations = (allocs: BlogTypeAllocations, newTotal: number): BlogTypeAllocations => {
-    const sum = BLOG_TYPES.reduce((acc, t) => acc + allocs[t.key], 0);
-    if (sum <= newTotal) return allocs;
-    const updated = { ...allocs };
-    let reduction = sum - newTotal;
-    for (const { key } of [...BLOG_TYPES].reverse()) {
-      if (reduction <= 0) break;
-      const cut = Math.min(updated[key], reduction);
-      updated[key] -= cut;
-      reduction -= cut;
-    }
-    return updated;
-  };
-
-  const handleTotalChange = (value: number) => {
-    const clamped = Math.max(1, Math.min(MAX_TOTAL_BLOGS, value));
-    setTotalBlogs(clamped);
-    setAllocations(prev => adjustAllocations(prev, clamped));
-  };
-
-  const handleAllocationChange = (key: BlogTypeKey, value: number) => {
-    const otherSum = BLOG_TYPES.reduce((acc, t) => t.key === key ? acc : acc + allocations[t.key], 0);
-    const maxAllowed = Math.max(0, totalBlogs - otherSum);
-    setAllocations(prev => ({ ...prev, [key]: Math.max(0, Math.min(maxAllowed, value)) }));
+  const handleAllocationChange = (key: ContentTypeKey, value: number) => {
+    setAllocations(prev => ({ ...prev, [key]: Math.max(0, Math.min(MAX_PER_TYPE, value)) }));
   };
 
   const handleValuePropChange = (index: number, value: string) => {
@@ -85,202 +65,228 @@ export default function Home() {
     setValuePropositions(updated);
   };
 
-  const addValueProp = () => valuePropositions.length < 10 && setValuePropositions([...valuePropositions, '']);
+  const addValueProp = () => valuePropositions.length < 5 && setValuePropositions([...valuePropositions, '']);
   const removeValueProp = (index: number) => valuePropositions.length > 1 && setValuePropositions(valuePropositions.filter((_, i) => i !== index));
+
+  const previewTitles = useMemo(() => generatePreviewTitles(targetWordCount), [targetWordCount]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!niche.trim()) return setError('Please enter a business niche');
+    if (!niche.trim()) return setError('Enter a niche to continue');
     const validProps = valuePropositions.filter(vp => vp.trim());
-    if (validProps.length === 0) return setError('Please enter at least one service specialty');
-    if (allocationSum !== totalBlogs) return setError(`Allocations must equal ${totalBlogs}. Currently: ${allocationSum}`);
+    if (validProps.length === 0) return setError('Add at least one specialty');
+    if (totalPosts === 0) return setError('Select at least one post type');
 
     setLoading(true);
     try {
       const response = await axios.post(`${API_URL}/api/generate-content`, {
-        niche: niche.trim(), valuePropositions: validProps, tone, totalBlogs,
-        blogTypeAllocations: allocations, targetWordCount
+        niche: niche.trim(),
+        valuePropositions: validProps,
+        tone,
+        totalBlogs: totalPosts,
+        blogTypeAllocations: allocations,
+        targetWordCount
       });
       router.push(`/progress/${response.data.jobId}`);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to start content generation');
+      setError(err.response?.data?.message || 'Something went wrong');
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen relative">
-      {/* Grid Background */}
-      <div className="fixed inset-0 -z-10">
-        <GridScan
-          linesColor="#1a1625"
-          scanColor="#8b5cf6"
-          scanOpacity={0.4}
-          gridScale={0.06}
-          noiseIntensity={0.015}
-          scanGlow={0.5}
-          scanSoftness={2}
-          scanDuration={4}
-          scanDelay={2}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/80 to-background" />
-      </div>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto px-8 py-10">
+        {/* Brand + Header */}
+        <header className="mb-4 animate-fade-in">
+          <div className="text-[23px] font-medium text-foreground tracking-tight mb-8">infini8seo</div>
+          <h1 className="text-[26px] font-semibold text-foreground leading-tight">
+            Content Factory
+          </h1>
+        </header>
 
-      <div className="relative py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-10 animate-fade-in-up">
-            <div className="inline-flex p-3 rounded-2xl bg-primary/10 border border-primary/20 mb-6 glow-box">
-              <Sparkles className="w-8 h-8 text-primary" />
-            </div>
-            <h1 className="text-4xl sm:text-5xl font-bold mb-3">
-              <span className="gradient-text">Content Factory</span>
-            </h1>
-            <p className="text-muted-foreground max-w-xl mx-auto">
-              Generate SEO-optimized blog posts with AI-powered research
-            </p>
-          </div>
-
-          {/* Features */}
-          <div className="grid grid-cols-3 gap-3 mb-10">
-            {[
-              { icon: Zap, label: 'Deep Research', color: 'text-primary' },
-              { icon: Target, label: 'Targeted', color: 'text-accent' },
-              { icon: TrendingUp, label: 'SEO Ready', color: 'text-emerald-400' },
-            ].map((f, i) => (
-              <div key={i} className="card-hover text-center py-4 px-2 animate-fade-in" style={{ animationDelay: `${i * 100}ms` }}>
-                <f.icon className={`w-5 h-5 ${f.color} mx-auto mb-2`} />
-                <span className="text-xs text-muted-foreground">{f.label}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Form */}
-          <div className="card glow-box animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-            <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+          {/* Form Column */}
+          <div className="animate-fade-in" style={{ animationDelay: '50ms' }}>
+            <form onSubmit={handleSubmit} className="space-y-7">
               {/* Niche */}
-              <div>
-                <label className="label">Business Niche</label>
+              <section>
+                <label className="text-[12px] font-medium text-foreground/80 uppercase tracking-wide mb-2.5 block">Your Niche</label>
                 <input
                   type="text"
                   value={niche}
                   onChange={(e) => setNiche(e.target.value)}
-                  placeholder="e.g., Digital Marketing, SaaS, Fitness"
-                  className="input"
+                  placeholder="e.g., B2B SaaS, Personal Finance"
+                  className="input text-[15px] h-12"
                   disabled={loading}
                 />
-              </div>
+              </section>
 
-              {/* Value Props */}
-              <div>
-                <label className="label">Service Specialties</label>
-                <div className="space-y-2">
+              {/* Specialties */}
+              <section>
+                <label className="text-[12px] font-medium text-foreground/80 uppercase tracking-wide mb-2.5 block">What You Offer</label>
+                <div className="space-y-2.5">
                   {valuePropositions.map((vp, i) => (
                     <div key={i} className="flex gap-2">
                       <input
                         type="text"
                         value={vp}
                         onChange={(e) => handleValuePropChange(i, e.target.value)}
-                        placeholder="What makes your service unique?"
-                        className="input flex-1"
+                        placeholder="A key service or angle"
+                        className="input flex-1 text-[15px] h-12"
                         disabled={loading}
                       />
                       {valuePropositions.length > 1 && (
-                        <button type="button" onClick={() => removeValueProp(i)} className="btn-icon text-muted-foreground hover:text-destructive" disabled={loading}>
-                          <X className="w-4 h-4" />
-                        </button>
+                        <button type="button" onClick={() => removeValueProp(i)} className="px-3 text-secondary-foreground hover:text-foreground text-lg transition-colors" disabled={loading}>×</button>
                       )}
                     </div>
                   ))}
                 </div>
-                {valuePropositions.length < 10 && (
-                  <button type="button" onClick={addValueProp} className="mt-2 text-sm text-primary hover:text-accent font-medium inline-flex items-center gap-1" disabled={loading}>
-                    <Plus className="w-3 h-3" /> Add another
+                {valuePropositions.length < 5 && (
+                  <button type="button" onClick={addValueProp} className="mt-2.5 text-[13px] text-secondary-foreground hover:text-foreground transition-colors" disabled={loading}>
+                    + Add another
                   </button>
                 )}
-              </div>
+              </section>
 
-              {/* Total Blogs */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="label mb-0">Blog Posts</label>
-                  <span className="text-xl font-bold text-primary glow-text">{totalBlogs}</span>
+              {/* Content Mix */}
+              <section>
+                <div className="flex items-baseline justify-between mb-4">
+                  <label className="text-[12px] font-medium text-foreground/80 uppercase tracking-wide">Content Mix</label>
+                  <span className="text-[13px] tabular-nums text-secondary-foreground">{totalPosts} posts</span>
                 </div>
-                <input type="range" min={1} max={MAX_TOTAL_BLOGS} value={totalBlogs} onChange={(e) => handleTotalChange(Number(e.target.value))} disabled={loading} />
-                <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                  <span>1</span><span>{MAX_TOTAL_BLOGS}</span>
-                </div>
-              </div>
 
-              {/* Blog Type Distribution */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="label mb-0">Distribution</label>
-                  <span className={`badge ${remaining === 0 ? 'badge-success' : 'badge-warning'}`}>
-                    {remaining === 0 ? 'Balanced' : `${remaining} left`}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {BLOG_TYPES.map((type) => (
-                    <div key={type.key} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border/30">
-                      <div>
-                        <div className="text-sm font-medium text-foreground">{type.label}</div>
-                        <div className="text-xs text-muted-foreground">{type.desc}</div>
+                <div className="space-y-3">
+                  {CONTENT_TYPES.map((type) => {
+                    const value = allocations[type.key];
+                    return (
+                      <div key={type.key} className="group">
+                        <div className="flex items-baseline justify-between mb-1.5">
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-[14px] font-medium text-foreground">{type.label}</span>
+                            <span className="text-[12px] text-secondary-foreground">{type.desc}</span>
+                          </div>
+                          <span className="text-[13px] tabular-nums text-secondary-foreground w-5 text-right">{value}</span>
+                        </div>
+                        <div 
+                          className="h-1.5 bg-border/60 rounded-full cursor-pointer relative overflow-hidden"
+                          onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const x = e.clientX - rect.left;
+                            handleAllocationChange(type.key, Math.round((x / rect.width) * MAX_PER_TYPE));
+                          }}
+                        >
+                          <div
+                            className="h-full bg-foreground/70 rounded-full transition-all duration-200"
+                            style={{ width: `${(value / MAX_PER_TYPE) * 100}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button type="button" onClick={() => handleAllocationChange(type.key, allocations[type.key] - 1)} className="btn-icon h-7 w-7" disabled={loading || allocations[type.key] === 0}>
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="w-6 text-center text-sm font-semibold">{allocations[type.key]}</span>
-                        <button type="button" onClick={() => handleAllocationChange(type.key, allocations[type.key] + 1)} className="btn-icon h-7 w-7" disabled={loading || remaining <= 0}>
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-              </div>
+              </section>
 
-              {/* Tone & Word Count */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Settings Row */}
+              <section className="grid grid-cols-2 gap-5">
                 <div>
-                  <label className="label">Tone</label>
-                  <select value={tone} onChange={(e) => setTone(e.target.value)} className="select" disabled={loading}>
+                  <label className="text-[12px] font-medium text-foreground/80 uppercase tracking-wide mb-2.5 block">Tone</label>
+                  <select value={tone} onChange={(e) => setTone(e.target.value)} className="select text-[14px] h-12" disabled={loading}>
                     {TONES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="label mb-0">Words</label>
-                    <span className="text-sm font-semibold text-primary">{targetWordCount}</span>
+                  <label className="text-[12px] font-medium text-foreground/80 uppercase tracking-wide mb-2.5 block">Length</label>
+                  <div className="flex items-center gap-3 h-12">
+                    <input
+                      type="range"
+                      min={MIN_WORD_COUNT}
+                      max={MAX_WORD_COUNT}
+                      step={100}
+                      value={targetWordCount}
+                      onChange={(e) => setTargetWordCount(Number(e.target.value))}
+                      className="flex-1"
+                      disabled={loading}
+                    />
+                    <span className="text-[13px] tabular-nums text-secondary-foreground w-14 text-right">{targetWordCount}w</span>
                   </div>
-                  <input type="range" min={MIN_WORD_COUNT} max={MAX_WORD_COUNT} step={100} value={targetWordCount} onChange={(e) => setTargetWordCount(Number(e.target.value))} disabled={loading} />
                 </div>
-              </div>
+              </section>
 
-              {/* Error */}
               {error && (
-                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm">
-                  {error}
-                </div>
+                <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-[13px]">{error}</div>
               )}
 
-              {/* Submit */}
-              <button type="submit" disabled={loading} className="btn-primary w-full">
+              <button type="submit" disabled={loading || totalPosts === 0} className="btn-primary w-full justify-center text-[14px] h-12 mt-2">
                 {loading ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Starting...</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting...</>
                 ) : (
-                  <><Sparkles className="w-4 h-4 mr-2" /> Generate {totalBlogs} Posts</>
+                  <>Create {totalPosts} posts<ArrowRight className="w-4 h-4 ml-2" /></>
                 )}
               </button>
 
-           
+              <p className="text-[12px] text-secondary-foreground text-center">Takes about 10-15 minutes</p>
             </form>
           </div>
 
-         
+          {/* Preview Column */}
+          <aside className="animate-fade-in" style={{ animationDelay: '100ms' }}>
+            <div className="bg-card/50 rounded-xl p-9">
+              <p className="text-[12px] font-medium text-foreground/80 uppercase tracking-wide mb-7">What you'll get</p>
+
+              {/* Preview Titles */}
+              <div className="space-y-7">
+                {previewTitles.map((item, i) => (
+                  <article key={i} className="pb-7 border-b border-border/30 last:border-0 last:pb-0">
+                    <h3 className="text-[19px] font-medium text-foreground leading-snug mb-2.5">
+                      {item.title}
+                    </h3>
+                    <p className="text-[14px] text-secondary-foreground">
+                      {item.type} · {item.time} min read
+                    </p>
+                  </article>
+                ))}
+              </div>
+
+              {/* Meta Row */}
+              <div className="mt-9 pt-7 border-t border-border/30">
+                <div className="flex justify-between text-center">
+                  <div className="flex-1">
+                    <div className="text-[11px] text-secondary-foreground uppercase tracking-wide mb-1.5">Structure</div>
+                    <div className="text-[14px] text-foreground/80">Intro → Body → FAQ</div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-[11px] text-secondary-foreground uppercase tracking-wide mb-1.5">SEO</div>
+                    <div className="text-[14px] text-foreground/80">Keywords + Meta</div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-[11px] text-secondary-foreground uppercase tracking-wide mb-1.5">AIO</div>
+                    <div className="text-[14px] text-foreground/80">AI-optimized</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Row */}
+            <div className="mt-6 flex items-center justify-center gap-10 text-center">
+              <div>
+                <div className="text-[18px] font-semibold text-foreground/80">{totalPosts}</div>
+                <div className="text-[11px] text-secondary-foreground uppercase tracking-wide">Posts</div>
+              </div>
+              <div className="w-px h-6 bg-border/40" />
+              <div>
+                <div className="text-[18px] font-semibold text-foreground/80">{Math.round(totalPosts * targetWordCount / 1000)}k</div>
+                <div className="text-[11px] text-secondary-foreground uppercase tracking-wide">Words</div>
+              </div>
+              <div className="w-px h-6 bg-border/40" />
+              <div>
+                <div className="text-[18px] font-semibold text-foreground/80">~{Math.round(totalPosts * targetWordCount / 200)}</div>
+                <div className="text-[11px] text-secondary-foreground uppercase tracking-wide">Min read</div>
+              </div>
+            </div>
+          </aside>
         </div>
       </div>
     </div>
