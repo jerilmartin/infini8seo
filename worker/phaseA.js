@@ -2,40 +2,36 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import logger from '../utils/logger.js';
 import { fetchScenarioImageUrls } from './utils/images.js';
 
-// Initialize Google Generative AI
 let genAI;
 
 function initGemini() {
   const apiKey = process.env.GEMINI_API_KEY;
   
   if (!apiKey) {
-    logger.error('❌ GEMINI_API_KEY not found in environment variables!');
-    logger.error('Please check your .env file has: GEMINI_API_KEY=your_key_here');
+    logger.error('GEMINI_API_KEY not found in environment variables');
     throw new Error('GEMINI_API_KEY is required');
   }
   
-  logger.info(`✅ Gemini API Key loaded: ${apiKey.substring(0, 20)}...`);
+  logger.info(`Gemini API Key loaded: ${apiKey.substring(0, 20)}...`);
   genAI = new GoogleGenerativeAI(apiKey);
   return genAI;
 }
 
 /**
- * AGGRESSIVE JSON extraction - tries EVERYTHING
+ * Aggressive JSON extraction - tries multiple methods
  */
 function extractJSONAggressively(text) {
-  logger.info('Trying aggressive extraction methods...');
+  logger.info('Attempting aggressive JSON extraction...');
   
-  // Method 1: Find largest JSON-like structure
   const matches = text.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g);
   if (matches) {
     logger.info(`Found ${matches.length} potential JSON objects`);
-    // Try each from largest to smallest
     const sorted = matches.sort((a, b) => b.length - a.length);
     for (const match of sorted) {
       try {
         const parsed = JSON.parse(match);
         if (parsed.scenarios && Array.isArray(parsed.scenarios)) {
-          logger.info('✅ Found valid scenarios object!');
+          logger.info('Found valid scenarios object');
           return parsed;
         }
       } catch (e) {
@@ -44,14 +40,12 @@ function extractJSONAggressively(text) {
     }
   }
   
-  // Method 2: Remove ALL markdown and try
   let cleaned = text.replace(/```[a-z]*\s*/g, '').replace(/```/g, '');
   try {
     const parsed = JSON.parse(cleaned);
     if (parsed.scenarios) return parsed;
   } catch (e) {}
   
-  // Method 3: Find first { and last } and extract
   const firstBrace = text.indexOf('{');
   const lastBrace = text.lastIndexOf('}');
   if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
@@ -66,76 +60,52 @@ function extractJSONAggressively(text) {
 }
 
 /**
- * Extract JSON from text that might have markdown formatting or extra text
- * Handles multiple issues:
- * - Markdown code blocks with/without language identifier
- * - Multiple JSON objects in one response (takes first one only)
- * - Extra whitespace or text before/after JSON
- * - Various malformed response patterns
+ * Extract JSON from text that might have markdown formatting
  */
 function extractJSON(text) {
-  // Try direct parse first
   try {
     const parsed = JSON.parse(text);
     if (parsed && typeof parsed === 'object') {
       return parsed;
     }
-  } catch (e) {
-    // Continue with extraction
-  }
+  } catch (e) {}
 
-  // Remove markdown code blocks - handle ALL variations
   let cleaned = text.trim();
   
-  // Remove opening backticks
   if (cleaned.startsWith('```json')) {
     cleaned = cleaned.substring(7);
   } else if (cleaned.startsWith('```')) {
     cleaned = cleaned.substring(3);
   }
   
-  // Remove closing backticks
   if (cleaned.endsWith('```')) {
     cleaned = cleaned.substring(0, cleaned.length - 3);
   }
   
-  // Remove any remaining backticks
-  cleaned = cleaned.replace(/```/g, '');
-  
-  cleaned = cleaned.trim();
+  cleaned = cleaned.replace(/```/g, '').trim();
 
-  // Try to parse after markdown removal
   try {
     const parsed = JSON.parse(cleaned);
     if (parsed && typeof parsed === 'object') {
       return parsed;
     }
-  } catch (e) {
-    // Continue
-  }
+  } catch (e) {}
 
-  // Gemini sometimes returns multiple JSON objects - we want only the first
-  // Check for multiple patterns
   const multiObjectPatterns = ['}\n{', '}\r\n{', '} {', '}\n\n{'];
   for (const pattern of multiObjectPatterns) {
     if (cleaned.includes(pattern)) {
       const splitPoint = cleaned.indexOf(pattern);
       if (splitPoint > 0) {
-        cleaned = cleaned.substring(0, splitPoint + 1); // +1 to include the closing brace
+        cleaned = cleaned.substring(0, splitPoint + 1);
         break;
       }
     }
   }
 
-  // Try to parse after splitting
   try {
     return JSON.parse(cleaned);
-  } catch (e) {
-    // Continue with brace-balanced extraction
-  }
+  } catch (e) {}
 
-  // Last resort: extract first complete JSON object with balanced braces
-  // This handles cases where there's text before/after the JSON
   let braceCount = 0;
   let startIndex = -1;
   let endIndex = -1;
@@ -145,7 +115,6 @@ function extractJSON(text) {
   for (let i = 0; i < cleaned.length; i++) {
     const char = cleaned[i];
     
-    // Handle string escaping
     if (escapeNext) {
       escapeNext = false;
       continue;
@@ -155,13 +124,11 @@ function extractJSON(text) {
       continue;
     }
     
-    // Track if we're inside a string
     if (char === '"' && !escapeNext) {
       inString = !inString;
       continue;
     }
     
-    // Only count braces outside of strings
     if (!inString) {
       if (char === '{') {
         if (startIndex === -1) startIndex = i;
@@ -181,9 +148,7 @@ function extractJSON(text) {
     try {
       return JSON.parse(extracted);
     } catch (e2) {
-      // Log for debugging
-      logger.error('Brace-balanced extraction also failed');
-      logger.error('Extracted text preview:', extracted.substring(0, 300));
+      logger.error('Brace-balanced extraction failed');
     }
   }
 
@@ -192,49 +157,38 @@ function extractJSON(text) {
 
 /**
  * Phase A: Deep Research & Scenario Generation
- * Uses Gemini with Google Search grounding to generate 50 unique personas/scenarios
- * 
- * @param {Object} params - Input parameters
- * @param {string} params.niche - Business niche
- * @param {string[]} params.valuePropositions - Value propositions
- * @param {string} params.tone - Content tone
- * @returns {Promise<Array>} Array of 50 scenario objects
+ * Uses Gemini with Google Search grounding to generate unique personas/scenarios
  */
 export async function executePhaseA({ niche, valuePropositions, tone, totalBlogs, blogTypeAllocations }) {
-  logger.info(`Phase A: Initiating deep research for niche: ${niche}`);
+  logger.info(`Phase A: Initiating research for niche: ${niche}`);
 
   if (totalBlogs) {
-    logger.info(`Phase A: Target total blogs -> ${totalBlogs}`);
+    logger.info(`Phase A: Target total blogs: ${totalBlogs}`);
   }
 
   if (blogTypeAllocations) {
-    logger.info(`Phase A: Blog type allocations -> ${JSON.stringify(blogTypeAllocations)}`);
+    logger.info(`Phase A: Blog type allocations: ${JSON.stringify(blogTypeAllocations)}`);
   }
 
   try {
-    // Initialize Gemini client if not already done
     if (!genAI) {
       genAI = initGemini();
     }
     
-    // Use gemini-2.5-pro - higher reasoning ability with search grounding support
-    // NOTE: Can't use responseMimeType with tools, so we'll parse JSON manually
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-pro',
       generationConfig: {
-        temperature: 1.0, // Higher for creative, diverse research insights
+        temperature: 1.0,
         topP: 0.95,
         topK: 64,
-        maxOutputTokens: 16384 // Enough for 30 scenarios
-        // NO responseMimeType - conflicts with Google Search tool
+        maxOutputTokens: 16384
       },
       tools: [{
         googleSearch: {}
       }]
     });
 
-    // Create comprehensive, research-focused prompt for THINKING model
-    logger.info('⚡ Using THINKING model for deep research - this will take longer but produce much better results');
+    logger.info('Using Gemini Pro with Google Search for deep research');
     
     const prompt = `You are an EXPERT Market Research Analyst and Strategic Content Architect with deep expertise in the ${niche} industry.
 
@@ -250,33 +204,36 @@ BUSINESS CONTEXT:
 - Blog Allocation Targets: ${blogTypeAllocations ? JSON.stringify(blogTypeAllocations) : 'Not specified'}
 
 RESEARCH REQUIREMENTS (USE GOOGLE SEARCH EXTENSIVELY):
-1. **Industry Trends**: Search for latest trends, statistics, and market changes in ${niche}
-2. **Pain Points**: Research common problems, frustrations, and challenges faced by people in this niche
-3. **Customer Segments**: Identify different customer types, experience levels, and use cases
-4. **Competitor Analysis**: Look at what content is ranking, what questions are being asked
-5. **Search Intent**: Find high-intent keywords and topics people are actively searching for
-6. **Real Data**: Include current statistics, facts, and market insights you find
+1. Industry Trends: Search for latest trends, statistics, and market changes in ${niche}
+2. Pain Points: Research common problems, frustrations, and challenges faced by people in this niche
+3. Customer Segments: Identify different customer types, experience levels, and use cases
+4. Competitor Analysis: Look at what content is ranking, what questions are being asked
+5. Search Intent: Find high-intent keywords and topics people are actively searching for
+6. Real Data: Include current statistics, facts, and market insights you find
 
 SCENARIO GENERATION REQUIREMENTS:
 Generate EXACTLY 30 scenarios that are:
-- **Diverse**: Cover different customer segments, experience levels, pain points, and goals
-- **Specific**: Each persona should feel like a real person with real problems
-- **Current**: Based on your Google Search findings about current market state
-- **High-Intent**: Each should represent someone actively looking for solutions
-- **Unique**: No two scenarios should be similar - vary pain points, goals, and contexts significantly
+- Diverse: Cover different customer segments, experience levels, pain points, and goals
+- Specific: Each persona should feel like a real person with real problems
+- Current: Based on your Google Search findings about current market state
+- High-Intent: Each should represent someone actively looking for solutions
+- Unique: No two scenarios should be similar
 
-**CRITICAL AEO (Answer Engine Optimization) REQUIREMENTS:**
-- **Informational Blog Topics**: MUST be phrased as direct, high-intent questions users would ask AI (e.g., "What is the average cost of ${niche} implementation for small businesses?")
-- **Distribution**: Ensure scenarios match the allocation: ${blogTypeAllocations ? JSON.stringify(blogTypeAllocations) : 'balanced distribution'}
-- **Question Format**: All informational topics should be natural questions that AI assistants would answer
+CRITICAL AIO (Answer Engine Optimization) REQUIREMENTS:
+- Informational Blog Topics: MUST be phrased as direct questions users would ask AI assistants (Gemini, Perplexity, ChatGPT, Claude)
+- Question Formats: Use "How to...", "What is...", "Why does...", "Best way to...", "[X] vs [Y]"
+- Distribution: Ensure scenarios match the allocation: ${blogTypeAllocations ? JSON.stringify(blogTypeAllocations) : 'balanced distribution'}
+- AI-Friendly Topics: Focus on topics that AI systems frequently answer and cite sources for
+- Comparison Topics: Include some "[X] vs [Y]" style topics that AI loves to answer
+- Definition Topics: Include "What is [term]" topics for AI extraction
 
 QUALITY STANDARDS (KEEP CONCISE):
 - pain_point_detail: 2 sentences MAX - specific problem backed by research
 - goal_focus: 1 sentence - exact outcome they want
-- blog_topic_headline: Compelling, benefit-driven (under 100 chars)
-- keywords: 5 actual search terms from research
+- blog_topic_headline: Question-based or benefit-driven (under 100 chars) - MUST match how users query AI
+- keywords: 5 actual search terms from research (include long-tail question keywords)
 - research_insight: 1 sentence with ONE specific stat or trend
-- BE CONCISE - we need all 50 scenarios to fit!
+- ai_query_match: The headline should match natural language queries to AI assistants
 
 JSON OUTPUT FORMAT:
 {
@@ -294,7 +251,6 @@ JSON OUTPUT FORMAT:
       "required_word_count": 1000,
       "research_insight": "1 sentence with ONE stat/trend"
     }
-    ... (29 more unique scenarios, total of 30)
   ]
 }
 
@@ -312,7 +268,6 @@ BEGIN YOUR RESEARCH NOW.`;
 
     const startTime = Date.now();
     
-    // Generate content with retry logic (handles rate limits)
     let result;
     let attempts = 0;
     const maxAttempts = 3;
@@ -321,17 +276,15 @@ BEGIN YOUR RESEARCH NOW.`;
       try {
         result = await model.generateContent(prompt);
         
-        // Check if we got blocked for safety
         const response = result.response;
         if (!response || response.promptFeedback?.blockReason) {
           throw new Error(`Content blocked: ${response.promptFeedback?.blockReason || 'Unknown reason'}`);
         }
         
-        break; // Success, exit retry loop
+        break;
       } catch (error) {
         attempts++;
         
-        // Check if it's a rate limit error
         const isRateLimit = error.message && (
           error.message.includes('429') || 
           error.message.includes('quota') ||
@@ -340,12 +293,11 @@ BEGIN YOUR RESEARCH NOW.`;
         
         if (attempts >= maxAttempts) {
           if (isRateLimit) {
-            throw new Error('Rate limit exceeded. Please wait 60 seconds and try again, or use a different API key with higher quota.');
+            throw new Error('Rate limit exceeded. Please wait 60 seconds and try again.');
           }
           throw error;
         }
         
-        // If rate limit, wait longer
         const waitTime = isRateLimit ? 60000 : (2000 * attempts);
         logger.warn(`Phase A attempt ${attempts} failed: ${error.message}`);
         logger.warn(`Waiting ${waitTime/1000}s before retry...`);
@@ -358,7 +310,6 @@ BEGIN YOUR RESEARCH NOW.`;
 
     logger.info(`Phase A: Received response from Gemini (took ${duration}s)`);
 
-    // Get and parse the response text
     const responseText = result.response.text();
     
     if (!responseText || responseText.trim().length === 0) {
@@ -367,31 +318,19 @@ BEGIN YOUR RESEARCH NOW.`;
 
     logger.info(`Response length: ${responseText.length} characters`);
     
-    // Save raw response for debugging
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const fs = await import('fs');
-    await fs.promises.writeFile(
-      `debug-response-${timestamp}.txt`, 
-      responseText
-    ).catch(() => {}); // Ignore write errors
-    
     let parsedResponse;
     try {
       parsedResponse = extractJSON(responseText);
-      logger.info('✅ Successfully parsed JSON response');
+      logger.info('Successfully parsed JSON response');
     } catch (parseError) {
-      logger.error('❌ JSON EXTRACTION FAILED');
+      logger.error('JSON extraction failed');
       logger.error('Error:', parseError.message);
-      logger.error('Response saved to: debug-response-' + timestamp + '.txt');
-      logger.error('First 500 chars:', responseText.substring(0, 500));
-      logger.error('Last 500 chars:', responseText.substring(responseText.length - 500));
       
-      // One more aggressive attempt
       try {
         logger.info('Attempting aggressive JSON extraction...');
         const aggressive = extractJSONAggressively(responseText);
         if (aggressive) {
-          logger.info('✅ Aggressive extraction succeeded!');
+          logger.info('Aggressive extraction succeeded');
           parsedResponse = aggressive;
         } else {
           throw parseError;
@@ -401,7 +340,6 @@ BEGIN YOUR RESEARCH NOW.`;
       }
     }
 
-    // Validate the response structure
     if (!parsedResponse || typeof parsedResponse !== 'object') {
       throw new Error('Response is not a valid JSON object');
     }
@@ -417,7 +355,6 @@ BEGIN YOUR RESEARCH NOW.`;
       throw new Error('No scenarios generated');
     }
 
-    // Filter out incomplete scenarios (missing required fields)
     scenarios = scenarios.filter(s => {
       return s.pain_point_detail && 
              s.goal_focus && 
@@ -432,14 +369,12 @@ BEGIN YOUR RESEARCH NOW.`;
     }
 
     if (scenarios.length < 30) {
-      logger.warn(`⚠️ Generated ${scenarios.length} complete scenarios (expected 30). Proceeding with available scenarios.`);
+      logger.warn(`Generated ${scenarios.length} complete scenarios (expected 30). Proceeding with available scenarios.`);
     }
 
     logger.info(`Validating ${scenarios.length} scenarios...`);
 
-    // Validate and fix each scenario
     const validatedScenarios = await Promise.all(scenarios.slice(0, 30).map(async (scenario, index) => {
-      // Auto-fix missing required fields
       if (!scenario.scenario_id) scenario.scenario_id = index + 1;
       if (!scenario.persona_name) scenario.persona_name = `Persona ${index + 1}`;
       if (!scenario.persona_archetype) scenario.persona_archetype = 'Professional User';
@@ -448,7 +383,6 @@ BEGIN YOUR RESEARCH NOW.`;
         scenario.target_keywords = [`${niche}`, 'solution', 'guide'];
       }
 
-      // Fetch Unsplash imagery ONLY for first 2 scenarios (to save API quota)
       if (index < 2) {
         const images = await fetchScenarioImageUrls({
           keywords: scenario.target_keywords,
@@ -459,7 +393,6 @@ BEGIN YOUR RESEARCH NOW.`;
         scenario.image_urls = [];
       }
 
-      // Validate critical fields
       if (!scenario.pain_point_detail || scenario.pain_point_detail.trim().length < 10) {
         throw new Error(`Scenario ${index + 1} has invalid or missing pain_point_detail`);
       }
@@ -473,12 +406,12 @@ BEGIN YOUR RESEARCH NOW.`;
       return scenario;
     }));
 
-    logger.info(`✅ Phase A Complete: Successfully validated ${validatedScenarios.length} scenarios`);
+    logger.info(`Phase A Complete: Successfully validated ${validatedScenarios.length} scenarios`);
 
     return validatedScenarios;
 
   } catch (error) {
-    logger.error('❌ Phase A failed:', error.message);
+    logger.error('Phase A failed:', error.message);
     logger.error('Stack trace:', error.stack);
     throw new Error(`Phase A (Research) failed: ${error.message}`);
   }

@@ -1,8 +1,7 @@
-import { Queue, Worker } from 'bullmq';
+import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import logger from '../utils/logger.js';
 
-// Redis connection configuration
 const redisConfig = {
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT) || 6379,
@@ -18,33 +17,36 @@ const redisConfig = {
   }
 };
 
-// Create Redis connection for BullMQ
+/**
+ * Create Redis connection for BullMQ
+ */
 export const createRedisConnection = () => {
   const connection = new IORedis(redisConfig);
 
   connection.on('connect', () => {
-    logger.info('✅ Redis connected successfully');
+    logger.info('Redis connected successfully');
   });
 
   connection.on('error', (err) => {
-    logger.error('❌ Redis connection error:', err.message);
+    logger.error('Redis connection error:', err.message);
   });
 
   connection.on('close', () => {
-    logger.warn('⚠️ Redis connection closed');
+    logger.warn('Redis connection closed');
   });
 
   connection.on('reconnecting', () => {
-    logger.info('🔄 Redis reconnecting...');
+    logger.info('Redis reconnecting...');
   });
 
   return connection;
 };
 
-// Queue name constant
 export const QUEUE_NAME = 'content-generation';
 
-// Create the content generation queue
+/**
+ * Create the content generation queue
+ */
 export const createContentQueue = () => {
   const queue = new Queue(QUEUE_NAME, {
     connection: createRedisConnection(),
@@ -55,28 +57,32 @@ export const createContentQueue = () => {
         delay: 5000
       },
       removeOnComplete: {
-        age: 3600 * 24 * 7, // Keep completed jobs for 7 days
+        age: 3600 * 24 * 7,
         count: 1000
       },
       removeOnFail: {
-        age: 3600 * 24 * 30 // Keep failed jobs for 30 days
+        age: 3600 * 24 * 30
       }
     }
   });
 
-  logger.info('📋 Content generation queue created');
+  logger.info('Content generation queue created');
 
   return queue;
 };
 
-// Create worker connection (used in worker process)
+/**
+ * Create worker connection (used in worker process)
+ */
 export const createWorkerConnection = () => {
   return createRedisConnection();
 };
 
-// Graceful shutdown helper
+/**
+ * Graceful shutdown helper
+ */
 export const gracefulShutdown = async (queue, worker) => {
-  logger.info('🛑 Initiating graceful shutdown...');
+  logger.info('Initiating graceful shutdown...');
 
   try {
     if (worker) {
@@ -99,4 +105,3 @@ export default {
   gracefulShutdown,
   QUEUE_NAME
 };
-

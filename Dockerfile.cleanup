@@ -1,0 +1,17 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy application code
+COPY config ./config
+COPY utils ./utils
+COPY scripts/auto-cleanup.js ./scripts/auto-cleanup.js
+
+# Run cleanup script
+CMD ["node", "scripts/auto-cleanup.js"]

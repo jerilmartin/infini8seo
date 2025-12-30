@@ -7,7 +7,6 @@ import logger from '../utils/logger.js';
 import JobRepository from '../models/JobRepository.js';
 import ContentRepository from '../models/ContentRepository.js';
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
@@ -23,13 +22,11 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request logging middleware
 app.use((req, res, next) => {
   logger.info(`${req.method} ${req.path}`);
   next();
 });
 
-// Initialize queue
 let contentQueue;
 
 // Health check endpoint
@@ -42,10 +39,10 @@ app.get('/health', (req, res) => {
   });
 });
 
-// ============================================
-// ENDPOINT 1: POST /api/generate-content
-// Job Initiation - Validates input, creates job, enqueues task
-// ============================================
+/**
+ * POST /api/generate-content
+ * Job Initiation - Validates input, creates job, enqueues task
+ */
 app.post('/api/generate-content', async (req, res) => {
   try {
     const {
@@ -57,7 +54,6 @@ app.post('/api/generate-content', async (req, res) => {
       targetWordCount
     } = req.body;
 
-    // Input validation
     if (!niche || !niche.trim()) {
       return res.status(400).json({
         error: 'Validation Error',
@@ -124,11 +120,10 @@ app.post('/api/generate-content', async (req, res) => {
       });
     }
 
-    // Sanitize value propositions
     const sanitizedValueProps = valuePropositions
       .filter(prop => prop && prop.trim())
       .map(prop => prop.trim())
-      .slice(0, 10); // Limit to 10 value propositions
+      .slice(0, 10);
 
     if (sanitizedValueProps.length === 0) {
       return res.status(400).json({
@@ -137,7 +132,6 @@ app.post('/api/generate-content', async (req, res) => {
       });
     }
 
-    // Validate target word count
     const sanitizedWordCount = parseInt(targetWordCount, 10);
     if (
       Number.isNaN(sanitizedWordCount) ||
@@ -152,7 +146,6 @@ app.post('/api/generate-content', async (req, res) => {
 
     logger.info(`Creating new content generation job for niche: ${niche}`);
 
-    // Create Job in Supabase
     const job = await JobRepository.create({
       niche: niche.trim(),
       valuePropositions: sanitizedValueProps,
@@ -164,7 +157,6 @@ app.post('/api/generate-content', async (req, res) => {
 
     logger.info(`Job created with ID: ${job.id}`);
 
-    // Enqueue job to BullMQ
     await contentQueue.add(
       'generate-content',
       {
@@ -177,15 +169,14 @@ app.post('/api/generate-content', async (req, res) => {
         targetWordCount: job.target_word_count || sanitizedWordCount
       },
       {
-        jobId: job.id, // Use Supabase UUID as BullMQ job ID for tracking
+        jobId: job.id,
         priority: 1,
-        timeout: parseInt(process.env.REQUEST_TIMEOUT_MS) || 300000 // 5 minutes default
+        timeout: parseInt(process.env.REQUEST_TIMEOUT_MS) || 300000
       }
     );
 
     logger.info(`Job ${job.id} enqueued successfully`);
 
-    // Return 202 Accepted with jobId
     res.status(202).json({
       success: true,
       message: 'Content generation job initiated successfully',
@@ -193,7 +184,7 @@ app.post('/api/generate-content', async (req, res) => {
       status: job.status,
       totalBlogs: job.total_blogs || sanitizedTotalBlogs,
       blogTypeAllocations: job.blog_type_allocations || sanitizedAllocations,
-      estimatedTimeMinutes: 15 // Rough estimate for 50 blog posts
+      estimatedTimeMinutes: 15
     });
 
   } catch (error) {
@@ -206,15 +197,14 @@ app.post('/api/generate-content', async (req, res) => {
   }
 });
 
-// ============================================
-// ENDPOINT 2: GET /api/status/:jobId
-// Polling Endpoint - Returns current job status and progress
-// ============================================
+/**
+ * GET /api/status/:jobId
+ * Polling Endpoint - Returns current job status and progress
+ */
 app.get('/api/status/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
 
-    // Validate jobId format (UUID)
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!jobId.match(uuidRegex)) {
       return res.status(400).json({
@@ -223,7 +213,6 @@ app.get('/api/status/:jobId', async (req, res) => {
       });
     }
 
-    // Query Job from Supabase
     const job = await JobRepository.findById(jobId);
 
     if (!job) {
@@ -233,18 +222,16 @@ app.get('/api/status/:jobId', async (req, res) => {
       });
     }
 
-    // Calculate estimated time remaining (rough estimate)
     let estimatedSecondsRemaining = null;
     const totalBlogsForJob = job.total_blogs || MAX_TOTAL_BLOGS;
 
     if (job.status === 'RESEARCHING') {
-      estimatedSecondsRemaining = 60; // Research phase ~1 minute
+      estimatedSecondsRemaining = 60;
     } else if (job.status === 'GENERATING') {
       const remainingContent = Math.max(0, totalBlogsForJob - (job.total_content_generated || 0));
-      estimatedSecondsRemaining = remainingContent * 10; // ~10 seconds per blog post
+      estimatedSecondsRemaining = remainingContent * 10;
     }
 
-    // Build response
     const response = {
       jobId: job.id,
       niche: job.niche,
@@ -258,7 +245,6 @@ app.get('/api/status/:jobId', async (req, res) => {
       completedAt: job.completed_at
     };
 
-    // Add phase-specific data
     if (job.status === 'RESEARCH_COMPLETE' || job.status === 'GENERATING' || job.status === 'COMPLETE') {
       response.scenariosGenerated = job.scenarios?.length || 0;
     }
@@ -283,15 +269,14 @@ app.get('/api/status/:jobId', async (req, res) => {
   }
 });
 
-// ============================================
-// ENDPOINT 3: GET /api/content/:jobId
-// Result Retrieval - Returns all 50 generated blog posts
-// ============================================
+/**
+ * GET /api/content/:jobId
+ * Result Retrieval - Returns all generated blog posts
+ */
 app.get('/api/content/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
 
-    // Validate jobId format (UUID)
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!jobId.match(uuidRegex)) {
       return res.status(400).json({
@@ -300,7 +285,6 @@ app.get('/api/content/:jobId', async (req, res) => {
       });
     }
 
-    // Check if job exists and is complete
     const job = await JobRepository.findById(jobId);
 
     if (!job) {
@@ -318,7 +302,6 @@ app.get('/api/content/:jobId', async (req, res) => {
       });
     }
 
-    // Retrieve all content for this job
     const content = await ContentRepository.getByJobId(jobId);
 
     if (!content || content.length === 0) {
@@ -328,7 +311,6 @@ app.get('/api/content/:jobId', async (req, res) => {
       });
     }
 
-    // Calculate statistics (use snake_case as returned from database)
     const stats = {
       totalPosts: content.length,
       avgWordCount: content.length > 0 
@@ -347,7 +329,6 @@ app.get('/api/content/:jobId', async (req, res) => {
         : 0
     };
 
-    // Return complete content
     res.status(200).json({
       success: true,
       jobId: job.id,
@@ -381,11 +362,10 @@ app.get('/api/content/:jobId', async (req, res) => {
   }
 });
 
-// ============================================
-// Additional Utility Endpoints
-// ============================================
-
-// Get job summary (lightweight version for listings)
+/**
+ * GET /api/jobs
+ * List all jobs with optional filtering
+ */
 app.get('/api/jobs', async (req, res) => {
   try {
     const { limit = 50, offset = 0, status } = req.query;
@@ -416,7 +396,10 @@ app.get('/api/jobs', async (req, res) => {
   }
 });
 
-// Delete a job and its content
+/**
+ * DELETE /api/job/:jobId
+ * Delete a job and its content
+ */
 app.delete('/api/job/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
@@ -438,10 +421,7 @@ app.delete('/api/job/:jobId', async (req, res) => {
       });
     }
 
-    // Delete associated content (CASCADE delete handles this in PostgreSQL, but we can be explicit)
     await ContentRepository.deleteByJobId(jobId);
-
-    // Delete job
     await JobRepository.delete(jobId);
 
     logger.info(`Job ${jobId} and associated content deleted`);
@@ -479,22 +459,19 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ============================================
-// Server Initialization
-// ============================================
+/**
+ * Server Initialization
+ */
 const startServer = async () => {
   try {
-    // Initialize Supabase
     initSupabase();
     await testConnection();
 
-    // Initialize BullMQ Queue
     contentQueue = createContentQueue();
     logger.info('BullMQ queue initialized');
 
-    // Start Express server
     app.listen(PORT, () => {
-      logger.info(`🚀 Content Factory API Server running on port ${PORT}`);
+      logger.info(`Content Factory API Server running on port ${PORT}`);
       logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
       logger.info(`Health check: http://localhost:${PORT}/health`);
     });
@@ -505,7 +482,6 @@ const startServer = async () => {
   }
 };
 
-// Graceful shutdown
 process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down gracefully...');
   if (contentQueue) {
@@ -522,8 +498,6 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
-// Start the server
 startServer();
 
 export default app;
-

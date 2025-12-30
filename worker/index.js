@@ -4,26 +4,23 @@ import { initSupabase, testConnection } from '../config/supabase.js';
 import { createWorkerConnection, QUEUE_NAME } from '../config/redis.js';
 import logger from '../utils/logger.js';
 import JobRepository from '../models/JobRepository.js';
-import ContentRepository from '../models/ContentRepository.js';
 import { executePhaseA } from './phaseA.js';
 import { executePhaseB } from './phaseB.js';
 
-// Load environment variables
 dotenv.config();
 
 let worker;
 
-// ============================================
-// Main Job Processor
-// ============================================
+/**
+ * Main Job Processor
+ */
 const processContentGenerationJob = async (job) => {
   const { jobId, niche, valuePropositions, tone, totalBlogs: payloadTotalBlogs, blogTypeAllocations: payloadAllocations, targetWordCount: payloadWordCount } = job.data;
   
-  logger.info(`🚀 Starting content generation job: ${jobId}`);
+  logger.info(`Starting content generation job: ${jobId}`);
   logger.info(`Niche: ${niche}, Tone: ${tone}`);
 
   try {
-    // Fetch the job document from Supabase
     const jobDoc = await JobRepository.findById(jobId);
     
     if (!jobDoc) {
@@ -34,14 +31,10 @@ const processContentGenerationJob = async (job) => {
     const blogTypeAllocations = payloadAllocations || jobDoc.blog_type_allocations || null;
     const targetWordCount = payloadWordCount || jobDoc.target_word_count || 1200;
 
-    // ============================================
-    // PHASE A: Deep Research (Scenario Generation)
-    // ============================================
-    logger.info(`📊 Phase A: Starting deep research for job ${jobId}`);
+    // Phase A: Deep Research (Scenario Generation)
+    logger.info(`Phase A: Starting deep research for job ${jobId}`);
     
     await JobRepository.updateStatus(jobId, 'RESEARCHING', 5);
-
-    // Update BullMQ job progress
     await job.updateProgress(5);
 
     const scenarios = await executePhaseA({
@@ -52,25 +45,19 @@ const processContentGenerationJob = async (job) => {
       blogTypeAllocations
     });
 
-    logger.info(`✅ Phase A Complete: Generated ${scenarios.length} scenarios`);
+    logger.info(`Phase A Complete: Generated ${scenarios.length} scenarios`);
 
-    // Save scenarios to job document
     await JobRepository.updateScenarios(jobId, scenarios);
-
     await job.updateProgress(20);
 
-    // ============================================
-    // PHASE B: Content Generation (Mass Production)
-    // ============================================
-    logger.info(`✍️ Phase B: Starting content generation for job ${jobId}`);
+    // Phase B: Content Generation (Mass Production)
+    logger.info(`Phase B: Starting content generation for job ${jobId}`);
     
     await JobRepository.updateStatus(jobId, 'GENERATING', 25);
-
     await job.updateProgress(25);
 
-    // Execute Phase B with progress callback
     const progressCallback = async (completed, total) => {
-      const progressPercent = 25 + Math.floor((completed / total) * 70); // 25% to 95%
+      const progressPercent = 25 + Math.floor((completed / total) * 70);
       await JobRepository.update(jobId, {
         progress: progressPercent,
         total_content_generated: completed
@@ -92,15 +79,13 @@ const processContentGenerationJob = async (job) => {
       progressCallback
     });
 
-    logger.info(`✅ Phase B Complete: Generated ${totalBlogs} blog posts`);
+    logger.info(`Phase B Complete: Generated ${totalBlogs} blog posts`);
 
-    // ============================================
     // Finalization
-    // ============================================
     await JobRepository.markAsComplete(jobId);
     await job.updateProgress(100);
 
-    logger.info(`🎉 Job ${jobId} completed successfully!`);
+    logger.info(`Job ${jobId} completed successfully`);
 
     return {
       success: true,
@@ -110,39 +95,36 @@ const processContentGenerationJob = async (job) => {
     };
 
   } catch (error) {
-    logger.error(`❌ Job ${jobId} failed:`, error);
+    logger.error(`Job ${jobId} failed:`, error);
 
-    // Update job status to FAILED
     try {
       await JobRepository.markAsFailed(jobId, error.message);
     } catch (updateError) {
       logger.error('Failed to update job status:', updateError);
     }
 
-    throw error; // Re-throw to let BullMQ handle retries
+    throw error;
   }
 };
 
-// ============================================
-// Worker Initialization
-// ============================================
+/**
+ * Worker Initialization
+ */
 const startWorker = async () => {
   try {
-    // Initialize Supabase
     initSupabase();
     await testConnection();
     logger.info('Worker: Supabase connected');
 
-    // Create BullMQ Worker
     worker = new Worker(
       QUEUE_NAME,
       processContentGenerationJob,
       {
         connection: createWorkerConnection(),
-        concurrency: 1, // Process one job at a time (each job generates 50 posts concurrently)
+        concurrency: 1,
         limiter: {
-          max: 10, // Maximum 10 jobs per duration
-          duration: 60000 // Per minute
+          max: 10,
+          duration: 60000
         },
         settings: {
           stalledInterval: 30000,
@@ -151,28 +133,27 @@ const startWorker = async () => {
       }
     );
 
-    // Worker event handlers
     worker.on('completed', (job, result) => {
-      logger.info(`✅ Job ${job.id} completed successfully`, result);
+      logger.info(`Job ${job.id} completed successfully`, result);
     });
 
     worker.on('failed', (job, error) => {
-      logger.error(`❌ Job ${job?.id} failed:`, error.message);
+      logger.error(`Job ${job?.id} failed:`, error.message);
     });
 
     worker.on('active', (job) => {
-      logger.info(`⚙️ Job ${job.id} is now active`);
+      logger.info(`Job ${job.id} is now active`);
     });
 
     worker.on('stalled', (jobId) => {
-      logger.warn(`⚠️ Job ${jobId} has stalled`);
+      logger.warn(`Job ${jobId} has stalled`);
     });
 
     worker.on('error', (error) => {
       logger.error('Worker error:', error);
     });
 
-    logger.info('🔧 Content Factory Worker started successfully');
+    logger.info('Content Factory Worker started successfully');
     logger.info(`Listening on queue: ${QUEUE_NAME}`);
     logger.info(`Concurrency: 1 job at a time`);
 
@@ -182,11 +163,11 @@ const startWorker = async () => {
   }
 };
 
-// ============================================
-// Graceful Shutdown
-// ============================================
+/**
+ * Graceful Shutdown
+ */
 const shutdown = async () => {
-  logger.info('🛑 Worker shutting down gracefully...');
+  logger.info('Worker shutting down gracefully...');
   
   try {
     if (worker) {
@@ -203,13 +184,10 @@ const shutdown = async () => {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
-// Unhandled rejection handler
 process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-// Start the worker
 startWorker();
 
 export default worker;
-

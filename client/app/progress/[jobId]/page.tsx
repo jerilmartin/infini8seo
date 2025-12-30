@@ -2,8 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, CheckCircle2, XCircle, Brain, Pencil } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Brain, Pencil, Home, RefreshCw } from 'lucide-react';
 import axios from 'axios';
+import dynamic from 'next/dynamic';
+
+const GridScan = dynamic(() => import('../../components/GridScan'), { ssr: false });
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -16,7 +19,7 @@ interface JobStatus {
   scenariosGenerated?: number;
   errorMessage?: string;
   estimatedSecondsRemaining?: number;
-  completedAt?: string;
+  totalBlogs?: number;
 }
 
 export default function ProgressPage() {
@@ -34,18 +37,13 @@ export default function ProgressPage() {
       const data = response.data;
       setJobStatus(data);
 
-      // Stop polling if job is complete or failed
       if (data.status === 'COMPLETE') {
         setPolling(false);
-        // Redirect to results page after a brief delay
-        setTimeout(() => {
-          router.push(`/results/${jobId}`);
-        }, 2000);
+        setTimeout(() => router.push(`/results/${jobId}`), 1500);
       } else if (data.status === 'FAILED') {
         setPolling(false);
       }
     } catch (err: any) {
-      console.error('Error fetching job status:', err);
       setError(err.response?.data?.message || 'Failed to fetch job status');
       setPolling(false);
     }
@@ -53,62 +51,49 @@ export default function ProgressPage() {
 
   useEffect(() => {
     if (!jobId) return;
-
-    // Initial fetch
     fetchJobStatus();
-
-    // Set up polling interval
     if (polling) {
-      const intervalId = setInterval(fetchJobStatus, 3000); // Poll every 3 seconds
-
-      return () => clearInterval(intervalId);
+      const interval = setInterval(fetchJobStatus, 3000);
+      return () => clearInterval(interval);
     }
   }, [jobId, polling, fetchJobStatus]);
 
-  const getStatusDisplay = () => {
-    if (!jobStatus) return { text: 'Loading...', color: 'text-gray-600' };
+  const formatTime = (seconds?: number) => {
+    if (!seconds) return '--';
+    if (seconds < 60) return `${seconds}s`;
+    return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  };
 
+  const getPhase = () => {
+    if (!jobStatus) return 'loading';
     switch (jobStatus.status) {
-      case 'ENQUEUED':
-        return { text: 'Queued', color: 'text-blue-600', icon: Loader2 };
-      case 'RESEARCHING':
-        return { text: 'Deep Research in Progress', color: 'text-purple-600', icon: Brain };
-      case 'RESEARCH_COMPLETE':
-        return { text: 'Research Complete', color: 'text-green-600', icon: CheckCircle2 };
-      case 'GENERATING':
-        return { text: 'Generating Content', color: 'text-indigo-600', icon: Pencil };
-      case 'COMPLETE':
-        return { text: 'Complete!', color: 'text-green-600', icon: CheckCircle2 };
-      case 'FAILED':
-        return { text: 'Failed', color: 'text-red-600', icon: XCircle };
-      default:
-        return { text: jobStatus.status, color: 'text-gray-600', icon: Loader2 };
+      case 'ENQUEUED': return 'queued';
+      case 'RESEARCHING': return 'research';
+      case 'RESEARCH_COMPLETE': return 'research-done';
+      case 'GENERATING': return 'generating';
+      case 'COMPLETE': return 'complete';
+      case 'FAILED': return 'failed';
+      default: return 'loading';
     }
   };
 
-  const formatTime = (seconds?: number) => {
-    if (!seconds) return 'Calculating...';
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes}m ${secs}s`;
-  };
-
-  const statusDisplay = getStatusDisplay();
-  const StatusIcon = statusDisplay.icon || Loader2;
+  const phase = getPhase();
+  const totalTarget = jobStatus?.totalBlogs || 30;
+  const progress = jobStatus?.progress || 0;
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="card max-w-md w-full text-center">
-          <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <button
-            onClick={() => router.push('/')}
-            className="btn-primary"
-          >
-            Return Home
+      <div className="min-h-screen flex items-center justify-center px-4 relative">
+        <div className="fixed inset-0 -z-10">
+          <GridScan linesColor="#1a1625" scanColor="#ef4444" scanOpacity={0.3} gridScale={0.08} />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/80 to-background" />
+        </div>
+        <div className="card max-w-md w-full text-center glow-box">
+          <XCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-foreground mb-2">Error</h2>
+          <p className="text-muted-foreground mb-6 text-sm">{error}</p>
+          <button onClick={() => router.push('/')} className="btn-primary">
+            <Home className="w-4 h-4 mr-2" /> Return Home
           </button>
         </div>
       </div>
@@ -116,165 +101,152 @@ export default function ProgressPage() {
   }
 
   return (
-    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Content Generation in Progress
-          </h1>
-          {jobStatus && (
-            <p className="text-lg text-gray-600">
-              Niche: <span className="font-semibold">{jobStatus.niche}</span>
-            </p>
-          )}
-        </div>
+    <div className="min-h-screen relative">
+      <div className="fixed inset-0 -z-10">
+        <GridScan
+          linesColor="#1a1625"
+          scanColor={phase === 'complete' ? '#10b981' : '#8b5cf6'}
+          scanOpacity={0.5}
+          gridScale={0.06}
+          scanDuration={2}
+          scanDelay={0.5}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background" />
+      </div>
 
-        {/* Main Status Card */}
-        <div className="card mb-6">
-          {/* Status Badge */}
-          <div className="flex items-center justify-center mb-6">
-            <div className={`flex items-center ${statusDisplay.color}`}>
-              <StatusIcon className={`w-8 h-8 mr-3 ${jobStatus?.status !== 'COMPLETE' && jobStatus?.status !== 'FAILED' ? 'animate-spin' : ''}`} />
-              <span className="text-2xl font-bold">{statusDisplay.text}</span>
-            </div>
+      <div className="relative py-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-lg mx-auto">
+          {/* Header */}
+          <div className="text-center mb-8 animate-fade-in">
+            <h1 className="text-2xl font-bold text-foreground mb-1">
+              {phase === 'complete' ? 'Complete!' : 'Generating Content'}
+            </h1>
+            {jobStatus && <p className="text-sm text-muted-foreground">{jobStatus.niche}</p>}
           </div>
 
-          {/* Progress Bar */}
-          {jobStatus && (
-            <>
-              <div className="mb-4">
-                <div className="flex justify-between text-sm text-gray-600 mb-2">
-                  <span>Progress</span>
-                  <span className="font-semibold">{jobStatus.progress}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                  <div
-                    className="progress-bar h-full"
-                    style={{ width: `${jobStatus.progress}%` }}
+          {/* Progress Card */}
+          <div className="card glow-box animate-fade-in-up">
+            {/* Circular Progress */}
+            <div className="flex justify-center mb-6">
+              <div className="relative w-28 h-28">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle cx="56" cy="56" r="48" stroke="hsl(var(--secondary))" strokeWidth="6" fill="none" />
+                  <circle
+                    cx="56" cy="56" r="48"
+                    stroke={phase === 'complete' ? '#10b981' : 'hsl(var(--primary))'}
+                    strokeWidth="6"
+                    fill="none"
+                    strokeDasharray={301.6}
+                    strokeDashoffset={301.6 - (301.6 * progress) / 100}
+                    strokeLinecap="round"
+                    className="transition-all duration-500"
+                    style={{ filter: 'drop-shadow(0 0 8px hsl(var(--primary) / 0.5))' }}
                   />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-foreground">{progress}%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Status */}
+            <div className="text-center mb-6">
+              {phase === 'queued' && (
+                <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Starting...</span>
+                </div>
+              )}
+              {phase === 'research' && (
+                <div className="flex items-center justify-center gap-2 text-primary">
+                  <Brain className="w-4 h-4 animate-pulse" />
+                  <span className="text-sm">Researching niche...</span>
+                </div>
+              )}
+              {(phase === 'research-done' || phase === 'generating') && (
+                <div className="flex items-center justify-center gap-2 text-accent">
+                  <Pencil className="w-4 h-4 animate-pulse" />
+                  <span className="text-sm">Writing posts...</span>
+                </div>
+              )}
+              {phase === 'complete' && (
+                <div className="flex items-center justify-center gap-2 text-emerald-400">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span className="text-sm">Redirecting...</span>
+                </div>
+              )}
+              {phase === 'failed' && (
+                <div className="flex items-center justify-center gap-2 text-destructive">
+                  <XCircle className="w-4 h-4" />
+                  <span className="text-sm">Failed</span>
+                </div>
+              )}
+            </div>
+
+            {/* Phase Indicators */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className={`p-3 rounded-lg border ${
+                phase === 'research' ? 'border-primary/50 bg-primary/10' :
+                ['research-done', 'generating', 'complete'].includes(phase) ? 'border-emerald-500/50 bg-emerald-500/10' :
+                'border-border/30 bg-secondary/20'
+              }`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <Brain className={`w-3 h-3 ${
+                    phase === 'research' ? 'text-primary animate-pulse' :
+                    ['research-done', 'generating', 'complete'].includes(phase) ? 'text-emerald-400' :
+                    'text-muted-foreground'
+                  }`} />
+                  <span className="text-xs font-medium">Research</span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {jobStatus?.scenariosGenerated ? `${jobStatus.scenariosGenerated} scenarios` : phase === 'research' ? 'In progress...' : 'Pending'}
                 </div>
               </div>
 
-              {/* Phase Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                {/* Phase A Status */}
-                <div className="bg-purple-50 rounded-lg p-4">
-                  <div className="flex items-center mb-2">
-                    <Brain className="w-5 h-5 text-purple-600 mr-2" />
-                    <h3 className="font-semibold text-purple-900">Phase A: Research</h3>
-                  </div>
-                  {jobStatus.scenariosGenerated ? (
-                    <div className="flex items-center text-green-600">
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
-                      <span className="text-sm font-medium">
-                        {jobStatus.scenariosGenerated} scenarios generated
-                      </span>
-                    </div>
-                  ) : jobStatus.status === 'RESEARCHING' ? (
-                    <div className="flex items-center text-purple-600">
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      <span className="text-sm">Analyzing market data...</span>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-gray-600">Pending</span>
-                  )}
+              <div className={`p-3 rounded-lg border ${
+                phase === 'generating' ? 'border-accent/50 bg-accent/10' :
+                phase === 'complete' ? 'border-emerald-500/50 bg-emerald-500/10' :
+                'border-border/30 bg-secondary/20'
+              }`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <Pencil className={`w-3 h-3 ${
+                    phase === 'generating' ? 'text-accent animate-pulse' :
+                    phase === 'complete' ? 'text-emerald-400' :
+                    'text-muted-foreground'
+                  }`} />
+                  <span className="text-xs font-medium">Content</span>
                 </div>
-
-                {/* Phase B Status */}
-                <div className="bg-indigo-50 rounded-lg p-4">
-                  <div className="flex items-center mb-2">
-                    <Pencil className="w-5 h-5 text-indigo-600 mr-2" />
-                    <h3 className="font-semibold text-indigo-900">Phase B: Content</h3>
-                  </div>
-                  {jobStatus.status === 'GENERATING' || jobStatus.status === 'COMPLETE' ? (
-                    <div className="text-sm">
-                      <div className="flex items-center text-indigo-600 mb-1">
-                        {jobStatus.status === 'COMPLETE' ? (
-                          <CheckCircle2 className="w-4 h-4 mr-2" />
-                        ) : (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        )}
-                        <span className="font-medium">
-                          {jobStatus.totalContentGenerated} / 50 posts
-                        </span>
-                      </div>
-                      {jobStatus.estimatedSecondsRemaining && (
-                        <span className="text-xs text-gray-600">
-                          Est. time: {formatTime(jobStatus.estimatedSecondsRemaining)}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-sm text-gray-600">Waiting for research...</span>
-                  )}
+                <div className="text-xs text-muted-foreground">
+                  {(phase === 'generating' || phase === 'complete') ? `${jobStatus?.totalContentGenerated || 0}/${totalTarget}` : 'Waiting...'}
                 </div>
               </div>
+            </div>
 
-              {/* Estimated Time Remaining */}
-              {jobStatus.estimatedSecondsRemaining && jobStatus.status !== 'COMPLETE' && (
-                <div className="mt-6 text-center">
-                  <p className="text-sm text-gray-600">
-                    Estimated time remaining: <span className="font-semibold">{formatTime(jobStatus.estimatedSecondsRemaining)}</span>
-                  </p>
-                </div>
-              )}
+            {/* Time Remaining */}
+            {jobStatus?.estimatedSecondsRemaining && phase !== 'complete' && (
+              <div className="text-center text-xs text-muted-foreground">
+                ~{formatTime(jobStatus.estimatedSecondsRemaining)} remaining
+              </div>
+            )}
 
-              {/* Error Message */}
-              {jobStatus.status === 'FAILED' && jobStatus.errorMessage && (
-                <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
-                  <p className="text-red-700 text-sm">{jobStatus.errorMessage}</p>
-                </div>
-              )}
+            {/* Error */}
+            {phase === 'failed' && jobStatus?.errorMessage && (
+              <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive">
+                {jobStatus.errorMessage}
+              </div>
+            )}
+          </div>
 
-              {/* Completion Message */}
-              {jobStatus.status === 'COMPLETE' && (
-                <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                  <CheckCircle2 className="w-12 h-12 text-green-600 mx-auto mb-2" />
-                  <p className="text-green-700 font-semibold mb-2">
-                    All 50 blog posts generated successfully!
-                  </p>
-                  <p className="text-sm text-green-600">
-                    Redirecting to results...
-                  </p>
-                </div>
-              )}
-            </>
+          {/* Retry Button */}
+          {phase === 'failed' && (
+            <div className="flex justify-center mt-6">
+              <button onClick={() => router.push('/')} className="btn-primary">
+                <RefreshCw className="w-4 h-4 mr-2" /> Try Again
+              </button>
+            </div>
           )}
         </div>
-
-        {/* Info Box */}
-        <div className="card bg-blue-50 border-blue-200">
-          <h3 className="font-semibold text-blue-900 mb-2">What's happening?</h3>
-          <ul className="space-y-2 text-sm text-blue-800">
-            <li className="flex items-start">
-              <span className="mr-2">🔍</span>
-              <span><strong>Phase A:</strong> AI performs deep market research on your niche using real-time data</span>
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2">✍️</span>
-              <span><strong>Phase B:</strong> Generates 50 unique, SEO-optimized blog posts concurrently</span>
-            </li>
-            <li className="flex items-start">
-              <span className="mr-2">⏱️</span>
-              <span>This process typically takes 10-15 minutes</span>
-            </li>
-          </ul>
-        </div>
-
-        {/* Action Buttons */}
-        {jobStatus?.status === 'FAILED' && (
-          <div className="text-center mt-6">
-            <button
-              onClick={() => router.push('/')}
-              className="btn-primary"
-            >
-              Try Again
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
 }
-

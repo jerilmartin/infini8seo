@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Zap, Target, TrendingUp } from 'lucide-react';
+import { Sparkles, Zap, Target, TrendingUp, Plus, Minus, X, Loader2 } from 'lucide-react';
 import axios from 'axios';
+import dynamic from 'next/dynamic';
+
+const GridScan = dynamic(() => import('./components/GridScan'), { ssr: false });
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -12,22 +15,29 @@ const DEFAULT_TOTAL_BLOGS = 30;
 const MIN_WORD_COUNT = 500;
 const MAX_WORD_COUNT = 2500;
 const DEFAULT_WORD_COUNT = 1200;
+
 const BLOG_TYPES = [
-  { key: 'functional', label: 'Functional' },
-  { key: 'transactional', label: 'Transactional' },
-  { key: 'commercial', label: 'Commercial' },
-  { key: 'informational', label: 'Informational' }
+  { key: 'functional', label: 'Functional', desc: 'How-to guides' },
+  { key: 'transactional', label: 'Transactional', desc: 'Product content' },
+  { key: 'commercial', label: 'Commercial', desc: 'Reviews & comparisons' },
+  { key: 'informational', label: 'Informational', desc: 'Educational' }
 ] as const;
 
 type BlogTypeKey = typeof BLOG_TYPES[number]['key'];
 type BlogTypeAllocations = Record<BlogTypeKey, number>;
 
-const DEFAULT_BLOG_TYPE_ALLOCATIONS: BlogTypeAllocations = {
-  functional: 8,
-  transactional: 8,
-  commercial: 7,
-  informational: 7
+const DEFAULT_ALLOCATIONS: BlogTypeAllocations = {
+  functional: 8, transactional: 8, commercial: 7, informational: 7
 };
+
+const TONES = [
+  { value: 'professional', label: 'Professional' },
+  { value: 'conversational', label: 'Conversational' },
+  { value: 'authoritative', label: 'Authoritative' },
+  { value: 'friendly', label: 'Friendly' },
+  { value: 'technical', label: 'Technical' },
+  { value: 'casual', label: 'Casual' },
+];
 
 export default function Home() {
   const router = useRouter();
@@ -37,60 +47,36 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [totalBlogs, setTotalBlogs] = useState(DEFAULT_TOTAL_BLOGS);
-  const [blogTypeAllocations, setBlogTypeAllocations] = useState<BlogTypeAllocations>(DEFAULT_BLOG_TYPE_ALLOCATIONS);
+  const [allocations, setAllocations] = useState<BlogTypeAllocations>(DEFAULT_ALLOCATIONS);
   const [targetWordCount, setTargetWordCount] = useState(DEFAULT_WORD_COUNT);
 
-  const adjustAllocationsToTotal = (allocations: BlogTypeAllocations, newTotal: number): BlogTypeAllocations => {
-    const sum = BLOG_TYPES.reduce((acc, type) => acc + allocations[type.key], 0);
-    if (sum <= newTotal) {
-      return allocations;
-    }
+  const allocationSum = BLOG_TYPES.reduce((acc, t) => acc + allocations[t.key], 0);
+  const remaining = totalBlogs - allocationSum;
 
-    const updated: BlogTypeAllocations = { ...allocations };
-    let reductionNeeded = sum - newTotal;
-
+  const adjustAllocations = (allocs: BlogTypeAllocations, newTotal: number): BlogTypeAllocations => {
+    const sum = BLOG_TYPES.reduce((acc, t) => acc + allocs[t.key], 0);
+    if (sum <= newTotal) return allocs;
+    const updated = { ...allocs };
+    let reduction = sum - newTotal;
     for (const { key } of [...BLOG_TYPES].reverse()) {
-      if (reductionNeeded <= 0) break;
-      const currentValue = updated[key];
-      const reduction = Math.min(currentValue, reductionNeeded);
-      updated[key] = currentValue - reduction;
-      reductionNeeded -= reduction;
+      if (reduction <= 0) break;
+      const cut = Math.min(updated[key], reduction);
+      updated[key] -= cut;
+      reduction -= cut;
     }
-
     return updated;
   };
 
-  const handleTotalBlogsChange = (value: number) => {
-    const sanitizedValue = Math.max(1, Math.min(MAX_TOTAL_BLOGS, value));
-    setTotalBlogs(sanitizedValue);
-    setBlogTypeAllocations(prev => adjustAllocationsToTotal(prev, sanitizedValue));
+  const handleTotalChange = (value: number) => {
+    const clamped = Math.max(1, Math.min(MAX_TOTAL_BLOGS, value));
+    setTotalBlogs(clamped);
+    setAllocations(prev => adjustAllocations(prev, clamped));
   };
 
-  const handleAllocationChange = (typeKey: BlogTypeKey, value: number) => {
-    const sanitizedValue = Math.max(0, Math.min(MAX_TOTAL_BLOGS, value));
-    const otherSum = BLOG_TYPES.reduce((acc, type) => {
-      if (type.key === typeKey) return acc;
-      return acc + blogTypeAllocations[type.key];
-    }, 0);
+  const handleAllocationChange = (key: BlogTypeKey, value: number) => {
+    const otherSum = BLOG_TYPES.reduce((acc, t) => t.key === key ? acc : acc + allocations[t.key], 0);
     const maxAllowed = Math.max(0, totalBlogs - otherSum);
-    const adjustedValue = Math.min(sanitizedValue, maxAllowed);
-
-    setBlogTypeAllocations(prev => ({
-      ...prev,
-      [typeKey]: adjustedValue
-    } as BlogTypeAllocations));
-  };
-
-  const handleAddValueProp = () => {
-    if (valuePropositions.length < 10) {
-      setValuePropositions([...valuePropositions, '']);
-    }
-  };
-
-  const handleRemoveValueProp = (index: number) => {
-    if (valuePropositions.length > 1) {
-      setValuePropositions(valuePropositions.filter((_, i) => i !== index));
-    }
+    setAllocations(prev => ({ ...prev, [key]: Math.max(0, Math.min(maxAllowed, value)) }));
   };
 
   const handleValuePropChange = (index: number, value: string) => {
@@ -99,342 +85,204 @@ export default function Home() {
     setValuePropositions(updated);
   };
 
+  const addValueProp = () => valuePropositions.length < 10 && setValuePropositions([...valuePropositions, '']);
+  const removeValueProp = (index: number) => valuePropositions.length > 1 && setValuePropositions(valuePropositions.filter((_, i) => i !== index));
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // Validation
-    if (!niche.trim()) {
-      setError('Please enter a business niche');
-      return;
-    }
-
-    const validValueProps = valuePropositions.filter(vp => vp.trim());
-    if (validValueProps.length === 0) {
-      setError('Please enter at least one service specialty');
-      return;
-    }
-
-    const allocationSum = BLOG_TYPES.reduce((acc, type) => acc + (blogTypeAllocations[type.key] || 0), 0);
-    if (allocationSum !== totalBlogs) {
-      setError('Please ensure the blog type allocations add up to your total blog count');
-      return;
-    }
+    if (!niche.trim()) return setError('Please enter a business niche');
+    const validProps = valuePropositions.filter(vp => vp.trim());
+    if (validProps.length === 0) return setError('Please enter at least one service specialty');
+    if (allocationSum !== totalBlogs) return setError(`Allocations must equal ${totalBlogs}. Currently: ${allocationSum}`);
 
     setLoading(true);
-
     try {
       const response = await axios.post(`${API_URL}/api/generate-content`, {
-        niche: niche.trim(),
-        valuePropositions: validValueProps,
-        tone,
-        totalBlogs,
-        blogTypeAllocations,
-        targetWordCount
+        niche: niche.trim(), valuePropositions: validProps, tone, totalBlogs,
+        blogTypeAllocations: allocations, targetWordCount
       });
-
-      const { jobId } = response.data;
-      
-      // Redirect to progress page
-      router.push(`/progress/${jobId}`);
+      router.push(`/progress/${response.data.jobId}`);
     } catch (err: any) {
-      console.error('Error submitting job:', err);
       setError(err.response?.data?.message || 'Failed to start content generation');
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="flex justify-center mb-4">
-            <div className="p-4 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full">
-              <Sparkles className="w-12 h-12 text-white" />
+    <div className="min-h-screen relative">
+      {/* Grid Background */}
+      <div className="fixed inset-0 -z-10">
+        <GridScan
+          linesColor="#1a1625"
+          scanColor="#8b5cf6"
+          scanOpacity={0.4}
+          gridScale={0.06}
+          noiseIntensity={0.015}
+          scanGlow={0.5}
+          scanSoftness={2}
+          scanDuration={4}
+          scanDelay={2}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/80 to-background" />
+      </div>
+
+      <div className="relative py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-10 animate-fade-in-up">
+            <div className="inline-flex p-3 rounded-2xl bg-primary/10 border border-primary/20 mb-6 glow-box">
+              <Sparkles className="w-8 h-8 text-primary" />
             </div>
+            <h1 className="text-4xl sm:text-5xl font-bold mb-3">
+              <span className="gradient-text">Content Factory</span>
+            </h1>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              Generate SEO-optimized blog posts with AI-powered research
+            </p>
           </div>
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">
-            Infini8 SEO - Generate Blog Posts 
-          </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Generate up to 50 high-quality, SEO-optimized blog posts automatically with AI-powered research and content creation
-          </p>
-        </div>
 
-        {/* Features */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="card text-center">
-            <Zap className="w-10 h-10 text-blue-600 mx-auto mb-3" />
-            <h3 className="font-semibold text-lg mb-2">Deep Research</h3>
-            <p className="text-gray-600 text-sm">AI analyzes your niche with real-time market data</p>
+          {/* Features */}
+          <div className="grid grid-cols-3 gap-3 mb-10">
+            {[
+              { icon: Zap, label: 'Deep Research', color: 'text-primary' },
+              { icon: Target, label: 'Targeted', color: 'text-accent' },
+              { icon: TrendingUp, label: 'SEO Ready', color: 'text-emerald-400' },
+            ].map((f, i) => (
+              <div key={i} className="card-hover text-center py-4 px-2 animate-fade-in" style={{ animationDelay: `${i * 100}ms` }}>
+                <f.icon className={`w-5 h-5 ${f.color} mx-auto mb-2`} />
+                <span className="text-xs text-muted-foreground">{f.label}</span>
+              </div>
+            ))}
           </div>
-          <div className="card text-center">
-            <Target className="w-10 h-10 text-indigo-600 mx-auto mb-3" />
-            <h3 className="font-semibold text-lg mb-2">50 Unique Posts</h3>
-            <p className="text-gray-600 text-sm">Each tailored to different personas and pain points</p>
-          </div>
-          <div className="card text-center">
-            <TrendingUp className="w-10 h-10 text-purple-600 mx-auto mb-3" />
-            <h3 className="font-semibold text-lg mb-2">SEO Optimized</h3>
-            <p className="text-gray-600 text-sm">Ready-to-publish content with keywords and structure</p>
-          </div>
-        </div>
 
-        {/* Form */}
-        <div className="card max-w-2xl mx-auto">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Niche Input */}
-            <div>
-              <label htmlFor="niche" className="block text-sm font-semibold text-gray-700 mb-2">
-                Business Niche *
-              </label>
-              <input
-                id="niche"
-                type="text"
-                value={niche}
-                onChange={(e) => setNiche(e.target.value)}
-                placeholder="e.g., Digital Marketing, Fitness Coaching, SaaS Solutions"
-                className="input-field"
-                disabled={loading}
-              />
-              <p className="text-sm text-gray-500 mt-1">
-                What industry or niche is your business in?
-              </p>
-            </div>
-
-            {/* Service Specialties */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Service/Specialties 
-              </label>
-              {valuePropositions.map((vp, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={vp}
-                    onChange={(e) => handleValuePropChange(index, e.target.value)}
-                    placeholder={`Specific point about your service `}
-                    className="input-field flex-1"
-                    disabled={loading}
-                  />
-                  {valuePropositions.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveValueProp(index)}
-                      className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      disabled={loading}
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              ))}
-              {valuePropositions.length < 10 && (
-                <button
-                  type="button"
-                  onClick={handleAddValueProp}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                  disabled={loading}
-                >
-                  + Add Another One
-                </button>
-              )}
-              <p className="text-sm text-gray-500 mt-1">
-                List specific points about your service or specialty that the content should highlight.
-              </p>
-            </div>
-
-            {/* Total Blog Posts */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Number of Blog Posts *
-              </label>
-              <div className="space-y-3">
+          {/* Form */}
+          <div className="card glow-box animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Niche */}
+              <div>
+                <label className="label">Business Niche</label>
                 <input
-                  type="range"
-                  min={1}
-                  max={MAX_TOTAL_BLOGS}
-                  value={totalBlogs}
-                  onChange={(e) => handleTotalBlogsChange(Number(e.target.value))}
-                  className="w-full"
-                  disabled={loading}
-                />
-                <div className="flex items-center justify-between text-sm text-gray-600">
-                  <span>1</span>
-                  <span className="font-semibold text-gray-900 text-base">{totalBlogs} posts</span>
-                  <span>{MAX_TOTAL_BLOGS}</span>
-                </div>
-                <input
-                  type="number"
-                  min={1}
-                  max={MAX_TOTAL_BLOGS}
-                  value={totalBlogs}
-                  onChange={(e) => handleTotalBlogsChange(Number(e.target.value))}
-                  className="input-field w-full"
+                  type="text"
+                  value={niche}
+                  onChange={(e) => setNiche(e.target.value)}
+                  placeholder="e.g., Digital Marketing, SaaS, Fitness"
+                  className="input"
                   disabled={loading}
                 />
               </div>
-              <p className="text-sm text-gray-500 mt-1">
-                Choose how many posts to generate (maximum of {MAX_TOTAL_BLOGS}).
-              </p>
-            </div>
 
-            {/* Blog Type Distribution */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  Blog Type Distribution
-                </label>
-                <span className={`text-xs ${totalBlogs - BLOG_TYPES.reduce((acc, type) => acc + blogTypeAllocations[type.key], 0) === 0 ? 'text-green-600' : 'text-orange-600'}`}>
-                  Remaining: {totalBlogs - BLOG_TYPES.reduce((acc, type) => acc + blogTypeAllocations[type.key], 0)} posts
-                </span>
-              </div>
-              <p className="text-sm text-gray-500 mb-4">
-                Allocate how many posts should be Functional, Transactional, Commercial, and Informational.
-              </p>
-              <div className="space-y-3">
-                {BLOG_TYPES.map((type) => {
-                  const currentValue = blogTypeAllocations[type.key];
-                  const remaining = totalBlogs - BLOG_TYPES.reduce((acc, t) => acc + (t.key === type.key ? 0 : blogTypeAllocations[t.key]), currentValue);
-
-                  return (
-                    <div key={type.key} className="flex items-center justify-between gap-4 bg-white border border-gray-200 rounded-xl px-4 py-3">
-                      <div className="flex flex-col">
-                        <span className="font-medium text-gray-900">{type.label}</span>
-                        <span className="text-xs text-gray-500">Currently: {currentValue} posts</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleAllocationChange(type.key, currentValue - 1)}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-40"
-                          disabled={loading || currentValue === 0}
-                          aria-label={`Decrease ${type.label} posts`}
-                        >
-                          −
+              {/* Value Props */}
+              <div>
+                <label className="label">Service Specialties</label>
+                <div className="space-y-2">
+                  {valuePropositions.map((vp, i) => (
+                    <div key={i} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={vp}
+                        onChange={(e) => handleValuePropChange(i, e.target.value)}
+                        placeholder="What makes your service unique?"
+                        className="input flex-1"
+                        disabled={loading}
+                      />
+                      {valuePropositions.length > 1 && (
+                        <button type="button" onClick={() => removeValueProp(i)} className="btn-icon text-muted-foreground hover:text-destructive" disabled={loading}>
+                          <X className="w-4 h-4" />
                         </button>
-                        <input
-                          type="number"
-                          min={0}
-                          max={totalBlogs}
-                          value={currentValue}
-                          onChange={(e) => handleAllocationChange(type.key, Number(e.target.value))}
-                          className="w-20 text-center input-field no-spinner"
-                          disabled={loading}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleAllocationChange(type.key, currentValue + 1)}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-40"
-                          disabled={loading || remaining <= 0}
-                          aria-label={`Increase ${type.label} posts`}
-                        >
-                          +
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {valuePropositions.length < 10 && (
+                  <button type="button" onClick={addValueProp} className="mt-2 text-sm text-primary hover:text-accent font-medium inline-flex items-center gap-1" disabled={loading}>
+                    <Plus className="w-3 h-3" /> Add another
+                  </button>
+                )}
+              </div>
+
+              {/* Total Blogs */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="label mb-0">Blog Posts</label>
+                  <span className="text-xl font-bold text-primary glow-text">{totalBlogs}</span>
+                </div>
+                <input type="range" min={1} max={MAX_TOTAL_BLOGS} value={totalBlogs} onChange={(e) => handleTotalChange(Number(e.target.value))} disabled={loading} />
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>1</span><span>{MAX_TOTAL_BLOGS}</span>
+                </div>
+              </div>
+
+              {/* Blog Type Distribution */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="label mb-0">Distribution</label>
+                  <span className={`badge ${remaining === 0 ? 'badge-success' : 'badge-warning'}`}>
+                    {remaining === 0 ? 'Balanced' : `${remaining} left`}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {BLOG_TYPES.map((type) => (
+                    <div key={type.key} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-border/30">
+                      <div>
+                        <div className="text-sm font-medium text-foreground">{type.label}</div>
+                        <div className="text-xs text-muted-foreground">{type.desc}</div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button type="button" onClick={() => handleAllocationChange(type.key, allocations[type.key] - 1)} className="btn-icon h-7 w-7" disabled={loading || allocations[type.key] === 0}>
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="w-6 text-center text-sm font-semibold">{allocations[type.key]}</span>
+                        <button type="button" onClick={() => handleAllocationChange(type.key, allocations[type.key] + 1)} className="btn-icon h-7 w-7" disabled={loading || remaining <= 0}>
+                          <Plus className="w-3 h-3" />
                         </button>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Tone Selection */}
-            <div>
-              <label htmlFor="tone" className="block text-sm font-semibold text-gray-700 mb-2">
-                Content Tone *
-              </label>
-              <select
-                id="tone"
-                value={tone}
-                onChange={(e) => setTone(e.target.value)}
-                className="input-field"
-                disabled={loading}
-              >
-                <option value="professional">Professional</option>
-                <option value="conversational">Conversational</option>
-                <option value="authoritative">Authoritative</option>
-                <option value="friendly">Friendly</option>
-                <option value="technical">Technical</option>
-                <option value="casual">Casual</option>
-              </select>
-            </div>
-
-            {/* Target Word Count */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Target Word Count per Blog *
-              </label>
-              <div className="space-y-3">
-                <input
-                  type="range"
-                  min={MIN_WORD_COUNT}
-                  max={MAX_WORD_COUNT}
-                  step={100}
-                  value={targetWordCount}
-                  onChange={(e) => setTargetWordCount(Number(e.target.value))}
-                  className="w-full"
-                  disabled={loading}
-                />
-                <div className="flex items-center justify-between text-sm text-gray-600">
-                  <span>{MIN_WORD_COUNT} words</span>
-                  <span className="font-semibold text-gray-900 text-base">{targetWordCount} words</span>
-                  <span>{MAX_WORD_COUNT} words</span>
+                  ))}
                 </div>
-                <input
-                  type="number"
-                  min={MIN_WORD_COUNT}
-                  max={MAX_WORD_COUNT}
-                  step={100}
-                  value={targetWordCount}
-                  onChange={(e) => setTargetWordCount(Math.min(MAX_WORD_COUNT, Math.max(MIN_WORD_COUNT, Number(e.target.value))))}
-                  className="input-field w-full"
-                  disabled={loading}
-                />
               </div>
-              <p className="text-sm text-gray-500 mt-1">
-                Choose the approximate word count for each blog post (range: {MIN_WORD_COUNT}-{MAX_WORD_COUNT} words).
-              </p>
-            </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                {error}
+              {/* Tone & Word Count */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Tone</label>
+                  <select value={tone} onChange={(e) => setTone(e.target.value)} className="select" disabled={loading}>
+                    {TONES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="label mb-0">Words</label>
+                    <span className="text-sm font-semibold text-primary">{targetWordCount}</span>
+                  </div>
+                  <input type="range" min={MIN_WORD_COUNT} max={MAX_WORD_COUNT} step={100} value={targetWordCount} onChange={(e) => setTargetWordCount(Number(e.target.value))} disabled={loading} />
+                </div>
               </div>
-            )}
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Starting Content Generation...
-                </span>
-              ) : (
-                `🚀 Generate ${totalBlogs} Blog Posts`
+              {/* Error */}
+              {error && (
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm">
+                  {error}
+                </div>
               )}
-            </button>
 
-            <p className="text-xs text-gray-500 text-center">
-              Estimated time: 8-15 minutes • This will generate {totalBlogs} unique, research-backed blog posts
-            </p>
-          </form>
-        </div>
+              {/* Submit */}
+              <button type="submit" disabled={loading} className="btn-primary w-full">
+                {loading ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Starting...</>
+                ) : (
+                  <><Sparkles className="w-4 h-4 mr-2" /> Generate {totalBlogs} Posts</>
+                )}
+              </button>
 
-        {/* Footer */}
-        <div className="text-center mt-12 text-gray-500 text-sm">
-          <p>Powered by Google Gemini AI • Production-grade content at scale</p>
+           
+            </form>
+          </div>
+
+         
         </div>
       </div>
     </div>
   );
 }
-

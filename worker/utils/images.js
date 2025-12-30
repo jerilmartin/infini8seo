@@ -18,6 +18,9 @@ async function trackDownload(downloadUrl, accessKey) {
   }
 }
 
+/**
+ * Fetch stock images from Unsplash for a scenario
+ */
 export async function fetchScenarioImageUrls({ keywords, personaName }) {
   const accessKey = process.env.UNSPLASH_ACCESS_KEY;
 

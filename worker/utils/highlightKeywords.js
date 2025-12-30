@@ -2,6 +2,7 @@ import logger from '../../utils/logger.js';
 
 /**
  * Automatically highlight SEO keywords in content with proper escaping
+ * Only highlights in paragraph text, never in headings, subheadings, or tables
  */
 export function highlightKeywords(content, keywords, wordCount = 1200) {
   if (!content || !keywords || keywords.length === 0) {
@@ -9,40 +10,53 @@ export function highlightKeywords(content, keywords, wordCount = 1200) {
     return content;
   }
   
-  const targetHighlights = Math.floor(20 + ((wordCount - 500) / 100));
+  // Slightly increased target: was 20 + (wordCount-500)/100, now 25 + (wordCount-500)/80
+  const targetHighlights = Math.floor(25 + ((wordCount - 500) / 80));
   logger.info(`Highlighting keywords - target: ${targetHighlights} for ${wordCount} words`);
   
   let result = content;
   let totalHighlights = 0;
-  const highlightedPositions = new Set(); // Track what we've already highlighted
+  const highlightedPositions = new Set();
   
-  // Process each keyword
   for (const keyword of keywords) {
     if (!keyword || totalHighlights >= targetHighlights) break;
     
     const kw = keyword.trim();
     if (!kw) continue;
     
-    const maxPerKeyword = 3;
+    // Increased from 3 to 4 per keyword
+    const maxPerKeyword = 4;
     let highlightedCount = 0;
     
-    // Escape special regex characters
+    // Properly escape regex special characters
     const escapedKw = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    
-    // Create regex for word boundary matching (case insensitive)
     const regex = new RegExp(`\\b(${escapedKw})\\b`, 'gi');
     
-    // Find all matches first
     const matches = [];
     let match;
     while ((match = regex.exec(result)) !== null) {
-      // Skip if already inside a <mark> tag or heading
-      const before = result.substring(Math.max(0, match.index - 50), match.index);
+      const before = result.substring(Math.max(0, match.index - 100), match.index);
       const after = result.substring(match.index, Math.min(result.length, match.index + 100));
       
-      // Skip if already highlighted or in a heading
+      // Skip if already highlighted
       if (before.includes('<mark') && !before.includes('</mark>')) continue;
-      if (before.includes('\n#') || after.startsWith('#')) continue;
+      
+      // Skip if in a heading (# at start of line or after newline)
+      if (/\n#+\s/.test(before) || /^#+\s/.test(before)) continue;
+      
+      // Skip if followed by heading marker
+      if (/^\s*#+\s/.test(after)) continue;
+      
+      // Skip if inside HTML tags
+      if (before.includes('<') && !before.includes('>')) continue;
+      
+      // Skip if inside a markdown table (line contains |)
+      const lineStart = before.lastIndexOf('\n');
+      const lineEnd = after.indexOf('\n');
+      const currentLine = before.substring(lineStart + 1) + after.substring(0, lineEnd > -1 ? lineEnd : after.length);
+      if (currentLine.includes('|')) continue;
+      
+      // Skip if already highlighted at this position
       if (highlightedPositions.has(match.index)) continue;
       
       matches.push({
@@ -52,7 +66,7 @@ export function highlightKeywords(content, keywords, wordCount = 1200) {
       });
     }
     
-    // Highlight matches (in reverse order to preserve indices)
+    // Process matches in reverse order to maintain correct indices
     matches.reverse().slice(0, maxPerKeyword).forEach(m => {
       if (highlightedCount >= maxPerKeyword || totalHighlights >= targetHighlights) return;
       

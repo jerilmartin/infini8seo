@@ -22,7 +22,7 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=3001
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -40,13 +40,7 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     volumes:
-      - ./server:/app/server
-      - ./config:/app/config
-      - ./models:/app/models
-      - ./utils:/app/utils
       - ./logs:/app/logs
-      - ./package.json:/app/package.json
-    command: node --watch-path=./server --watch-path=./config --watch-path=./models --watch-path=./utils server/index.js
 
   # Worker Process (BullMQ Consumer)
   worker:
@@ -56,7 +50,7 @@ services:
     container_name: content-factory-worker
     restart: unless-stopped
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - GEMINI_API_KEY=${GEMINI_API_KEY}
@@ -73,15 +67,9 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     volumes:
-      - ./worker:/app/worker
-      - ./config:/app/config
-      - ./models:/app/models
-      - ./utils:/app/utils
       - ./logs:/app/logs
-      - ./package.json:/app/package.json
-    command: node --watch-path=./worker --watch-path=./config --watch-path=./models --watch-path=./utils worker/index.js
 
-  # Next.js Frontend (Development with hot-reload)
+  # Next.js Frontend
   client:
     build:
       context: ./client
@@ -92,14 +80,10 @@ services:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:3001
-      - NODE_ENV=development
     depends_on:
       - api
     networks:
       - content-factory-network
-    volumes:
-      - ./client/app:/app/app
-      - ./client/public:/app/public
 
   # Cleanup Service (runs weekly to delete old data)
   cleanup:
