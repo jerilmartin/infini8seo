@@ -61,6 +61,12 @@ export default function ProgressPage() {
     }
   }, [jobId, polling, fetchJobStatus]);
 
+  // Theme initialization - read from localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('results-theme') as 'dark' | 'light' | null;
+    document.documentElement.setAttribute('data-theme', savedTheme || 'dark');
+  }, []);
+
   const formatTime = (seconds?: number) => {
     if (!seconds) return '—';
     if (seconds < 60) return `${seconds}s`;
@@ -72,7 +78,7 @@ export default function ProgressPage() {
     switch (jobStatus.status) {
       case 'ENQUEUED': return 'queued';
       case 'RESEARCHING': return 'research';
-      case 'RESEARCH_COMPLETE': 
+      case 'RESEARCH_COMPLETE':
       case 'GENERATING': return 'writing';
       case 'COMPLETE': return 'complete';
       case 'FAILED': return 'failed';
@@ -90,11 +96,11 @@ export default function ProgressPage() {
   const getStepState = (step: string) => {
     if (phase === 'failed') return 'failed';
     if (phase === 'complete') return 'complete';
-    
+
     const stepOrder = ['research', 'topics', 'keywords', 'writing', 'optimization'];
     const currentIndex = phase === 'research' ? 0 : phase === 'writing' ? 3 : -1;
     const stepIndex = stepOrder.indexOf(step);
-    
+
     if (stepIndex < currentIndex) return 'complete';
     if (stepIndex === currentIndex) return 'active';
     return 'pending';
@@ -118,201 +124,146 @@ export default function ProgressPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-8 py-10">
-        {/* Header - Expanded Status Area */}
-        <header className="mb-10 animate-fade-in">
-          <div className="text-[20px] font-medium text-foreground tracking-tight mb-6">infini8seo</div>
-          
-          <div className="flex items-center gap-3 mb-4">
-            <div className={`w-2.5 h-2.5 rounded-full ${
-              phase === 'complete' ? 'bg-emerald-500' : 
-              phase === 'failed' ? 'bg-destructive' : 
-              'bg-primary animate-pulse'
-            }`} />
-            <span className="text-[13px] font-medium text-secondary-foreground uppercase tracking-wide">
-              {phase === 'complete' ? 'Complete' : phase === 'failed' ? 'Failed' : 'In Progress'}
-            </span>
+    <div className="h-screen bg-background overflow-hidden flex flex-col">
+      <div className="max-w-[1400px] w-full mx-auto px-6 py-6 h-full flex flex-col">
+        {/* Header - Compact */}
+        <header className="mb-6 animate-fade-in shrink-0">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[18px] font-medium text-foreground tracking-tight">infini8seo</div>
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-secondary border border-border">
+              <div className={`w-1.5 h-1.5 rounded-full ${phase === 'complete' ? 'bg-emerald-500' :
+                phase === 'failed' ? 'bg-destructive' :
+                  'bg-primary animate-pulse'
+                }`} />
+              <span className="text-[11px] font-medium text-foreground uppercase tracking-wide">
+                {phase === 'complete' ? 'Complete' : phase === 'failed' ? 'Failed' : 'In Progress'}
+              </span>
+            </div>
           </div>
-          
-          <h1 className="text-[28px] font-semibold text-foreground mb-2">
-            {phase === 'complete' ? 'Your content is ready' : 'Building your content engine'}
-          </h1>
-          {jobStatus && (
-            <p className="text-[16px] text-secondary-foreground">
-              for "<span className="text-foreground">{jobStatus.niche}</span>"
-            </p>
-          )}
+
+          <div className="flex items-baseline gap-3">
+            <h1 className="text-[24px] font-semibold text-foreground tracking-tight">
+              {phase === 'complete' ? 'Your content is ready' : 'Building your content engine'}
+            </h1>
+            {jobStatus && (
+              <p className="text-[15px] text-secondary-foreground">
+                for <span className="text-foreground font-medium">"{jobStatus.niche}"</span>
+              </p>
+            )}
+          </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0 pb-6">
           {/* Left Column - Progress */}
-          <div className="animate-fade-in" style={{ animationDelay: '50ms' }}>
+          <div className="animate-fade-in h-full min-h-0" style={{ animationDelay: '50ms' }}>
             {/* Progress Card */}
-            <div className="bg-card/50 rounded-xl p-8">
-              {/* Large Progress Display */}
-              <div className="mb-8">
-                <div className="flex items-baseline justify-between mb-3">
-                  <span className="text-[14px] text-secondary-foreground">Progress</span>
-                  <span className="text-[24px] font-semibold text-foreground">{progress}%</span>
+            <div className="bg-card border border-border rounded-xl p-6 h-full flex flex-col overflow-y-auto">
+              <div>
+                {/* Progress Bar */}
+                <div className="mb-6">
+                  <div className="flex items-baseline justify-between mb-2">
+                    <span className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">Overall Progress</span>
+                    <span className="text-[20px] font-semibold text-foreground">{progress}%</span>
+                  </div>
+                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-700 ease-out ${phase === 'complete' ? 'bg-emerald-500' : 'bg-primary'
+                        }`}
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2.5 bg-border/60 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-700 ease-out ${
-                      phase === 'complete' ? 'bg-emerald-500' : 'bg-primary'
-                    }`}
-                    style={{ width: `${progress}%` }}
+
+                {/* Step List */}
+                <div className="space-y-3">
+                  <StepItem
+                    state={phase === 'research' ? 'active' : ['writing', 'complete'].includes(phase) ? 'complete' : 'pending'}
+                    title="Researching your niche"
+                    subtitle={phase === 'research' ? 'Analyzing competitors...' : undefined}
+                  />
+                  <StepItem
+                    state={['writing', 'complete'].includes(phase) ? 'complete' : phase === 'research' && progress > 10 ? 'active' : 'pending'}
+                    title="Topic clustering"
+                  />
+                  <StepItem
+                    state={['writing', 'complete'].includes(phase) ? 'complete' : 'pending'}
+                    title="Keyword mapping"
+                  />
+                  <StepItem
+                    state={phase === 'writing' ? 'active' : phase === 'complete' ? 'complete' : 'pending'}
+                    title="Writing articles"
+                    subtitle={phase === 'writing' ? `${generated}/${totalTarget} done` : undefined}
+                    highlight={phase === 'writing'}
+                  />
+                  <StepItem
+                    state={phase === 'complete' ? 'complete' : 'pending'}
+                    title="Optimization"
                   />
                 </div>
               </div>
 
-              {/* Step List */}
-              <div className="space-y-4">
-                {/* Research step */}
-                <StepItem 
-                  state={phase === 'research' ? 'active' : ['writing', 'complete'].includes(phase) ? 'complete' : 'pending'}
-                  title="Researching your niche"
-                  subtitle={phase === 'research' ? 'Analyzing competitors and trends...' : 
-                           jobStatus?.scenariosGenerated ? 'Competitor analysis complete' : undefined}
-                />
-                
-                {/* Topic clustering */}
-                <StepItem 
-                  state={['writing', 'complete'].includes(phase) ? 'complete' : phase === 'research' && progress > 10 ? 'active' : 'pending'}
-                  title="Topic clustering"
-                  subtitle={['writing', 'complete'].includes(phase) ? `${jobStatus?.scenariosGenerated || totalTarget} topics identified` : undefined}
-                />
-                
-                {/* Keyword mapping */}
-                <StepItem 
-                  state={['writing', 'complete'].includes(phase) ? 'complete' : 'pending'}
-                  title="Keyword mapping"
-                  subtitle={['writing', 'complete'].includes(phase) ? 'SEO keywords assigned' : undefined}
-                />
-                
-                {/* Writing */}
-                <StepItem 
-                  state={phase === 'writing' ? 'active' : phase === 'complete' ? 'complete' : 'pending'}
-                  title="Writing articles"
-                  subtitle={phase === 'writing' ? `${generated} of ${totalTarget} completed` : 
-                           phase === 'complete' ? `${generated} articles written` : undefined}
-                  highlight={phase === 'writing'}
-                />
-                
-                {/* Optimization */}
-                <StepItem 
-                  state={phase === 'complete' ? 'complete' : 'pending'}
-                  title="Structuring & optimization"
-                  subtitle={phase === 'complete' ? 'SEO optimization complete' : undefined}
-                />
-              </div>
-
               {/* Time estimate */}
               {jobStatus?.estimatedSecondsRemaining && phase !== 'complete' && (
-                <div className="mt-8 pt-6 border-t border-border/30">
-                  <div className="flex items-center justify-between text-[14px]">
-                    <span className="text-secondary-foreground">Estimated time remaining</span>
-                    <span className="text-foreground font-medium">{formatTime(jobStatus.estimatedSecondsRemaining)}</span>
+                <div className="mt-auto pt-4 border-t border-border/30">
+                  <div className="flex items-center justify-between text-[13px]">
+                    <span className="text-secondary-foreground">Time remaining</span>
+                    <span className="text-foreground font-medium tabular-nums">{formatTime(jobStatus.estimatedSecondsRemaining)}</span>
                   </div>
                 </div>
               )}
 
               {/* Error state */}
               {phase === 'failed' && jobStatus?.errorMessage && (
-                <div className="mt-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
-                  <p className="text-[14px] text-destructive">{jobStatus.errorMessage}</p>
-                </div>
-              )}
-
-              {/* Complete state */}
-              {phase === 'complete' && (
-                <div className="mt-8 pt-6 border-t border-border/30 text-center">
-                  <p className="text-[14px] text-secondary-foreground">Redirecting to your content...</p>
+                <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <p className="text-[13px] text-destructive">{jobStatus.errorMessage}</p>
                 </div>
               )}
             </div>
-
-            {/* Actions */}
-            {phase === 'failed' && (
-              <div className="mt-6">
-                <button onClick={() => router.push('/')} className="btn-primary w-full justify-center">
-                  Try again
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Right Column - Live Titles */}
-          <aside className="animate-fade-in" style={{ animationDelay: '100ms' }}>
-            <div className="bg-card/50 rounded-xl p-8">
-              <div className="flex items-center justify-between mb-6">
-                <p className="text-[12px] font-medium text-foreground/80 uppercase tracking-wide">Generated so far</p>
+          <aside className="animate-fade-in h-full min-h-0" style={{ animationDelay: '100ms' }}>
+            <div className="bg-card border border-border rounded-xl p-6 h-full flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between mb-4 shrink-0">
+                <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">Generated Content</p>
                 {titles.length > 0 && (
-                  <span className="text-[13px] text-secondary-foreground">{titles.length} articles</span>
+                  <span className="text-[11px] text-foreground px-1.5 py-0.5 bg-secondary border border-border rounded">{titles.length}</span>
                 )}
               </div>
 
               {/* Live Titles List */}
-              <div className="space-y-4 min-h-[300px]">
+              <div className="space-y-2 flex-1 overflow-y-auto pr-2 custom-scrollbar">
                 {titles.length === 0 && phase !== 'complete' ? (
-                  <div className="flex flex-col items-center justify-center h-[300px] text-center">
+                  <div className="flex flex-col items-center justify-center h-full text-center opacity-60">
                     {phase === 'research' ? (
                       <>
-                        <Loader2 className="w-6 h-6 text-primary animate-spin mb-4" />
-                        <p className="text-[14px] text-secondary-foreground">Researching your niche...</p>
-                        <p className="text-[13px] text-muted-foreground mt-1">Titles will appear here soon</p>
+                        <Loader2 className="w-6 h-6 text-primary animate-spin mb-3" />
+                        <p className="text-[14px] text-foreground">Researching...</p>
                       </>
                     ) : (
                       <>
-                        <Circle className="w-6 h-6 text-muted-foreground mb-4" />
-                        <p className="text-[14px] text-secondary-foreground">Waiting to start...</p>
+                        <Circle className="w-6 h-6 text-muted-foreground/30 mb-3" />
+                        <p className="text-[13px] text-secondary-foreground">Waiting...</p>
                       </>
                     )}
                   </div>
                 ) : (
                   <>
-                    {titles.slice(0, 8).map((item, i) => (
-                      <div key={i} className="flex items-start gap-3 animate-fade-in" style={{ animationDelay: `${i * 50}ms` }}>
-                        <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                          <Check className="w-3 h-3 text-emerald-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[15px] text-foreground leading-snug truncate">{item.title}</p>
-                          <p className="text-[12px] text-muted-foreground mt-0.5">{item.type}</p>
-                        </div>
+                    {titles.slice(0, 15).map((item, i) => (
+                      <div key={i} className="flex items-center gap-3 p-2 rounded hover:bg-white/5 transition-colors text-[13px]">
+                        <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                        <span className="flex-1 truncate text-foreground/90">{item.title}</span>
                       </div>
                     ))}
-                    
-                    {/* Show "writing" indicator for next article */}
-                    {phase === 'writing' && titles.length < totalTarget && (
-                      <div className="flex items-start gap-3 opacity-60">
-                        <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
-                          <Loader2 className="w-3 h-3 text-primary animate-spin" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-[15px] text-foreground/60 leading-snug">Writing next article...</p>
-                        </div>
+                    {phase === 'writing' && (
+                      <div className="flex items-center gap-3 p-2 text-[13px] opacity-60">
+                        <Loader2 className="w-3 h-3 text-primary animate-spin shrink-0" />
+                        <span className="text-foreground/60">Writing next...</span>
                       </div>
-                    )}
-                    
-                    {/* Show remaining count */}
-                    {titles.length > 8 && (
-                      <p className="text-[13px] text-muted-foreground text-center pt-2">
-                        +{titles.length - 8} more articles
-                      </p>
                     )}
                   </>
                 )}
               </div>
-
-              {/* Safe to leave message */}
-              {phase !== 'complete' && phase !== 'failed' && (
-                <div className="mt-6 pt-6 border-t border-border/30">
-                  <p className="text-[13px] text-muted-foreground text-center">
-                    You can close this tab — we'll keep working in the background
-                  </p>
-                </div>
-              )}
             </div>
           </aside>
         </div>
@@ -322,41 +273,39 @@ export default function ProgressPage() {
 }
 
 // Step Item Component
-function StepItem({ 
-  state, 
-  title, 
+function StepItem({
+  state,
+  title,
   subtitle,
   highlight = false
-}: { 
+}: {
   state: 'pending' | 'active' | 'complete' | 'failed';
   title: string;
   subtitle?: string;
   highlight?: boolean;
 }) {
   return (
-    <div className={`flex items-start gap-3 ${highlight ? 'bg-primary/5 -mx-3 px-3 py-2 rounded-lg' : ''}`}>
-      <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-        state === 'complete' ? 'bg-emerald-500/20' :
+    <div className={`flex items-center gap-3 ${highlight ? 'bg-primary/5 -mx-3 px-3 py-2 rounded-lg' : 'py-0.5'}`}>
+      <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${state === 'complete' ? 'bg-emerald-500/20' :
         state === 'active' ? 'bg-primary/20' :
-        'bg-border/60'
-      }`}>
+          'bg-border/60'
+        }`}>
         {state === 'complete' ? (
-          <Check className="w-3 h-3 text-emerald-500" />
+          <Check className="w-2.5 h-2.5 text-emerald-500" />
         ) : state === 'active' ? (
-          <Loader2 className="w-3 h-3 text-primary animate-spin" />
+          <Loader2 className="w-2.5 h-2.5 text-primary animate-spin" />
         ) : (
-          <Circle className="w-2 h-2 text-muted-foreground" />
+          <Circle className="w-1.5 h-1.5 text-muted-foreground" />
         )}
       </div>
-      <div className="flex-1">
-        <div className={`text-[14px] font-medium ${
-          state === 'complete' ? 'text-foreground' :
+      <div className="flex-1 min-w-0">
+        <div className={`text-[13px] font-medium truncate ${state === 'complete' ? 'text-foreground' :
           state === 'active' ? 'text-foreground' :
-          'text-muted-foreground'
-        }`}>{title}</div>
-        {subtitle && (
-          <div className="text-[12px] text-muted-foreground mt-0.5">{subtitle}</div>
-        )}
+            'text-muted-foreground'
+          }`}>
+          {title}
+          {subtitle && <span className="opacity-60 ml-2 font-normal">{subtitle}</span>}
+        </div>
       </div>
     </div>
   );

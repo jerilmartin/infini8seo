@@ -53,12 +53,12 @@ let genAI;
 
 function initGemini() {
   const apiKey = process.env.GEMINI_API_KEY;
-  
+
   if (!apiKey) {
     logger.error('GEMINI_API_KEY not found in environment variables');
     throw new Error('GEMINI_API_KEY is required');
   }
-  
+
   logger.info(`Gemini API Key loaded: ${apiKey.substring(0, 20)}...`);
   genAI = new GoogleGenerativeAI(apiKey);
   return genAI;
@@ -130,7 +130,7 @@ export async function executePhaseB({
         logger.info(`Generating ${scenario.blog_type} blog ${scenario.scenario_id}/${totalCount}: "${scenario.blog_topic_headline}"`);
 
         const startTime = Date.now();
-        
+
         const blogContent = await generateSingleBlogPost({
           scenario,
           niche,
@@ -144,23 +144,23 @@ export async function executePhaseB({
 
         const images = Array.isArray(scenario.image_urls) ? scenario.image_urls.slice(0, 2) : [];
         const blogContentWithFaq = ensureFaqSection(blogContent, scenario, valuePropositions[0]);
-        
+
         logger.info(`Highlighting keywords for blog ${scenario.scenario_id}: ${scenario.target_keywords?.join(', ')}`);
         const contentWithKeywords = highlightKeywords(blogContentWithFaq, scenario.target_keywords, targetWordCount);
         logger.info(`Keyword highlighting complete - added ${(contentWithKeywords.match(/<mark/g) || []).length} highlights`);
-        
+
         let contentWithImages = contentWithKeywords;
-        
+
         if (scenario.scenario_id <= 2 && images.length > 0) {
           const sections = contentWithImages.split(/(?=##\s)/);
-          
+
           if (sections.length >= 3 && images.length >= 2) {
             sections[1] = `${images[0] ? `![${images[0].alt || scenario.blog_topic_headline}](${images[0].url})\n*Photo by [${images[0].photographer}](${images[0].photographerUrl}) on Unsplash*\n\n` : ''}${sections[1]}`;
-            
+
             if (sections.length >= 4) {
               sections[3] = `${images[1] ? `![${images[1].alt || scenario.blog_topic_headline}](${images[1].url})\n*Photo by [${images[1].photographer}](${images[1].photographerUrl}) on Unsplash*\n\n` : ''}${sections[3]}`;
             }
-            
+
             contentWithImages = sections.join('');
           } else {
             contentWithImages = `${images.map((img) => `![${img.alt || scenario.blog_topic_headline}](${img.url})\n*Photo by [${img.photographer}](${img.photographerUrl}) on Unsplash*`).join('\n\n')}\n\n${contentWithKeywords}`;
@@ -176,14 +176,14 @@ export async function executePhaseB({
           blogContent: contentWithImages,
           wordCount: countWords(contentWithImages),
           generationTimeMs: generationTime,
-          modelUsed: 'gemini-2.5-flash',
+          modelUsed: 'gemini-3-flash',
           blogType: scenario.blog_type,
           sourceScenarioId: scenario.source_scenario_id,
           imageUrls: images
         });
 
         completedCount += 1;
-        
+
         if (progressCallback) {
           await progressCallback(completedCount, totalCount);
         }
@@ -215,7 +215,7 @@ export async function executePhaseB({
         }
 
         completedCount += 1;
-        
+
         if (progressCallback) {
           await progressCallback(completedCount, totalCount);
         }
@@ -252,9 +252,9 @@ async function generateSingleBlogPost({ scenario, niche, valuePropositions, tone
   if (!genAI) {
     genAI = initGemini();
   }
-  
+
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3-flash',
     generationConfig: {
       temperature: 0.9,
       topP: 0.95,
@@ -472,14 +472,14 @@ BEGIN WRITING NOW.
       const startTime = Date.now();
 
       const fullPrompt = `${systemInstruction}\n\n${userPrompt}`;
-      
+
       const result = await model.generateContent(fullPrompt);
-      
+
       const response = result.response;
       if (!response || response.promptFeedback?.blockReason) {
         throw new Error(`Content blocked: ${response.promptFeedback?.blockReason || 'Unknown reason'}`);
       }
-      
+
       const blogContent = response.text();
 
       if (!blogContent || blogContent.trim().length === 0) {
@@ -490,7 +490,7 @@ BEGIN WRITING NOW.
       const generationTime = endTime - startTime;
 
       const wordCount = countWords(blogContent);
-      
+
       if (wordCount < 1000) {
         logger.warn(`Blog post ${scenario.scenario_id} too short (${wordCount} words), retrying...`);
         attempts++;
@@ -505,25 +505,25 @@ BEGIN WRITING NOW.
 
       return blogContent;
 
-      } catch (error) {
-        attempts++;
-        
-        const isRateLimit = error.message && (
-          error.message.includes('429') || 
-          error.message.includes('quota') ||
-          error.message.includes('Too Many Requests')
-        );
-        
-        if (attempts >= maxAttempts) {
-          throw new Error(`Failed to generate blog post after ${maxAttempts} attempts: ${error.message}`);
-        }
-        
-        logger.warn(`Blog generation attempt ${attempts}/${maxAttempts} failed for scenario ${scenario.scenario_id}: ${error.message}`);
-        
-        const backoffMs = isRateLimit ? 60000 : (1000 * Math.pow(2, attempts));
-        logger.info(`Retrying in ${backoffMs/1000}s...`);
-        await new Promise(resolve => setTimeout(resolve, backoffMs));
+    } catch (error) {
+      attempts++;
+
+      const isRateLimit = error.message && (
+        error.message.includes('429') ||
+        error.message.includes('quota') ||
+        error.message.includes('Too Many Requests')
+      );
+
+      if (attempts >= maxAttempts) {
+        throw new Error(`Failed to generate blog post after ${maxAttempts} attempts: ${error.message}`);
       }
+
+      logger.warn(`Blog generation attempt ${attempts}/${maxAttempts} failed for scenario ${scenario.scenario_id}: ${error.message}`);
+
+      const backoffMs = isRateLimit ? 60000 : (1000 * Math.pow(2, attempts));
+      logger.info(`Retrying in ${backoffMs / 1000}s...`);
+      await new Promise(resolve => setTimeout(resolve, backoffMs));
+    }
   }
 }
 

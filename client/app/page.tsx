@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowRight, Loader2, Sun, Moon } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -52,6 +52,25 @@ export default function Home() {
   const [error, setError] = useState('');
   const [allocations, setAllocations] = useState<Allocations>(DEFAULT_ALLOCATIONS);
   const [targetWordCount, setTargetWordCount] = useState(DEFAULT_WORD_COUNT);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  // Theme persistence and initialization
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('results-theme') as 'dark' | 'light' | null;
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('results-theme', newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+  };
 
   const totalPosts = CONTENT_TYPES.reduce((acc, t) => acc + allocations[t.key], 0);
 
@@ -98,11 +117,20 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-8 py-10">
+      <div className="max-w-7xl mx-auto px-8 py-6">
         {/* Brand + Header */}
-        <header className="mb-4 animate-fade-in">
-          <div className="text-[23px] font-medium text-foreground tracking-tight mb-8">infini8seo</div>
-          <h1 className="text-[26px] font-semibold text-foreground leading-tight">
+        <header className="mb-2 animate-fade-in">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-[21px] font-medium text-foreground tracking-tight">infini8seo</div>
+            <button
+              onClick={toggleTheme}
+              className="flex items-center justify-center w-9 h-9 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+          </div>
+          <h1 className="text-[24px] font-semibold text-foreground leading-tight">
             Content Factory
           </h1>
         </header>
@@ -110,24 +138,24 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
           {/* Form Column */}
           <div className="animate-fade-in" style={{ animationDelay: '50ms' }}>
-            <form onSubmit={handleSubmit} className="space-y-7">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {/* Niche */}
               <section>
-                <label className="text-[12px] font-medium text-foreground/80 uppercase tracking-wide mb-2.5 block">Your Niche</label>
+                <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-2 block">Your Niche</label>
                 <input
                   type="text"
                   value={niche}
                   onChange={(e) => setNiche(e.target.value)}
                   placeholder="e.g., B2B SaaS, Personal Finance"
-                  className="input text-[15px] h-12"
+                  className="input text-[14px] h-10"
                   disabled={loading}
                 />
               </section>
 
               {/* Specialties */}
               <section>
-                <label className="text-[12px] font-medium text-foreground/80 uppercase tracking-wide mb-2.5 block">What You Offer</label>
-                <div className="space-y-2.5">
+                <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-2 block">What You Offer</label>
+                <div className="space-y-2">
                   {valuePropositions.map((vp, i) => (
                     <div key={i} className="flex gap-2">
                       <input
@@ -135,7 +163,7 @@ export default function Home() {
                         value={vp}
                         onChange={(e) => handleValuePropChange(i, e.target.value)}
                         placeholder="A key service or angle"
-                        className="input flex-1 text-[15px] h-12"
+                        className="input flex-1 text-[14px] h-10"
                         disabled={loading}
                       />
                       {valuePropositions.length > 1 && (
@@ -145,7 +173,7 @@ export default function Home() {
                   ))}
                 </div>
                 {valuePropositions.length < 5 && (
-                  <button type="button" onClick={addValueProp} className="mt-2.5 text-[13px] text-secondary-foreground hover:text-foreground transition-colors" disabled={loading}>
+                  <button type="button" onClick={addValueProp} className="mt-1.5 text-[12px] text-secondary-foreground hover:text-foreground transition-colors" disabled={loading}>
                     + Add another
                   </button>
                 )}
@@ -153,25 +181,25 @@ export default function Home() {
 
               {/* Content Mix */}
               <section>
-                <div className="flex items-baseline justify-between mb-4">
-                  <label className="text-[12px] font-medium text-foreground/80 uppercase tracking-wide">Content Mix</label>
-                  <span className="text-[13px] tabular-nums text-secondary-foreground">{totalPosts} posts</span>
+                <div className="flex items-baseline justify-between mb-3">
+                  <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide">Content Mix</label>
+                  <span className="text-[12px] tabular-nums text-secondary-foreground">{totalPosts} posts</span>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {CONTENT_TYPES.map((type) => {
                     const value = allocations[type.key];
                     return (
                       <div key={type.key} className="group">
-                        <div className="flex items-baseline justify-between mb-1.5">
+                        <div className="flex items-baseline justify-between mb-1">
                           <div className="flex items-baseline gap-2">
                             <span className="text-[14px] font-medium text-foreground">{type.label}</span>
-                            <span className="text-[12px] text-secondary-foreground">{type.desc}</span>
+                            <span className="text-[11px] text-secondary-foreground">{type.desc}</span>
                           </div>
-                          <span className="text-[13px] tabular-nums text-secondary-foreground w-5 text-right">{value}</span>
+                          <span className="text-[12px] tabular-nums text-secondary-foreground w-5 text-right">{value}</span>
                         </div>
-                        <div 
-                          className="h-1.5 bg-border/60 rounded-full cursor-pointer relative overflow-hidden"
+                        <div
+                          className="h-1 bg-border/60 rounded-full cursor-pointer relative overflow-hidden"
                           onClick={(e) => {
                             const rect = e.currentTarget.getBoundingClientRect();
                             const x = e.clientX - rect.left;
@@ -190,16 +218,16 @@ export default function Home() {
               </section>
 
               {/* Settings Row */}
-              <section className="grid grid-cols-2 gap-5">
+              <section className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[12px] font-medium text-foreground/80 uppercase tracking-wide mb-2.5 block">Tone</label>
-                  <select value={tone} onChange={(e) => setTone(e.target.value)} className="select text-[14px] h-12" disabled={loading}>
+                  <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-2 block">Tone</label>
+                  <select value={tone} onChange={(e) => setTone(e.target.value)} className="select text-[14px] h-10" disabled={loading}>
                     {TONES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-[12px] font-medium text-foreground/80 uppercase tracking-wide mb-2.5 block">Length</label>
-                  <div className="flex items-center gap-3 h-12">
+                  <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-2 block">Length</label>
+                  <div className="flex items-center gap-3 h-10">
                     <input
                       type="range"
                       min={MIN_WORD_COUNT}
@@ -210,7 +238,7 @@ export default function Home() {
                       className="flex-1"
                       disabled={loading}
                     />
-                    <span className="text-[13px] tabular-nums text-secondary-foreground w-14 text-right">{targetWordCount}w</span>
+                    <span className="text-[12px] tabular-nums text-secondary-foreground w-14 text-right">{targetWordCount}w</span>
                   </div>
                 </div>
               </section>
@@ -219,7 +247,7 @@ export default function Home() {
                 <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-[13px]">{error}</div>
               )}
 
-              <button type="submit" disabled={loading || totalPosts === 0} className="btn-primary w-full justify-center text-[14px] h-12 mt-2">
+              <button type="submit" disabled={loading || totalPosts === 0} className="btn-primary w-full justify-center text-[14px] h-10 mt-1">
                 {loading ? (
                   <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting...</>
                 ) : (
@@ -227,23 +255,23 @@ export default function Home() {
                 )}
               </button>
 
-              <p className="text-[12px] text-secondary-foreground text-center">Takes about 10-15 minutes</p>
+              <p className="text-[11px] text-secondary-foreground text-center">Takes about 10-15 minutes</p>
             </form>
           </div>
 
           {/* Preview Column */}
           <aside className="animate-fade-in" style={{ animationDelay: '100ms' }}>
-            <div className="bg-card/50 rounded-xl p-9">
-              <p className="text-[12px] font-medium text-foreground/80 uppercase tracking-wide mb-7">What you'll get</p>
+            <div className="bg-card/50 rounded-xl p-7">
+              <p className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-6">What you'll get</p>
 
               {/* Preview Titles */}
-              <div className="space-y-7">
+              <div className="space-y-5">
                 {previewTitles.map((item, i) => (
-                  <article key={i} className="pb-7 border-b border-border/30 last:border-0 last:pb-0">
-                    <h3 className="text-[19px] font-medium text-foreground leading-snug mb-2.5">
+                  <article key={i} className="pb-5 border-b border-border/30 last:border-0 last:pb-0">
+                    <h3 className="text-[17px] font-medium text-foreground leading-snug mb-1.5">
                       {item.title}
                     </h3>
-                    <p className="text-[14px] text-secondary-foreground">
+                    <p className="text-[13px] text-secondary-foreground">
                       {item.type} · {item.time} min read
                     </p>
                   </article>
@@ -251,39 +279,39 @@ export default function Home() {
               </div>
 
               {/* Meta Row */}
-              <div className="mt-9 pt-7 border-t border-border/30">
+              <div className="mt-7 pt-5 border-t border-border/30">
                 <div className="flex justify-between text-center">
                   <div className="flex-1">
-                    <div className="text-[11px] text-secondary-foreground uppercase tracking-wide mb-1.5">Structure</div>
-                    <div className="text-[14px] text-foreground/80">Intro → Body → FAQ</div>
+                    <div className="text-[10px] text-secondary-foreground uppercase tracking-wide mb-1">Structure</div>
+                    <div className="text-[13px] text-foreground/80">Intro → Body → FAQ</div>
                   </div>
                   <div className="flex-1">
-                    <div className="text-[11px] text-secondary-foreground uppercase tracking-wide mb-1.5">SEO</div>
-                    <div className="text-[14px] text-foreground/80">Keywords + Meta</div>
+                    <div className="text-[10px] text-secondary-foreground uppercase tracking-wide mb-1">SEO</div>
+                    <div className="text-[13px] text-foreground/80">Keywords + Meta</div>
                   </div>
                   <div className="flex-1">
-                    <div className="text-[11px] text-secondary-foreground uppercase tracking-wide mb-1.5">AIO</div>
-                    <div className="text-[14px] text-foreground/80">AI-optimized</div>
+                    <div className="text-[10px] text-secondary-foreground uppercase tracking-wide mb-1">AIO</div>
+                    <div className="text-[13px] text-foreground/80">AI-optimized</div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Stats Row */}
-            <div className="mt-6 flex items-center justify-center gap-10 text-center">
+            <div className="mt-4 flex items-center justify-center gap-10 text-center">
               <div>
-                <div className="text-[18px] font-semibold text-foreground/80">{totalPosts}</div>
-                <div className="text-[11px] text-secondary-foreground uppercase tracking-wide">Posts</div>
+                <div className="text-[16px] font-semibold text-foreground/80">{totalPosts}</div>
+                <div className="text-[10px] text-secondary-foreground uppercase tracking-wide">Posts</div>
               </div>
-              <div className="w-px h-6 bg-border/40" />
+              <div className="w-px h-5 bg-border/40" />
               <div>
-                <div className="text-[18px] font-semibold text-foreground/80">{Math.round(totalPosts * targetWordCount / 1000)}k</div>
-                <div className="text-[11px] text-secondary-foreground uppercase tracking-wide">Words</div>
+                <div className="text-[16px] font-semibold text-foreground/80">{Math.round(totalPosts * targetWordCount / 1000)}k</div>
+                <div className="text-[10px] text-secondary-foreground uppercase tracking-wide">Words</div>
               </div>
-              <div className="w-px h-6 bg-border/40" />
+              <div className="w-px h-5 bg-border/40" />
               <div>
-                <div className="text-[18px] font-semibold text-foreground/80">~{Math.round(totalPosts * targetWordCount / 200)}</div>
-                <div className="text-[11px] text-secondary-foreground uppercase tracking-wide">Min read</div>
+                <div className="text-[16px] font-semibold text-foreground/80">~{Math.round(totalPosts * targetWordCount / 200)}</div>
+                <div className="text-[10px] text-secondary-foreground uppercase tracking-wide">Min read</div>
               </div>
             </div>
           </aside>

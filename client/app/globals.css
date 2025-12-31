@@ -3,34 +3,70 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    /* Background: clean dark */
-    --background: 225 15% 8%;
-    /* Primary text: near white */
-    --foreground: 0 0% 93%;
+
+  /* Dark Mode (Default) - Improved contrast for reading */
+  :root,
+  [data-theme="dark"] {
+    /* Background: deep dark - #0F1115 equivalent */
+    --background: 225 18% 7%;
+    /* Primary text: brighter off-white for better contrast - #EDEEF1 */
+    --foreground: 228 15% 93%;
     /* Card surfaces */
-    --card: 225 12% 11%;
-    --card-foreground: 0 0% 93%;
-    --card-elevated: 225 10% 13%;
-    /* Primary accent - purple for CTAs only */
-    --primary: 263 55% 58%;
+    --card: 225 15% 10%;
+    --card-foreground: 228 15% 93%;
+    --card-elevated: 225 12% 12%;
+    /* Primary accent - soft blue for CTAs */
+    --primary: 220 70% 55%;
     --primary-foreground: 0 0% 100%;
-    /* Secondary text: readable gray */
-    --secondary: 225 10% 16%;
-    --secondary-foreground: 0 0% 70%;
-    /* Muted */
-    --muted: 225 10% 18%;
-    --muted-foreground: 0 0% 50%;
+    /* Secondary text: more readable gray - #C4C8D0 */
+    --secondary: 225 12% 14%;
+    --secondary-foreground: 224 15% 78%;
+    /* Muted: labels/tags - #9CA1AD */
+    --muted: 225 10% 16%;
+    --muted-foreground: 224 12% 64%;
     /* Input surfaces */
-    --input: 225 10% 14%;
-    --input-highlight: 225 8% 16%;
+    --input: 225 12% 12%;
+    --input-highlight: 225 10% 14%;
     /* Other */
     --destructive: 0 55% 50%;
-    --border: 225 8% 20%;
-    --ring: 263 50% 55%;
+    --border: 225 10% 20%;
+    --ring: 220 60% 50%;
     --radius: 0.5rem;
     /* Preview titles */
-    --preview-title: 0 0% 96%;
+    --preview-title: 228 15% 93%;
+  }
+
+  /* Light Mode - Clean, readable light theme */
+  [data-theme="light"] {
+    /* Background: subtle warm gray */
+    --background: 220 14% 96%;
+    /* Primary text: near-black for readability */
+    --foreground: 222 47% 11%;
+    /* Card surfaces - pure white for clear separation */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --card-elevated: 0 0% 100%;
+    /* Primary accent */
+    --primary: 220 70% 50%;
+    --primary-foreground: 0 0% 100%;
+    /* Secondary - lighter gray for sidebar bg */
+    --secondary: 220 14% 94%;
+    --secondary-foreground: 220 14% 35%;
+    /* Muted */
+    --muted: 220 14% 94%;
+    --muted-foreground: 220 9% 46%;
+    /* Input surfaces */
+    --input: 0 0% 100%;
+    --input-highlight: 220 14% 96%;
+    /* Other */
+    --destructive: 0 72% 51%;
+    --border: 220 13% 85%;
+    --ring: 220 70% 50%;
+    --radius: 0.5rem;
+    /* Preview titles */
+    --preview-title: 222 47% 11%;
+    /* Highlight color for marks */
+    --mark-underline: 220 80% 60%;
   }
 
   * {
@@ -40,6 +76,7 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-manrope), system-ui, sans-serif;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
 
@@ -174,89 +211,156 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* Markdown content - Editorial reading experience */
-.markdown-content h1 { @apply text-xl font-semibold mb-4 text-foreground; }
-.markdown-content h2 { @apply text-lg font-semibold mb-3 mt-6 text-foreground; }
-.markdown-content h3 { @apply text-base font-medium mb-2 mt-4 text-foreground; }
-.markdown-content p { @apply mb-3 text-secondary-foreground leading-relaxed text-sm; }
-.markdown-content ul, .markdown-content ol { @apply mb-3 ml-4 text-secondary-foreground text-sm; }
-.markdown-content li { @apply mb-1; }
-.markdown-content code { @apply bg-secondary px-1 py-0.5 rounded text-xs; }
-.markdown-content blockquote { @apply border-l-2 border-border pl-3 italic text-muted-foreground my-3; }
-.markdown-content table { @apply w-full mb-4 text-sm; }
-.markdown-content th { @apply bg-secondary text-left p-2 font-medium; }
-.markdown-content td { @apply p-2 border-t border-border; }
-.markdown-content mark { @apply bg-primary/15 text-foreground px-0.5 rounded; }
-.markdown-content hr { @apply border-border my-6; }
+.markdown-content h1 {
+  @apply text-xl font-semibold mb-4 text-foreground;
+}
+
+.markdown-content h2 {
+  @apply text-lg font-semibold mb-3 mt-6 text-foreground;
+}
+
+.markdown-content h3 {
+  @apply text-base font-medium mb-2 mt-4 text-foreground;
+}
+
+.markdown-content p {
+  @apply mb-3 text-secondary-foreground leading-relaxed text-sm;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  @apply mb-3 ml-4 text-secondary-foreground text-sm;
+}
+
+.markdown-content li {
+  @apply mb-1;
+}
+
+.markdown-content code {
+  @apply bg-secondary px-1 py-0.5 rounded text-xs;
+}
+
+.markdown-content blockquote {
+  @apply border-l-2 border-border pl-3 italic text-muted-foreground my-3;
+}
+
+.markdown-content table {
+  @apply w-full mb-4 text-sm;
+}
+
+.markdown-content th {
+  @apply bg-secondary text-left p-2 font-medium;
+}
+
+.markdown-content td {
+  @apply p-2 border-t border-border;
+}
+
+.markdown-content mark {
+  @apply bg-primary/15 text-foreground px-0.5 rounded;
+}
+
+.markdown-content hr {
+  @apply border-border my-6;
+}
 
 /* Prose content - Optimized for long-form reading */
 .prose-content {
   @apply text-[15px] leading-[1.75] text-secondary-foreground;
 }
-.prose-content h1 { 
-  @apply text-[22px] font-medium text-foreground mt-10 mb-4 leading-tight; 
+
+.prose-content h1 {
+  @apply text-[22px] font-medium text-foreground mt-10 mb-4 leading-tight;
 }
-.prose-content h2 { 
-  @apply text-[18px] font-medium text-foreground mt-8 mb-3 leading-snug; 
+
+.prose-content h2 {
+  @apply text-[18px] font-medium text-foreground mt-8 mb-3 leading-snug;
 }
-.prose-content h3 { 
-  @apply text-[16px] font-medium text-foreground mt-6 mb-2 leading-snug; 
+
+.prose-content h3 {
+  @apply text-[16px] font-medium text-foreground mt-6 mb-2 leading-snug;
 }
-.prose-content p { 
-  @apply mb-4 text-secondary-foreground; 
+
+.prose-content p {
+  @apply mb-4 text-secondary-foreground;
 }
-.prose-content ul, .prose-content ol { 
-  @apply mb-4 ml-5 text-secondary-foreground space-y-1.5; 
+
+.prose-content ul,
+.prose-content ol {
+  @apply mb-4 ml-5 text-secondary-foreground space-y-1.5;
 }
-.prose-content li { 
-  @apply leading-relaxed; 
+
+.prose-content li {
+  @apply leading-relaxed;
 }
+
 .prose-content li::marker {
   @apply text-muted-foreground;
 }
+
 .prose-content strong {
   @apply font-medium text-foreground;
 }
+
 .prose-content em {
   @apply italic;
 }
+
 .prose-content a {
   @apply text-foreground underline underline-offset-2 decoration-border hover:decoration-foreground transition-colors;
 }
-.prose-content code { 
-  @apply bg-secondary/60 px-1.5 py-0.5 rounded text-[13px] font-mono; 
+
+.prose-content code {
+  @apply bg-secondary/60 px-1.5 py-0.5 rounded text-[13px] font-mono;
 }
+
 .prose-content pre {
   @apply bg-secondary/40 rounded-lg p-4 overflow-x-auto mb-4;
 }
+
 .prose-content pre code {
   @apply bg-transparent p-0;
 }
-.prose-content blockquote { 
-  @apply border-l-2 border-border/60 pl-4 my-4 text-muted-foreground italic; 
+
+.prose-content blockquote {
+  @apply border-l-2 border-border/60 pl-4 my-4 text-muted-foreground italic;
 }
-.prose-content table { 
-  @apply w-full mb-4 text-[14px]; 
+
+.prose-content table {
+  @apply w-full mb-4 text-[14px];
 }
-.prose-content th { 
-  @apply bg-card text-left p-3 font-medium text-foreground border-b border-border; 
+
+.prose-content th {
+  @apply bg-card text-left p-3 font-medium text-foreground border-b border-border;
 }
-.prose-content td { 
-  @apply p-3 border-b border-border/50 text-secondary-foreground; 
+
+.prose-content td {
+  @apply p-3 border-b border-border/50 text-secondary-foreground;
 }
-.prose-content mark { 
-  @apply bg-primary/10 text-foreground px-1 rounded; 
+
+.prose-content mark {
+  @apply bg-primary/10 text-foreground px-1 rounded;
 }
-.prose-content hr { 
-  @apply border-border/50 my-8; 
+
+.prose-content hr {
+  @apply border-border/50 my-8;
 }
+
 .prose-content img {
   @apply rounded-lg my-4;
 }
 
 /* Animations */
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-in {
@@ -266,4 +370,268 @@ input[type="range"]::-moz-range-thumb {
 /* Select options */
 select option {
   @apply bg-card text-foreground;
+}
+
+/* Results Page - Article Reading */
+.prose-results {
+  @apply text-[15px] leading-[1.8] text-secondary-foreground;
+}
+
+.prose-results h1 {
+  @apply text-[20px] font-semibold text-foreground mt-8 mb-4 leading-tight;
+}
+
+.prose-results h2 {
+  @apply text-[17px] font-semibold text-foreground mt-6 mb-3 leading-snug;
+}
+
+.prose-results h3 {
+  @apply text-[15px] font-semibold text-foreground mt-5 mb-2 leading-snug;
+}
+
+.prose-results p {
+  @apply mb-4 text-secondary-foreground;
+}
+
+.prose-results ul,
+.prose-results ol {
+  @apply mb-4 ml-5 text-secondary-foreground space-y-1;
+}
+
+.prose-results li {
+  @apply leading-relaxed;
+}
+
+.prose-results li::marker {
+  @apply text-muted-foreground;
+}
+
+.prose-results strong {
+  @apply font-semibold text-foreground;
+}
+
+.prose-results em {
+  @apply italic;
+}
+
+.prose-results a {
+  @apply text-primary underline underline-offset-2 hover:text-primary/80 transition-colors;
+}
+
+.prose-results code {
+  @apply bg-secondary/60 px-1.5 py-0.5 rounded text-[13px] font-mono text-foreground;
+}
+
+.prose-results pre {
+  @apply bg-secondary/40 rounded-lg p-4 overflow-x-auto mb-4;
+}
+
+.prose-results pre code {
+  @apply bg-transparent p-0;
+}
+
+.prose-results blockquote {
+  @apply border-l-2 border-primary/40 pl-4 my-4 text-foreground/80 italic;
+}
+
+.prose-results table {
+  @apply w-full mb-4 text-[14px] border-collapse;
+}
+
+.prose-results th {
+  @apply bg-card text-left p-3 font-semibold text-foreground border border-border/50;
+}
+
+.prose-results td {
+  @apply p-3 border border-border/40 text-secondary-foreground;
+}
+
+.prose-results hr {
+  @apply border-border/50 my-6;
+}
+
+.prose-results img {
+  @apply rounded-lg my-4 max-w-full;
+}
+
+/* Fix mark tags - override ANY inline styles with subtle editorial underline */
+mark,
+mark[style],
+.prose-results mark,
+.prose-results mark[style],
+.prose-content mark,
+.prose-content mark[style],
+.markdown-content mark,
+.markdown-content mark[style],
+.article-content mark,
+.article-content mark[style] {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: inherit !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-weight: inherit !important;
+  border-bottom: 2px solid hsl(220 70% 60% / 0.5) !important;
+  text-decoration: none !important;
+}
+
+/* Light mode mark styling - more visible blue underline */
+[data-theme="light"] mark,
+[data-theme="light"] mark[style],
+[data-theme="light"] .prose-results mark,
+[data-theme="light"] .prose-results mark[style],
+[data-theme="light"] .prose-content mark,
+[data-theme="light"] .prose-content mark[style],
+[data-theme="light"] .markdown-content mark,
+[data-theme="light"] .markdown-content mark[style],
+[data-theme="light"] .article-content mark,
+[data-theme="light"] .article-content mark[style] {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-bottom: 2px solid hsl(220 80% 45% / 0.7) !important;
+}
+
+/* Article Content - Optimized for comfortable reading (Medium-like) */
+.article-content {
+  max-width: 950px;
+  font-size: 1.125rem;
+  /* 18px */
+  line-height: 1.75;
+  color: hsl(var(--foreground));
+}
+
+.article-content h1 {
+  font-size: 1.75rem;
+  /* 28px */
+  font-weight: 600;
+  color: hsl(var(--secondary-foreground));
+  margin-top: 2.5rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.article-content h2 {
+  font-size: 1.5rem;
+  /* 24px */
+  font-weight: 600;
+  color: hsl(var(--secondary-foreground));
+  margin-top: 2.25rem;
+  margin-bottom: 1rem;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.article-content h3 {
+  font-size: 1.25rem;
+  /* 20px */
+  font-weight: 600;
+  color: hsl(var(--secondary-foreground));
+  margin-top: 2rem;
+  margin-bottom: 0.875rem;
+  line-height: 1.4;
+}
+
+.article-content p {
+  margin-bottom: 1.75rem;
+}
+
+.article-content ul,
+.article-content ol {
+  margin-bottom: 1.5rem;
+  margin-left: 1.25rem;
+  padding-left: 0.5rem;
+}
+
+.article-content li {
+  margin-bottom: 0.625rem;
+  line-height: 1.65;
+}
+
+.article-content li::marker {
+  color: hsl(var(--muted-foreground));
+}
+
+.article-content strong {
+  font-weight: 600;
+  color: inherit;
+}
+
+.article-content em {
+  font-style: italic;
+}
+
+.article-content a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: hsl(var(--primary) / 0.4);
+}
+
+.article-content a:hover {
+  text-decoration-color: hsl(var(--primary));
+}
+
+.article-content code {
+  background-color: hsl(var(--secondary));
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  font-family: ui-monospace, monospace;
+}
+
+.article-content pre {
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+}
+
+.article-content pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.8125rem;
+}
+
+.article-content blockquote {
+  border-left: 2px solid hsl(var(--border));
+  padding-left: 1.25rem;
+  margin: 1.75rem 0;
+  font-style: italic;
+  color: hsl(var(--secondary-foreground));
+}
+
+.article-content table {
+  width: 100%;
+  margin-bottom: 1.5rem;
+  font-size: 0.9375rem;
+  border-collapse: collapse;
+}
+
+.article-content th {
+  background-color: hsl(var(--card));
+  text-align: left;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  color: hsl(var(--secondary-foreground));
+  border: 1px solid hsl(var(--border) / 0.5);
+}
+
+.article-content td {
+  padding: 0.75rem 1rem;
+  border: 1px solid hsl(var(--border) / 0.4);
+}
+
+.article-content hr {
+  border: none;
+  border-top: 1px solid hsl(var(--border) / 0.4);
+  margin: 2.5rem 0;
+}
+
+.article-content img {
+  border-radius: 0.5rem;
+  margin: 1.75rem 0;
+  max-width: 100%;
 }
