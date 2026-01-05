@@ -6,6 +6,7 @@ import { createContentQueue } from '../config/redis.js';
 import logger from '../utils/logger.js';
 import JobRepository from '../models/JobRepository.js';
 import ContentRepository from '../models/ContentRepository.js';
+import SeoScanRepository from '../models/SeoScanRepository.js';
 
 dotenv.config();
 
@@ -327,19 +328,19 @@ app.get('/api/content/:jobId', async (req, res) => {
 
     const stats = {
       totalPosts: content.length,
-      avgWordCount: content.length > 0 
+      avgWordCount: content.length > 0
         ? Math.round(
-            content.reduce((sum, post) => sum + (post.word_count || 0), 0) / content.length
-          )
+          content.reduce((sum, post) => sum + (post.word_count || 0), 0) / content.length
+        )
         : 0,
       totalWords: content.reduce((sum, post) => sum + (post.word_count || 0), 0),
       avgGenerationTimeMs: content.filter(p => p.generation_time_ms).length > 0
         ? Math.round(
-            content
-              .filter(p => p.generation_time_ms)
-              .reduce((sum, post) => sum + (post.generation_time_ms || 0), 0) /
-            content.filter(p => p.generation_time_ms).length
-          )
+          content
+            .filter(p => p.generation_time_ms)
+            .reduce((sum, post) => sum + (post.generation_time_ms || 0), 0) /
+          content.filter(p => p.generation_time_ms).length
+        )
         : 0
     };
 
@@ -385,7 +386,7 @@ app.get('/api/jobs', async (req, res) => {
     const { limit = 50, offset = 0, status } = req.query;
 
     const filters = status ? { status } : {};
-    
+
     const { data: jobs, count: total } = await JobRepository.find(filters, {
       limit: parseInt(limit),
       offset: parseInt(offset),
@@ -450,6 +451,216 @@ app.delete('/api/job/:jobId', async (req, res) => {
     res.status(500).json({
       error: 'Internal Server Error',
       message: 'Failed to delete job'
+    });
+  }
+});
+
+// =============================================================================
+// SEO SCANNER ENDPOINTS
+// =============================================================================
+
+/**
+ * POST /api/scan-seo
+ * Initiate an SEO scan for a URL
+ */
+app.post('/api/scan-seo', async (req, res) => {
+  try {
+    const { url } = req.body;
+
+    if (!url || !url.trim()) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'URL is required and cannot be empty'
+      });
+    }
+
+    // Validate URL format
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(url.startsWith('http') ? url : `https://${url}`);
+    } catch {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Invalid URL format'
+      });
+    }
+
+    const domain = parsedUrl.hostname.replace(/^www\./, '');
+
+    logger.info(`Creating new SEO scan for: ${domain}`);
+
+    const scan = await SeoScanRepository.create({
+      url: parsedUrl.href,
+      domain
+    });
+
+    logger.info(`SEO scan created with ID: ${scan.id}`);
+
+    await contentQueue.add(
+      'scan-seo',
+      {
+        scanId: scan.id,
+        url: parsedUrl.href
+      },
+      {
+        jobId: scan.id,
+        priority: 1,
+        timeout: 180000 // 3 minutes timeout
+      }
+    );
+
+    logger.info(`SEO scan ${scan.id} enqueued successfully`);
+
+    res.status(202).json({
+      success: true,
+      message: 'SEO scan initiated successfully',
+      scanId: scan.id,
+      domain,
+      status: scan.status,
+      estimatedTimeSeconds: 60
+    });
+
+  } catch (error) {
+    logger.error('Error in /api/scan-seo:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to initiate SEO scan',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * GET /api/seo-scan/:scanId
+ * Get SEO scan status and results
+ */
+app.get('/api/seo-scan/:scanId', async (req, res) => {
+  try {
+    const { scanId } = req.params;
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!scanId.match(uuidRegex)) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Invalid scan ID format'
+      });
+    }
+
+    const scan = await SeoScanRepository.findById(scanId);
+
+    if (!scan) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: 'Scan not found'
+      });
+    }
+
+    const response = {
+      scanId: scan.id,
+      url: scan.url,
+      domain: scan.domain,
+      status: scan.status,
+      progress: scan.progress,
+      currentStep: scan.current_step,
+      dataSource: scan.data_source,
+      createdAt: scan.created_at,
+      startedAt: scan.started_at,
+      completedAt: scan.completed_at
+    };
+
+    if (scan.status === 'COMPLETE' && scan.results) {
+      response.results = scan.results;
+    }
+
+    if (scan.status === 'FAILED') {
+      response.errorMessage = scan.error_message;
+    }
+
+    res.status(200).json(response);
+
+  } catch (error) {
+    logger.error('Error in /api/seo-scan/:scanId:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to retrieve scan status',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * GET /api/seo-scans
+ * List all SEO scans
+ */
+app.get('/api/seo-scans', async (req, res) => {
+  try {
+    const { limit = 50, offset = 0, status } = req.query;
+
+    const filters = status ? { status } : {};
+
+    const { data: scans, count: total } = await SeoScanRepository.find(filters, {
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      orderBy: 'created_at',
+      order: 'desc'
+    });
+
+    res.status(200).json({
+      success: true,
+      total,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      scans
+    });
+
+  } catch (error) {
+    logger.error('Error in /api/seo-scans:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to retrieve scans'
+    });
+  }
+});
+
+/**
+ * DELETE /api/seo-scan/:scanId
+ * Delete an SEO scan
+ */
+app.delete('/api/seo-scan/:scanId', async (req, res) => {
+  try {
+    const { scanId } = req.params;
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!scanId.match(uuidRegex)) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Invalid scan ID format'
+      });
+    }
+
+    const scan = await SeoScanRepository.findById(scanId);
+
+    if (!scan) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: 'Scan not found'
+      });
+    }
+
+    await SeoScanRepository.delete(scanId);
+
+    logger.info(`SEO scan ${scanId} deleted`);
+
+    res.status(200).json({
+      success: true,
+      message: 'SEO scan deleted successfully'
+    });
+
+  } catch (error) {
+    logger.error('Error in DELETE /api/seo-scan/:scanId:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to delete scan'
     });
   }
 });

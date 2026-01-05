@@ -36,36 +36,47 @@
     --preview-title: 228 15% 93%;
   }
 
-  /* Light Mode - Clean, readable light theme */
+  /* Light Mode - HIGH CONTRAST (mirroring dark mode clarity) */
   [data-theme="light"] {
-    /* Background: subtle warm gray */
-    --background: 220 14% 96%;
-    /* Primary text: near-black for readability */
-    --foreground: 222 47% 11%;
-    /* Card surfaces - pure white for clear separation */
+    /* Level 1: Page Canvas - Grey for contrast */
+    --background: 220 16% 92%;
+    /* #e2e5eb - slightly lighter grey */
+
+    /* Level 2: Cards - Pure white with strong elevation */
     --card: 0 0% 100%;
+    /* #ffffff */
     --card-foreground: 222 47% 11%;
-    --card-elevated: 0 0% 100%;
-    /* Primary accent */
-    --primary: 220 70% 50%;
+
+    /* Level 3: List Rows */
+    --row-hover: 220 14% 96%;
+    --divider: 220 13% 80%;
+    /* Visible dividers */
+
+    /* Primary Accent */
+    --primary: 221 83% 53%;
     --primary-foreground: 0 0% 100%;
-    /* Secondary - lighter gray for sidebar bg */
+
+    /* Text - High contrast */
+    --foreground: 222 47% 11%;
+    --muted: 220 14% 90%;
+    --muted-foreground: 220 9% 35%;
+    --secondary-foreground: 220 14% 25%;
+
+    /* Secondary surfaces */
     --secondary: 220 14% 94%;
-    --secondary-foreground: 220 14% 35%;
-    /* Muted */
-    --muted: 220 14% 94%;
-    --muted-foreground: 220 9% 46%;
+
     /* Input surfaces */
     --input: 0 0% 100%;
     --input-highlight: 220 14% 96%;
-    /* Other */
+
+    /* Borders - STRONG visibility */
+    --border: 220 13% 75%;
     --destructive: 0 72% 51%;
-    --border: 220 13% 85%;
     --ring: 220 70% 50%;
     --radius: 0.5rem;
-    /* Preview titles */
+
+    /* Other */
     --preview-title: 222 47% 11%;
-    /* Highlight color for marks */
     --mark-underline: 220 80% 60%;
   }
 
@@ -99,11 +110,29 @@
 
   /* Cards with distinct surfaces */
   .card {
-    @apply rounded-lg border border-border/50 bg-card p-5;
+    @apply rounded-lg border border-border bg-card p-5;
+  }
+
+  /* LIGHT MODE: Strong card elevation */
+  [data-theme="light"] .card,
+  [data-theme="light"] .bg-card {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 14px rgba(0, 0, 0, 0.1);
+    border: 1px solid hsl(220 13% 78%);
+  }
+
+  [data-theme="light"] .bg-card.rounded-xl,
+  [data-theme="light"] .bg-card.rounded-2xl {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.12);
   }
 
   .card-elevated {
     @apply rounded-lg bg-[hsl(var(--card-elevated))] p-6;
+  }
+
+  /* Light mode chips - lighter background, no heavy borders */
+  [data-theme="light"] .chip-light {
+    background: hsl(220 14% 96%);
+    border-color: transparent;
   }
 
   /* Panel - subtle flat background */

@@ -4,25 +4,27 @@ import { initSupabase, testConnection } from '../config/supabase.js';
 import { createWorkerConnection, QUEUE_NAME } from '../config/redis.js';
 import logger from '../utils/logger.js';
 import JobRepository from '../models/JobRepository.js';
+import SeoScanRepository from '../models/SeoScanRepository.js';
 import { executePhaseA } from './phaseA.js';
 import { executePhaseB } from './phaseB.js';
+import { executeSeoScan } from './seoScan.js';
 
 dotenv.config();
 
 let worker;
 
 /**
- * Main Job Processor
+ * Content Generation Job Processor
  */
 const processContentGenerationJob = async (job) => {
   const { jobId, niche, valuePropositions, tone, totalBlogs: payloadTotalBlogs, blogTypeAllocations: payloadAllocations, targetWordCount: payloadWordCount } = job.data;
-  
+
   logger.info(`Starting content generation job: ${jobId}`);
   logger.info(`Niche: ${niche}, Tone: ${tone}`);
 
   try {
     const jobDoc = await JobRepository.findById(jobId);
-    
+
     if (!jobDoc) {
       throw new Error(`Job document not found in database: ${jobId}`);
     }
@@ -33,7 +35,7 @@ const processContentGenerationJob = async (job) => {
 
     // Phase A: Deep Research (Scenario Generation)
     logger.info(`Phase A: Starting deep research for job ${jobId}`);
-    
+
     await JobRepository.updateStatus(jobId, 'RESEARCHING', 5);
     await job.updateProgress(5);
 
@@ -52,7 +54,7 @@ const processContentGenerationJob = async (job) => {
 
     // Phase B: Content Generation (Mass Production)
     logger.info(`Phase B: Starting content generation for job ${jobId}`);
-    
+
     await JobRepository.updateStatus(jobId, 'GENERATING', 25);
     await job.updateProgress(25);
 
@@ -63,7 +65,7 @@ const processContentGenerationJob = async (job) => {
         total_content_generated: completed
       });
       await job.updateProgress(progressPercent);
-      
+
       logger.info(`Progress: ${completed}/${total} blog posts generated (${progressPercent}%)`);
     };
 
@@ -108,6 +110,52 @@ const processContentGenerationJob = async (job) => {
 };
 
 /**
+ * SEO Scan Job Processor
+ */
+const processSeoScanJob = async (job) => {
+  const { scanId, url } = job.data;
+
+  logger.info(`Starting SEO scan job: ${scanId}`);
+  logger.info(`URL: ${url}`);
+
+  try {
+    const results = await executeSeoScan({ scanId, url });
+
+    logger.info(`SEO Scan ${scanId} completed successfully`);
+
+    return {
+      success: true,
+      scanId,
+      healthScore: results.health_score
+    };
+
+  } catch (error) {
+    logger.error(`SEO Scan ${scanId} failed:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Job Router - Routes jobs to appropriate processor
+ */
+const processJob = async (job) => {
+  const jobType = job.name;
+
+  switch (jobType) {
+    case 'generate-content':
+      return await processContentGenerationJob(job);
+
+    case 'scan-seo':
+      return await processSeoScanJob(job);
+
+    default:
+      logger.warn(`Unknown job type: ${jobType}`);
+      throw new Error(`Unknown job type: ${jobType}`);
+  }
+};
+
+
+/**
  * Worker Initialization
  */
 const startWorker = async () => {
@@ -118,7 +166,7 @@ const startWorker = async () => {
 
     worker = new Worker(
       QUEUE_NAME,
-      processContentGenerationJob,
+      processJob,
       {
         connection: createWorkerConnection(),
         concurrency: 1,
@@ -168,7 +216,7 @@ const startWorker = async () => {
  */
 const shutdown = async () => {
   logger.info('Worker shutting down gracefully...');
-  
+
   try {
     if (worker) {
       await worker.close();

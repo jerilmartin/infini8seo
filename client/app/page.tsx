@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Loader2, Sun, Moon } from 'lucide-react';
+import { ArrowRight, Loader2, Sun, Moon, Search, FileText } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -43,8 +43,13 @@ const generatePreviewTitles = (wordCount: number) => {
   ];
 };
 
+type Tab = 'content' | 'seo';
+
 export default function Home() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<Tab>('content');
+
+  // Content Factory state
   const [niche, setNiche] = useState('');
   const [valuePropositions, setValuePropositions] = useState(['']);
   const [tone, setTone] = useState('professional');
@@ -52,9 +57,15 @@ export default function Home() {
   const [error, setError] = useState('');
   const [allocations, setAllocations] = useState<Allocations>(DEFAULT_ALLOCATIONS);
   const [targetWordCount, setTargetWordCount] = useState(DEFAULT_WORD_COUNT);
+
+  // SEO Scanner state
+  const [scanUrl, setScanUrl] = useState('');
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanError, setScanError] = useState('');
+
+  // Theme
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
-  // Theme persistence and initialization
   useEffect(() => {
     const savedTheme = localStorage.getItem('results-theme') as 'dark' | 'light' | null;
     if (savedTheme) {
@@ -89,7 +100,8 @@ export default function Home() {
 
   const previewTitles = useMemo(() => generatePreviewTitles(targetWordCount), [targetWordCount]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Content Factory Submit
+  const handleContentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -115,11 +127,30 @@ export default function Home() {
     }
   };
 
+  // SEO Scanner Submit
+  const handleSeoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setScanError('');
+
+    if (!scanUrl.trim()) return setScanError('Enter a URL to scan');
+
+    setScanLoading(true);
+    try {
+      const response = await axios.post(`${API_URL}/api/scan-seo`, {
+        url: scanUrl.trim()
+      });
+      router.push(`/seo-results/${response.data.scanId}`);
+    } catch (err: any) {
+      setScanError(err.response?.data?.message || 'Something went wrong');
+      setScanLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-8 py-6">
+      <div className="max-w-7xl mx-auto px-6 py-4">
         {/* Brand + Header */}
-        <header className="mb-2 animate-fade-in">
+        <header className="mb-1 animate-fade-in">
           <div className="flex items-center justify-between mb-4">
             <div className="text-[21px] font-medium text-foreground tracking-tight">infini8seo</div>
             <button
@@ -130,192 +161,345 @@ export default function Home() {
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
           </div>
-          <h1 className="text-[24px] font-semibold text-foreground leading-tight">
-            Content Factory
+
+          {/* Tab Switcher */}
+          <div className="flex gap-1 p-0.5 bg-secondary/50 rounded-lg w-fit mb-3">
+            <button
+              onClick={() => setActiveTab('content')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all ${activeTab === 'content'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Content Factory
+            </button>
+            <button
+              onClick={() => setActiveTab('seo')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all ${activeTab === 'seo'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              <Search className="w-3.5 h-3.5" />
+              SEO Scanner
+            </button>
+          </div>
+
+          <h1 className="text-[20px] font-semibold text-foreground leading-tight">
+            {activeTab === 'content' ? 'Content Factory' : 'SEO Scanner'}
           </h1>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-          {/* Form Column */}
-          <div className="animate-fade-in" style={{ animationDelay: '50ms' }}>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Niche */}
-              <section>
-                <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-2 block">Your Niche</label>
-                <input
-                  type="text"
-                  value={niche}
-                  onChange={(e) => setNiche(e.target.value)}
-                  placeholder="e.g., B2B SaaS, Personal Finance"
-                  className="input text-[14px] h-10"
-                  disabled={loading}
-                />
-              </section>
+        {/* Content Factory Tab */}
+        {activeTab === 'content' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            {/* Form Column */}
+            <div className="animate-fade-in" style={{ animationDelay: '50ms' }}>
+              <form onSubmit={handleContentSubmit} className="space-y-3">
+                {/* Niche */}
+                <section>
+                  <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-1.5 block">Your Niche</label>
+                  <input
+                    type="text"
+                    value={niche}
+                    onChange={(e) => setNiche(e.target.value)}
+                    placeholder="e.g., B2B SaaS, Personal Finance"
+                    className="input text-[14px] h-10"
+                    disabled={loading}
+                  />
+                </section>
 
-              {/* Specialties */}
-              <section>
-                <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-2 block">What You Offer</label>
-                <div className="space-y-2">
-                  {valuePropositions.map((vp, i) => (
-                    <div key={i} className="flex gap-2">
+                {/* Specialties */}
+                <section>
+                  <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-1.5 block">What You Offer</label>
+                  <div className="space-y-2">
+                    {valuePropositions.map((vp, i) => (
+                      <div key={i} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={vp}
+                          onChange={(e) => handleValuePropChange(i, e.target.value)}
+                          placeholder="A key service or angle"
+                          className="input flex-1 text-[14px] h-10"
+                          disabled={loading}
+                        />
+                        {valuePropositions.length > 1 && (
+                          <button type="button" onClick={() => removeValueProp(i)} className="px-2 text-secondary-foreground hover:text-foreground text-lg transition-colors" disabled={loading}>×</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {valuePropositions.length < 5 && (
+                    <button type="button" onClick={addValueProp} className="mt-1.5 text-[11px] text-secondary-foreground hover:text-foreground transition-colors" disabled={loading}>
+                      + Add another
+                    </button>
+                  )}
+                </section>
+
+                {/* Content Mix - Discrete +/- Controls */}
+                <section>
+                  <div className="flex items-baseline justify-between mb-2">
+                    <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide">Content Mix</label>
+                    <span className="text-[12px] tabular-nums text-secondary-foreground">{totalPosts} posts</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {CONTENT_TYPES.map((type) => {
+                      const value = allocations[type.key];
+                      return (
+                        <div key={type.key} className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/30 border border-border/30">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[14px] font-medium text-foreground">{type.label}</span>
+                            <span className="text-[11px] text-muted-foreground">{type.desc}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleAllocationChange(type.key, value - 1)}
+                              disabled={loading || value <= 0}
+                              className="w-7 h-7 rounded flex items-center justify-center bg-secondary hover:bg-muted text-foreground/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                            >
+                              −
+                            </button>
+                            <span className="w-6 text-center text-[14px] tabular-nums font-medium text-foreground">{value}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleAllocationChange(type.key, value + 1)}
+                              disabled={loading || value >= MAX_PER_TYPE}
+                              className="w-7 h-7 rounded flex items-center justify-center bg-secondary hover:bg-muted text-foreground/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                {/* Settings Row */}
+                <section className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-1.5 block">Tone</label>
+                    <select value={tone} onChange={(e) => setTone(e.target.value)} className="select text-[14px] h-10" disabled={loading}>
+                      {TONES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-1.5 block">Length</label>
+                    <div className="flex items-center gap-3 h-10">
                       <input
-                        type="text"
-                        value={vp}
-                        onChange={(e) => handleValuePropChange(i, e.target.value)}
-                        placeholder="A key service or angle"
-                        className="input flex-1 text-[14px] h-10"
+                        type="range"
+                        min={MIN_WORD_COUNT}
+                        max={MAX_WORD_COUNT}
+                        step={100}
+                        value={targetWordCount}
+                        onChange={(e) => setTargetWordCount(Number(e.target.value))}
+                        className="flex-1"
                         disabled={loading}
                       />
-                      {valuePropositions.length > 1 && (
-                        <button type="button" onClick={() => removeValueProp(i)} className="px-3 text-secondary-foreground hover:text-foreground text-lg transition-colors" disabled={loading}>×</button>
-                      )}
+                      <span className="text-[12px] tabular-nums text-secondary-foreground w-12 text-right">{targetWordCount}w</span>
                     </div>
+                  </div>
+                </section>
+
+                {error && (
+                  <div className="p-2 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-[12px]">{error}</div>
+                )}
+
+                <button type="submit" disabled={loading || totalPosts === 0} className="btn-primary w-full justify-center text-[14px] h-10 mt-1">
+                  {loading ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting...</>
+                  ) : (
+                    <>Create {totalPosts} posts<ArrowRight className="w-4 h-4 ml-2" /></>
+                  )}
+                </button>
+
+                <p className="text-[11px] text-secondary-foreground text-center">Takes about 10-15 minutes</p>
+              </form>
+            </div>
+
+            {/* Preview Column */}
+            <aside className="animate-fade-in" style={{ animationDelay: '100ms' }}>
+              <div className="bg-secondary rounded-lg p-5 border border-border/30">
+                <p className="text-[10px] font-medium text-foreground/80 uppercase tracking-wide mb-4">What you'll get</p>
+
+                {/* Preview Titles */}
+                <div className="space-y-3">
+                  {previewTitles.map((item, i) => (
+                    <article key={i} className="pb-3 border-b border-border/30 last:border-0 last:pb-0">
+                      <h3 className="text-[15px] font-medium text-foreground leading-snug mb-0.5">
+                        {item.title}
+                      </h3>
+                      <p className="text-[11px] text-secondary-foreground">
+                        {item.type} · {item.time} min read
+                      </p>
+                    </article>
                   ))}
                 </div>
-                {valuePropositions.length < 5 && (
-                  <button type="button" onClick={addValueProp} className="mt-1.5 text-[12px] text-secondary-foreground hover:text-foreground transition-colors" disabled={loading}>
-                    + Add another
-                  </button>
-                )}
-              </section>
 
-              {/* Content Mix */}
-              <section>
-                <div className="flex items-baseline justify-between mb-3">
-                  <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide">Content Mix</label>
-                  <span className="text-[12px] tabular-nums text-secondary-foreground">{totalPosts} posts</span>
-                </div>
-
-                <div className="space-y-2.5">
-                  {CONTENT_TYPES.map((type) => {
-                    const value = allocations[type.key];
-                    return (
-                      <div key={type.key} className="group">
-                        <div className="flex items-baseline justify-between mb-1">
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-[14px] font-medium text-foreground">{type.label}</span>
-                            <span className="text-[11px] text-secondary-foreground">{type.desc}</span>
-                          </div>
-                          <span className="text-[12px] tabular-nums text-secondary-foreground w-5 text-right">{value}</span>
-                        </div>
-                        <div
-                          className="h-1 bg-border/60 rounded-full cursor-pointer relative overflow-hidden"
-                          onClick={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            const x = e.clientX - rect.left;
-                            handleAllocationChange(type.key, Math.round((x / rect.width) * MAX_PER_TYPE));
-                          }}
-                        >
-                          <div
-                            className="h-full bg-foreground/70 rounded-full transition-all duration-200"
-                            style={{ width: `${(value / MAX_PER_TYPE) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-
-              {/* Settings Row */}
-              <section className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-2 block">Tone</label>
-                  <select value={tone} onChange={(e) => setTone(e.target.value)} className="select text-[14px] h-10" disabled={loading}>
-                    {TONES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-2 block">Length</label>
-                  <div className="flex items-center gap-3 h-10">
-                    <input
-                      type="range"
-                      min={MIN_WORD_COUNT}
-                      max={MAX_WORD_COUNT}
-                      step={100}
-                      value={targetWordCount}
-                      onChange={(e) => setTargetWordCount(Number(e.target.value))}
-                      className="flex-1"
-                      disabled={loading}
-                    />
-                    <span className="text-[12px] tabular-nums text-secondary-foreground w-14 text-right">{targetWordCount}w</span>
+                {/* Meta Row */}
+                <div className="mt-4 pt-3 border-t border-border/30">
+                  <div className="flex justify-between text-center">
+                    <div className="flex-1">
+                      <div className="text-[9px] text-secondary-foreground uppercase tracking-wide mb-0.5">Structure</div>
+                      <div className="text-[11px] text-foreground/80">Intro → Body → FAQ</div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-[9px] text-secondary-foreground uppercase tracking-wide mb-0.5">SEO</div>
+                      <div className="text-[11px] text-foreground/80">Keywords + Meta</div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-[9px] text-secondary-foreground uppercase tracking-wide mb-0.5">AIO</div>
+                      <div className="text-[11px] text-foreground/80">AI-optimized</div>
+                    </div>
                   </div>
                 </div>
-              </section>
+              </div>
 
-              {error && (
-                <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-[13px]">{error}</div>
-              )}
-
-              <button type="submit" disabled={loading || totalPosts === 0} className="btn-primary w-full justify-center text-[14px] h-10 mt-1">
-                {loading ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting...</>
-                ) : (
-                  <>Create {totalPosts} posts<ArrowRight className="w-4 h-4 ml-2" /></>
-                )}
-              </button>
-
-              <p className="text-[11px] text-secondary-foreground text-center">Takes about 10-15 minutes</p>
-            </form>
+              {/* Stats Row */}
+              <div className="mt-3 flex items-center justify-center gap-8 text-center">
+                <div>
+                  <div className="text-[14px] font-semibold text-foreground/80">{totalPosts}</div>
+                  <div className="text-[9px] text-secondary-foreground uppercase tracking-wide">Posts</div>
+                </div>
+                <div className="w-px h-4 bg-border/40" />
+                <div>
+                  <div className="text-[14px] font-semibold text-foreground/80">{Math.round(totalPosts * targetWordCount / 1000)}k</div>
+                  <div className="text-[9px] text-secondary-foreground uppercase tracking-wide">Words</div>
+                </div>
+                <div className="w-px h-4 bg-border/40" />
+                <div>
+                  <div className="text-[14px] font-semibold text-foreground/80">~{Math.round(totalPosts * targetWordCount / 200)}</div>
+                  <div className="text-[9px] text-secondary-foreground uppercase tracking-wide">Min read</div>
+                </div>
+              </div>
+            </aside>
           </div>
+        )}
 
-          {/* Preview Column */}
-          <aside className="animate-fade-in" style={{ animationDelay: '100ms' }}>
-            <div className="bg-card/50 rounded-xl p-7">
-              <p className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-6">What you'll get</p>
+        {/* SEO Scanner Tab */}
+        {activeTab === 'seo' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+            {/* Form Column */}
+            <div className="animate-fade-in" style={{ animationDelay: '50ms' }}>
+              <form onSubmit={handleSeoSubmit} className="space-y-5">
+                {/* URL Input */}
+                <section>
+                  <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-2 block">Website URL</label>
+                  <input
+                    type="text"
+                    value={scanUrl}
+                    onChange={(e) => setScanUrl(e.target.value)}
+                    placeholder="e.g., example.com or https://example.com"
+                    className="input text-[14px] h-10"
+                    disabled={scanLoading}
+                  />
+                  <p className="text-[11px] text-secondary-foreground mt-1.5">
+                    Enter any website URL to analyze its SEO performance
+                  </p>
+                </section>
 
-              {/* Preview Titles */}
-              <div className="space-y-5">
-                {previewTitles.map((item, i) => (
-                  <article key={i} className="pb-5 border-b border-border/30 last:border-0 last:pb-0">
+                {scanError && (
+                  <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-[13px]">{scanError}</div>
+                )}
+
+                <button type="submit" disabled={scanLoading || !scanUrl.trim()} className="btn-primary w-full justify-center text-[14px] h-10 mt-1">
+                  {scanLoading ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Scanning...</>
+                  ) : (
+                    <><Search className="w-4 h-4 mr-2" />Scan for SEO</>
+                  )}
+                </button>
+
+                <p className="text-[11px] text-secondary-foreground text-center">Takes about 1-2 minutes</p>
+              </form>
+            </div>
+
+            {/* Preview Column */}
+            <aside className="animate-fade-in" style={{ animationDelay: '100ms' }}>
+              <div className="bg-card/50 rounded-xl p-7">
+                <p className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-6">What you'll get</p>
+
+                {/* Preview Items - matching Content Factory style */}
+                <div className="space-y-5">
+                  <article className="pb-5 border-b border-border/30">
                     <h3 className="text-[17px] font-medium text-foreground leading-snug mb-1.5">
-                      {item.title}
+                      Domain Health Score
                     </h3>
                     <p className="text-[13px] text-secondary-foreground">
-                      {item.type} · {item.time} min read
+                      Overall SEO health rating from 0-100
                     </p>
                   </article>
-                ))}
-              </div>
 
-              {/* Meta Row */}
-              <div className="mt-7 pt-5 border-t border-border/30">
-                <div className="flex justify-between text-center">
-                  <div className="flex-1">
-                    <div className="text-[10px] text-secondary-foreground uppercase tracking-wide mb-1">Structure</div>
-                    <div className="text-[13px] text-foreground/80">Intro → Body → FAQ</div>
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-[10px] text-secondary-foreground uppercase tracking-wide mb-1">SEO</div>
-                    <div className="text-[13px] text-foreground/80">Keywords + Meta</div>
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-[10px] text-secondary-foreground uppercase tracking-wide mb-1">AIO</div>
-                    <div className="text-[13px] text-foreground/80">AI-optimized</div>
+                  <article className="pb-5 border-b border-border/30">
+                    <h3 className="text-[17px] font-medium text-foreground leading-snug mb-1.5">
+                      Keyword & Ranking Analysis
+                    </h3>
+                    <p className="text-[13px] text-secondary-foreground">
+                      Keywords observed + sampled SERP positions
+                    </p>
+                  </article>
+
+                  <article className="pb-5 border-b border-border/30">
+                    <h3 className="text-[17px] font-medium text-foreground leading-snug mb-1.5">
+                      Competitor Mapping
+                    </h3>
+                    <p className="text-[13px] text-secondary-foreground">
+                      Direct and content competitors identified
+                    </p>
+                  </article>
+
+                  <article className="pb-0">
+                    <h3 className="text-[17px] font-medium text-foreground leading-snug mb-1.5">
+                      Strategic Recommendations
+                    </h3>
+                    <p className="text-[13px] text-secondary-foreground">
+                      Actionable insights to improve rankings
+                    </p>
+                  </article>
+                </div>
+
+                {/* Meta Row - matching Content Factory style */}
+                <div className="mt-7 pt-5 border-t border-border/30">
+                  <div className="flex justify-between text-center">
+                    <div className="flex-1">
+                      <div className="text-[10px] text-secondary-foreground uppercase tracking-wide mb-1">Source</div>
+                      <div className="text-[13px] text-foreground/80">Live SERP</div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-[10px] text-secondary-foreground uppercase tracking-wide mb-1">Method</div>
+                      <div className="text-[13px] text-foreground/80">Agentic Audit</div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-[10px] text-secondary-foreground uppercase tracking-wide mb-1">Speed</div>
+                      <div className="text-[13px] text-foreground/80">~60 seconds</div>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Stats Row */}
-            <div className="mt-4 flex items-center justify-center gap-10 text-center">
-              <div>
-                <div className="text-[16px] font-semibold text-foreground/80">{totalPosts}</div>
-                <div className="text-[10px] text-secondary-foreground uppercase tracking-wide">Posts</div>
+              {/* Stats Row - matching Content Factory style */}
+              <div className="mt-4 flex items-center justify-center gap-10 text-center">
+                <div>
+                  <div className="text-[16px] font-semibold text-foreground/80">5</div>
+                  <div className="text-[10px] text-secondary-foreground uppercase tracking-wide">Steps</div>
+                </div>
+                <div className="w-px h-5 bg-border/40" />
+                <div>
+                  <div className="text-[16px] font-semibold text-foreground/80">10+</div>
+                  <div className="text-[10px] text-secondary-foreground uppercase tracking-wide">Keywords</div>
+                </div>
+                <div className="w-px h-5 bg-border/40" />
+                <div>
+                  <div className="text-[16px] font-semibold text-foreground/80">~60s</div>
+                  <div className="text-[10px] text-secondary-foreground uppercase tracking-wide">Time</div>
+                </div>
               </div>
-              <div className="w-px h-5 bg-border/40" />
-              <div>
-                <div className="text-[16px] font-semibold text-foreground/80">{Math.round(totalPosts * targetWordCount / 1000)}k</div>
-                <div className="text-[10px] text-secondary-foreground uppercase tracking-wide">Words</div>
-              </div>
-              <div className="w-px h-5 bg-border/40" />
-              <div>
-                <div className="text-[16px] font-semibold text-foreground/80">~{Math.round(totalPosts * targetWordCount / 200)}</div>
-                <div className="text-[10px] text-secondary-foreground uppercase tracking-wide">Min read</div>
-              </div>
-            </div>
-          </aside>
-        </div>
+            </aside>
+          </div>
+        )}
       </div>
     </div>
   );
