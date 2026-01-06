@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Loader2, Sun, Moon, Search, FileText } from 'lucide-react';
+import { ArrowRight, Loader2, Sun, Moon, Search, FileText, Facebook, Instagram, Twitter, Mail } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -148,7 +148,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-6 py-4">
+      <div className="max-w-7xl mx-auto px-6 py-4 pb-16">
         {/* Brand + Header */}
         <header className="mb-1 animate-fade-in">
           <div className="flex items-center justify-between mb-4">
@@ -316,7 +316,7 @@ export default function Home() {
                   )}
                 </button>
 
-                <p className="text-[11px] text-secondary-foreground text-center">Takes about 10-15 minutes</p>
+                <p className="text-[11px] text-secondary-foreground text-center mb-18">Takes about 10-15 minutes</p>
               </form>
             </div>
 
@@ -501,6 +501,146 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Footer */}
+      <footer
+        className="mt-auto relative overflow-hidden"
+        style={{
+          background: 'linear-gradient(to top, #070b10 0%, #0b0f14 100%)',
+          borderTop: '1px solid rgba(255,255,255,0.06)'
+        }}
+      >
+        {/* Subtle noise texture */}
+        <div
+          className="absolute inset-0 opacity-[0.02] pointer-events-none"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+            backgroundRepeat: 'repeat'
+          }}
+        />
+
+        <div className="max-w-5xl mx-auto px-10 py-10 relative">
+          {/* Row 1: Brand + Links */}
+          <div className="flex flex-col md:flex-row items-center md:items-center justify-between gap-8">
+            {/* Brand Block */}
+            <div className="flex flex-col items-center md:items-start gap-2">
+              {/* Logo Row */}
+              <div className="flex items-center gap-3 group relative">
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500/80"></span>
+                  <span className="text-xl font-semibold text-white tracking-tight">Infini8</span>
+                </div>
+                <span className="text-white/30 text-lg">×</span>
+                <img
+                  src="/logo-88gb.png"
+                  alt="88gb"
+                  className="h-10 w-auto object-contain transition-all duration-300 group-hover:drop-shadow-[0_0_12px_rgba(255,255,255,0.3)]"
+                />
+                {/* Gradient underline - always visible, enhanced on hover */}
+                <div className="absolute -bottom-1.5 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500/40 via-purple-500/20 to-transparent rounded-full group-hover:from-blue-500/60 group-hover:via-purple-500/40 transition-all duration-300"></div>
+              </div>
+              {/* Tagline */}
+              <p className="text-[12px] text-white/50 tracking-wide max-w-[220px] text-center md:text-left mt-1">
+                AI-powered SEO & Content Intelligence
+              </p>
+            </div>
+
+            {/* Links Columns */}
+            <div className="grid grid-cols-2 gap-12 text-left">
+              {/* Our Products */}
+              <div>
+                <h3 className="text-[14px] font-semibold text-white/75 mb-3 tracking-wider">Our Products</h3>
+                <div className="space-y-3">
+                  <a
+                    href="#"
+                    className="block text-[14px] text-white/45 hover:text-white/90 hover:-translate-y-px transition-all duration-150 ease-out"
+                  >
+                    Infini8seo
+                  </a>
+                  <a
+                    href="#"
+                    className="block text-[14px] text-white/45 hover:text-white/90 hover:-translate-y-px transition-all duration-150 ease-out"
+                  >
+                    Performance Marketing
+                  </a>
+                  <a
+                    href="#"
+                    className="block text-[14px] text-white/45 hover:text-white/90 hover:-translate-y-px transition-all duration-150 ease-out"
+                  >
+                    88 XP
+                  </a>
+                </div>
+              </div>
+
+              {/* Quick Links */}
+              <div>
+                <h3 className="text-[14px] font-semibold text-white/75 mb-3 tracking-wider">Quick Links</h3>
+                <div className="space-y-3">
+                  <a
+                    href="#"
+                    className="block text-[14px] text-white/45 hover:text-white/90 hover:-translate-y-px transition-all duration-150 ease-out"
+                  >
+                    Terms & Conditions
+                  </a>
+                  <a
+                    href="#"
+                    className="block text-[14px] text-white/45 hover:text-white/90 hover:-translate-y-px transition-all duration-150 ease-out"
+                  >
+                    Privacy Policy
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 2: Copyright + Socials */}
+          <div className="mt-10 pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-4" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+            <p className="text-[10px] text-white/20 tracking-wide">
+              © 2025 Infini8. All rights reserved.
+            </p>
+
+            {/* Social Icons */}
+            <div className="flex items-center gap-4">
+              <a
+                href="https://www.facebook.com/88gb.in/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/30 hover:text-white hover:-translate-y-0.5 transition-all duration-150"
+                aria-label="Facebook"
+              >
+                <Facebook className="w-4 h-4" />
+              </a>
+              <a
+                href="https://www.instagram.com/the88gb/?hl=en"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/30 hover:text-white hover:-translate-y-0.5 transition-all duration-150"
+                aria-label="Instagram"
+              >
+                <Instagram className="w-4 h-4" />
+              </a>
+              <a
+                href="https://x.com/the88gb"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/30 hover:text-white hover:-translate-y-0.5 transition-all duration-150"
+                aria-label="X (Twitter)"
+              >
+                <Twitter className="w-4 h-4" />
+              </a>
+              <a
+                href="https://mail.google.com/mail/?view=cm&fs=1&to=connect@88gb.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/30 hover:text-white hover:-translate-y-0.5 transition-all duration-150"
+                aria-label="Email us"
+              >
+                <Mail className="w-4 h-4" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
