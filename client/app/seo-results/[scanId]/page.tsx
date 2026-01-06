@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Sun, Moon, ExternalLink, Copy, Plus, Star, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { ArrowLeft, Sun, Moon, ExternalLink, Copy, Plus, Star, ChevronDown, ChevronUp, Search, Zap, Activity, Info } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -27,6 +27,13 @@ interface SeoResults {
     score_breakdown: Record<string, number>;
     recommendations: Array<{ text: string }>;
     suggested_keywords: Array<{ category: string; keywords: string[] }>;
+    lighthouse_metrics?: {
+        performance: { score: number; label: string; color: string };
+        seo: { score: number; label: string; color: string };
+        accessibility: { score: number; label: string; color: string };
+        core_web_vitals: { lcp: string; fcp: string; cls: string | number };
+        mobile_optimized: boolean;
+    };
 }
 
 interface ScanData {
@@ -148,7 +155,7 @@ const KeywordCategoryCard = ({
     return (
         <div className="bg-card rounded-xl border border-border/40 overflow-hidden h-full flex flex-col">
             {/* Header */}
-            <div className="px-5 py-4 border-b border-[#d4d8e0] flex items-center justify-between">
+            <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between">
                 <div>
                     <h4 className="text-[14px] font-semibold text-foreground flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full ${style.dot}`} />
@@ -156,7 +163,7 @@ const KeywordCategoryCard = ({
                     </h4>
                     <p className="text-[11px] text-muted-foreground mt-0.5 ml-4">{style.label}</p>
                 </div>
-                <span className="text-[11px] font-medium bg-[#e8ebf0] px-2 py-0.5 rounded text-muted-foreground">
+                <span className="text-[11px] font-medium bg-secondary px-2 py-0.5 rounded text-muted-foreground">
                     {keywords.length}
                 </span>
             </div>
@@ -166,14 +173,14 @@ const KeywordCategoryCard = ({
                 {displayedKeywords.map((kw, idx) => (
                     <div
                         key={`${category}-${idx}`}
-                        className="group flex items-center justify-between px-5 py-3 border-b border-[#e5e7eb] last:border-0 hover:bg-[#f5f6f8] transition-colors"
+                        className="group flex items-center justify-between px-5 py-3 border-b border-border/30 last:border-0 hover:bg-secondary/50 transition-colors"
                     >
                         <span className="text-[13px] text-foreground truncate max-w-[80%]">
                             {kw}
                         </span>
                         <button
                             onClick={() => copyKeyword(kw)}
-                            className="p-1.5 rounded opacity-0 group-hover:opacity-100 hover:bg-black/5 text-muted-foreground hover:text-foreground transition-all"
+                            className="p-1.5 rounded opacity-0 group-hover:opacity-100 hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
                         >
                             <Copy className={`w-3.5 h-3.5 ${copied === kw ? 'text-emerald-500' : ''}`} />
                         </button>
@@ -183,7 +190,7 @@ const KeywordCategoryCard = ({
 
             {/* Expand/Collapse */}
             {showExpand && (
-                <div className="px-5 py-3 border-t border-[#e5e7eb]">
+                <div className="px-5 py-3 border-t border-border/40">
                     <button
                         onClick={onToggleExpand}
                         className="text-[12px] font-medium text-primary hover:underline flex items-center gap-1"
@@ -448,17 +455,109 @@ export default function SeoResultsPage() {
                                     }
                                 </p>
                             </div>
-                            {results.score_breakdown && Object.keys(results.score_breakdown).length > 0 && (
-                                <div className="grid grid-cols-2 gap-4">
-                                    {Object.entries(results.score_breakdown).map(([key, value]) => (
-                                        <div key={key} className="text-right">
-                                            <p className="text-xs text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</p>
-                                            <p className="text-lg font-semibold text-foreground">{value}</p>
-                                        </div>
-                                    ))}
+
+                            {/* Detailed Metrics Grid */}
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 w-full lg:w-auto mt-6 lg:mt-0">
+                                {/* Technical */}
+                                <div className="space-y-1 text-center lg:text-right">
+                                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Technical</p>
+                                    <p className="text-2xl font-bold text-foreground">{results.score_breakdown?.technical || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
                                 </div>
-                            )}
+                                {/* On-Page SEO */}
+                                <div className="space-y-1 text-center lg:text-right">
+                                    <p className="text-xs text-muted-foreground uppercase tracking-wide">On-Page SEO</p>
+                                    <div className="flex items-center justify-center lg:justify-end gap-1.5">
+                                        <Search className="w-3.5 h-3.5 text-blue-500" />
+                                        <p className="text-2xl font-bold text-foreground">{results.score_breakdown?.on_page_seo || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
+                                    </div>
+                                </div>
+                                {/* Authority */}
+                                <div className="space-y-1 text-center lg:text-right">
+                                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Authority</p>
+                                    <p className="text-2xl font-bold text-foreground">{results.score_breakdown?.authority || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
+                                </div>
+                                {/* Performance */}
+                                <div className="space-y-1 text-center lg:text-right">
+                                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Performance</p>
+                                    <div className="flex items-center justify-center lg:justify-end gap-1.5">
+                                        <Zap className="w-3.5 h-3.5 text-amber-500" />
+                                        <p className="text-2xl font-bold text-foreground">{results.score_breakdown?.performance || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+
+                        {/* Core Web Vitals (if available) */}
+                        {results.lighthouse_metrics && (
+                            <div className="mt-8 pt-6 border-t border-border/30">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <Activity className="w-4 h-4 text-emerald-500" />
+                                    <h3 className="text-sm font-medium text-foreground">Core Web Vitals (Real User Metrics)</h3>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    {/* LCP */}
+                                    <div className="p-3 bg-secondary/30 rounded-lg border border-border/30 relative group">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                            <p className="text-xs text-muted-foreground">LCP (Loading)</p>
+                                            <div className="group/tooltip relative">
+                                                <Info className="w-3 h-3 text-muted-foreground/50 cursor-help" />
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] leading-relaxed rounded-md shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-50 pointer-events-none">
+                                                    Largest Contentful Paint. Measures loading performance. A good score is 2.5s or less.
+                                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm font-semibold text-foreground">{results.lighthouse_metrics.core_web_vitals.lcp}</p>
+                                    </div>
+                                    {/* FCP */}
+                                    <div className="p-3 bg-secondary/30 rounded-lg border border-border/30">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                            <p className="text-xs text-muted-foreground">FCP (First Paint)</p>
+                                            <div className="group/tooltip relative">
+                                                <Info className="w-3 h-3 text-muted-foreground/50 cursor-help" />
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] leading-relaxed rounded-md shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-50 pointer-events-none">
+                                                    First Contentful Paint. Measures time until first content appears. Good score is 1.8s or less.
+                                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm font-semibold text-foreground">{results.lighthouse_metrics.core_web_vitals.fcp}</p>
+                                    </div>
+                                    {/* CLS */}
+                                    <div className="p-3 bg-secondary/30 rounded-lg border border-border/30">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                            <p className="text-xs text-muted-foreground">CLS (Stability)</p>
+                                            <div className="group/tooltip relative">
+                                                <Info className="w-3 h-3 text-muted-foreground/50 cursor-help" />
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] leading-relaxed rounded-md shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-50 pointer-events-none">
+                                                    Cumulative Layout Shift. Measures visual stability and unexpected movement. Good score is 0.1 or less.
+                                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm font-semibold text-foreground">{results.lighthouse_metrics.core_web_vitals.cls}</p>
+                                    </div>
+                                    {/* Mobile Friendly */}
+                                    <div className="p-3 bg-secondary/30 rounded-lg border border-border/30">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                            <p className="text-xs text-muted-foreground">Mobile Friendly</p>
+                                            <div className="group/tooltip relative">
+                                                <Info className="w-3 h-3 text-muted-foreground/50 cursor-help" />
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] leading-relaxed rounded-md shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-50 pointer-events-none">
+                                                    Indicates if the page passes Google's mobile-friendly usability checks.
+                                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p className={`text-sm font-semibold ${results.lighthouse_metrics.mobile_optimized ? 'text-emerald-500' : 'text-red-500'}`}>
+                                            {results.lighthouse_metrics.mobile_optimized ? 'Yes' : 'Needs Optimization'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {/* End Core Web Vitals */}
+
                     </div>
                 </div>
 
@@ -474,7 +573,7 @@ export default function SeoResultsPage() {
                         <div className="flex flex-wrap gap-2">
                             {results.observed_keywords.length > 0 ? (
                                 results.observed_keywords.map((kw, i) => (
-                                    <span key={i} className="text-[13px] px-3 py-1.5 rounded-md bg-[#f1f5f9] text-foreground">
+                                    <span key={i} className="text-[13px] px-3 py-1.5 rounded-md bg-secondary text-foreground border border-border/30">
                                         {kw.keyword}
                                     </span>
                                 ))
@@ -486,7 +585,7 @@ export default function SeoResultsPage() {
 
                     {/* SERP Positions - Dynamic colors for 1/2/3 */}
                     <div className="bg-card rounded-xl border border-border/30 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-[#e5e7eb]">
+                        <div className="px-6 py-4 border-b border-border/40">
                             <div className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
                                 <h3 className="text-sm font-semibold text-foreground">SERP Positions</h3>
@@ -497,15 +596,15 @@ export default function SeoResultsPage() {
                                 results.sampled_positions.map((pos, i) => {
                                     // Dynamic styling based on position
                                     const positionStyle = pos.position === 1
-                                        ? 'text-amber-600 font-bold' // Gold
+                                        ? 'text-amber-500 font-bold' // Gold
                                         : pos.position === 2
-                                            ? 'text-slate-500 font-bold' // Silver
+                                            ? 'text-slate-400 font-bold' // Silver
                                             : pos.position === 3
-                                                ? 'text-orange-600 font-bold' // Bronze
-                                                : 'text-emerald-700 font-semibold';
+                                                ? 'text-orange-500 font-bold' // Bronze
+                                                : 'text-emerald-500 font-semibold';
 
                                     return (
-                                        <div key={i} className="flex items-center justify-between px-6 py-3 border-b border-[#e5e7eb] last:border-0 hover:bg-[#f8fafc] transition-colors">
+                                        <div key={i} className="flex items-center justify-between px-6 py-3 border-b border-border/30 last:border-0 hover:bg-secondary/50 transition-colors">
                                             <span className="text-[13px] text-foreground truncate max-w-[200px]">
                                                 {pos.keyword}
                                             </span>

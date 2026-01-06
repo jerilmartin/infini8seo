@@ -1,0 +1,50 @@
+content-factory-worker  | 2026-01-06 08:50:53 [[32minfo[39m]: Research response length:
+content-factory-worker  | 2026-01-06 08:50:53 [[32minfo[39m]: Research found: 7 pages, 12 keywords
+content-factory-worker  | 2026-01-06 08:50:53 [[32minfo[39m]: Step 1 Complete: 7 indexed pages, 12 keywords
+content-factory-worker  | 2026-01-06 08:50:54 [[32minfo[39m]: Step 2: Competitor discovery
+content-factory-worker  | 2026-01-06 08:51:25 [[32minfo[39m]: Competitors found: 6 direct, 5 content
+content-factory-worker  | 2026-01-06 08:51:25 [[32minfo[39m]: Step 2 Complete
+content-factory-worker  | 2026-01-06 08:51:25 [[32minfo[39m]: Step 3: SERP position checking (hybrid approach)
+content-factory-worker  | 2026-01-06 08:51:25 [[32minfo[39m]: Attempting Google Custom Search API for position data...
+content-factory-worker  | 2026-01-06 08:51:25 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 08:51:25 [[32minfo[39m]: Searching Google CSE for: "AI chatbot"
+content-factory-worker  | 2026-01-06 08:51:26 [[32minfo[39m]: Google CSE returned 10 results for "AI chatbot"
+content-factory-worker  | 2026-01-06 08:51:26 [[32minfo[39m]: Γ£ô Found "AI chatbot" at position #3
+content-factory-worker  | 2026-01-06 08:51:26 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 08:51:26 [[32minfo[39m]: Searching Google CSE for: "conversational AI"
+content-factory-worker  | 2026-01-06 08:51:26 [[32minfo[39m]: Google CSE returned 10 results for "conversational AI"
+content-factory-worker  | 2026-01-06 08:51:26 [[32minfo[39m]: Γ£ù "conversational AI" not in top 10
+content-factory-worker  | 2026-01-06 08:51:26 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 08:51:26 [[32minfo[39m]: Searching Google CSE for: "GPT-4o"
+content-factory-worker  | 2026-01-06 08:51:27 [[32minfo[39m]: Google CSE returned 10 results for "GPT-4o"
+content-factory-worker  | 2026-01-06 08:51:27 [[32minfo[39m]: Γ£ô Found "GPT-4o" at position #1
+content-factory-worker  | 2026-01-06 08:51:27 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 08:51:27 [[32minfo[39m]: Searching Google CSE for: "image generation"
+content-factory-worker  | 2026-01-06 08:51:27 [[32minfo[39m]: Google CSE returned 10 results for "image generation"
+content-factory-worker  | 2026-01-06 08:51:27 [[32minfo[39m]: Γ£ô Found "image generation" at position #1
+content-factory-worker  | 2026-01-06 08:51:27 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 08:51:27 [[32minfo[39m]: Searching Google CSE for: "custom GPTs"
+content-factory-worker  | 2026-01-06 08:51:28 [[32minfo[39m]: Google CSE returned 10 results for "custom GPTs"
+content-factory-worker  | 2026-01-06 08:51:28 [[32minfo[39m]: Γ£ô Found "custom GPTs" at position #1
+content-factory-worker  | 2026-01-06 08:51:28 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 08:51:28 [[32minfo[39m]: Searching Google CSE for: "coding assistant"
+content-factory-worker  | 2026-01-06 08:51:28 [[32minfo[39m]: Google CSE returned 10 results for "coding assistant"
+content-factory-worker  | 2026-01-06 08:51:28 [[32minfo[39m]: Γ£ô Found "coding assistant" at position #6
+content-factory-worker  | 2026-01-06 08:51:28 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 08:51:28 [[32minfo[39m]: Searching Google CSE for: "data analysis"
+content-factory-worker  | 2026-01-06 08:51:32 [[32minfo[39m]: Google CSE returned 10 results for "data analysis"
+content-factory-worker  | 2026-01-06 08:51:32 [[32minfo[39m]: Γ£ù "data analysis" not in top 10
+content-factory-worker  | 2026-01-06 08:51:32 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 08:51:32 [[32minfo[39m]: Searching Google CSE for: "ChatGPT login"
+content-factory-worker  | 2026-01-06 08:51:33 [[32minfo[39m]: Google CSE returned 10 results for "ChatGPT login"
+content-factory-worker  | 2026-01-06 08:51:33 [[32minfo[39m]: Γ£ô Found "ChatGPT login" at position #1
+content-factory-worker  | 2026-01-06 08:51:33 [[32minfo[39m]: Γ£ô Google CSE found 6 rankings
+content-factory-worker  | 2026-01-06 08:51:33 [[32minfo[39m]: Step 3 Complete: 6 rankings found (source: google_cse)
+content-factory-worker  | 2026-01-06 08:51:33 [[32minfo[39m]: Step 4: Technical & UX checks
+content-factory-worker  | 2026-01-06 08:51:33 [[32minfo[39m]: Running technical checks for chatgpt.com...
+content-factory-worker  | 2026-01-06 08:51:33 [[32minfo[39m]: Technical score: 7/25
+content-factory-worker  | 2026-01-06 08:51:34 [[32minfo[39m]: Fetching PageSpeed Insights for https://chatgpt.com (mobile)...
+content-factory-worker  | 2026-01-06 08:52:07 [[31merror[39m]: PageSpeed fetch failed: The operation was aborted due to timeout
+content-factory-worker  | 2026-01-06 08:52:07 [[32minfo[39m]: Technical score: 7/25
+content-factory-worker  | 2026-01-06 08:52:07 [[32minfo[39m]: Performance score: 0/25
+content-factory-worker  | 2026-01-06 08:52:07 [[32minfo[39m]: On-Page SEO score: 0/25

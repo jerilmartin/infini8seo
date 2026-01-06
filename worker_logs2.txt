@@ -1,0 +1,100 @@
+content-factory-worker  | 2026-01-06 06:38:37 [[32minfo[39m]: Content Factory Worker started successfully
+content-factory-worker  | 2026-01-06 06:38:37 [[32minfo[39m]: Listening on queue: content-generation
+content-factory-worker  | 2026-01-06 06:38:37 [[32minfo[39m]: Concurrency: 1 job at a time
+content-factory-worker  | 2026-01-06 06:38:37 [[32minfo[39m]: Redis connected successfully
+content-factory-worker  | 2026-01-06 06:38:37 [[32minfo[39m]: Job 989fb890-e52c-413c-a009-218941b10a86 is now active
+content-factory-worker  | 2026-01-06 06:38:37 [[32minfo[39m]: Starting SEO scan job: 989fb890-e52c-413c-a009-218941b10a86
+content-factory-worker  | 2026-01-06 06:38:37 [[32minfo[39m]: URL: https://notion.so/
+content-factory-worker  | 2026-01-06 06:38:37 [[32minfo[39m]: SEO Scan: Starting scan for https://notion.so/ (ID: 989fb890-e52c-413c-a009-218941b10a86)
+content-factory-worker  | 2026-01-06 06:38:37 [[32minfo[39m]: Using Gemini 3 Pro with Google Search for SEO analysis
+content-factory-worker  | 2026-01-06 06:38:37 [[32minfo[39m]: Step 1: Deep research for notion.so
+content-factory-worker  | 2026-01-06 06:39:32 [[32minfo[39m]: Research response length:
+content-factory-worker  | 2026-01-06 06:39:32 [[32minfo[39m]: Research found: 10 pages, 12 keywords
+content-factory-worker  | 2026-01-06 06:39:32 [[32minfo[39m]: Step 1 Complete: 10 indexed pages, 12 keywords
+content-factory-worker  | 2026-01-06 06:39:32 [[32minfo[39m]: Step 2: Competitor discovery
+content-factory-worker  | 2026-01-06 06:39:44 [[33mwarn[39m]: Job bc1883fe-1ba4-47f6-aa6a-71cb79aabfc0 has stalled
+content-factory-worker  | 2026-01-06 06:40:06 [[32minfo[39m]: Competitors found: 8 direct, 5 content
+content-factory-worker  | 2026-01-06 06:40:06 [[32minfo[39m]: Step 2 Complete
+content-factory-worker  | 2026-01-06 06:40:06 [[32minfo[39m]: Step 3: SERP position checking (hybrid approach)
+content-factory-worker  | 2026-01-06 06:40:06 [[32minfo[39m]: Attempting Google Custom Search API for position data...
+content-factory-worker  | 2026-01-06 06:40:06 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 06:40:06 [[32minfo[39m]: Searching Google CSE for: "all-in-one workspace"
+content-factory-worker  | 2026-01-06 06:40:06 [[31merror[39m]: Google CSE API error (403): {
+content-factory-worker  |   "error": {
+content-factory-worker  |     "code": 403,
+content-factory-worker  |     "message": "Custom Search API has not been used in project 513394804218 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/customsearch.googleapis.com/overview?project=513394804218 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.",
+content-factory-worker  |     "errors": [
+content-factory-worker  |       {
+content-factory-worker  |         "message": "Custom Search API has not been used in project 513394804218 before or it i
+content-factory-worker  | 2026-01-06 06:40:06 [[32minfo[39m]: Γ£ù "all-in-one workspace" not in top 10
+content-factory-worker  | 2026-01-06 06:40:07 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 06:40:07 [[32minfo[39m]: Searching Google CSE for: "productivity software"
+content-factory-worker  | 2026-01-06 06:40:07 [[31merror[39m]: Google CSE API error (403): {
+content-factory-worker  |   "error": {
+content-factory-worker  |     "code": 403,
+content-factory-worker  |     "message": "Custom Search API has not been used in project 513394804218 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/customsearch.googleapis.com/overview?project=513394804218 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.",
+content-factory-worker  |     "errors": [
+content-factory-worker  |       {
+content-factory-worker  |         "message": "Custom Search API has not been used in project 513394804218 before or it i
+content-factory-worker  | 2026-01-06 06:40:07 [[32minfo[39m]: Γ£ù "productivity software" not in top 10
+content-factory-worker  | 2026-01-06 06:40:07 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 06:40:07 [[32minfo[39m]: Searching Google CSE for: "project management"
+content-factory-worker  | 2026-01-06 06:40:07 [[31merror[39m]: Google CSE API error (403): {
+content-factory-worker  |   "error": {
+content-factory-worker  |     "code": 403,
+content-factory-worker  |     "message": "Custom Search API has not been used in project 513394804218 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/customsearch.googleapis.com/overview?project=513394804218 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.",
+content-factory-worker  |     "errors": [
+content-factory-worker  |       {
+content-factory-worker  |         "message": "Custom Search API has not been used in project 513394804218 before or it i
+content-factory-worker  | 2026-01-06 06:40:07 [[32minfo[39m]: Γ£ù "project management" not in top 10
+content-factory-worker  | 2026-01-06 06:40:07 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 06:40:07 [[32minfo[39m]: Searching Google CSE for: "team collaboration"
+content-factory-worker  | 2026-01-06 06:40:07 [[31merror[39m]: Google CSE API error (403): {
+content-factory-worker  |   "error": {
+content-factory-worker  |     "code": 403,
+content-factory-worker  |     "message": "Custom Search API has not been used in project 513394804218 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/customsearch.googleapis.com/overview?project=513394804218 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.",
+content-factory-worker  |     "errors": [
+content-factory-worker  |       {
+content-factory-worker  |         "message": "Custom Search API has not been used in project 513394804218 before or it i
+content-factory-worker  | 2026-01-06 06:40:07 [[32minfo[39m]: Γ£ù "team collaboration" not in top 10
+content-factory-worker  | 2026-01-06 06:40:07 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 06:40:07 [[32minfo[39m]: Searching Google CSE for: "note taking app"
+content-factory-worker  | 2026-01-06 06:40:07 [[31merror[39m]: Google CSE API error (403): {
+content-factory-worker  |   "error": {
+content-factory-worker  |     "code": 403,
+content-factory-worker  |     "message": "Custom Search API has not been used in project 513394804218 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/customsearch.googleapis.com/overview?project=513394804218 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.",
+content-factory-worker  |     "errors": [
+content-factory-worker  |       {
+content-factory-worker  |         "message": "Custom Search API has not been used in project 513394804218 before or it i
+content-factory-worker  | 2026-01-06 06:40:07 [[32minfo[39m]: Γ£ù "note taking app" not in top 10
+content-factory-worker  | 2026-01-06 06:40:08 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 06:40:08 [[32minfo[39m]: Searching Google CSE for: "Notion AI"
+content-factory-worker  | 2026-01-06 06:40:08 [[31merror[39m]: Google CSE API error (403): {
+content-factory-worker  |   "error": {
+content-factory-worker  |     "code": 403,
+content-factory-worker  |     "message": "Custom Search API has not been used in project 513394804218 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/customsearch.googleapis.com/overview?project=513394804218 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.",
+content-factory-worker  |     "errors": [
+content-factory-worker  |       {
+content-factory-worker  |         "message": "Custom Search API has not been used in project 513394804218 before or it i
+content-factory-worker  | 2026-01-06 06:40:08 [[32minfo[39m]: Γ£ù "Notion AI" not in top 10
+content-factory-worker  | 2026-01-06 06:40:08 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 06:40:08 [[32minfo[39m]: Searching Google CSE for: "kanban board"
+content-factory-worker  | 2026-01-06 06:40:08 [[31merror[39m]: Google CSE API error (403): {
+content-factory-worker  |   "error": {
+content-factory-worker  |     "code": 403,
+content-factory-worker  |     "message": "Custom Search API has not been used in project 513394804218 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/customsearch.googleapis.com/overview?project=513394804218 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.",
+content-factory-worker  |     "errors": [
+content-factory-worker  |       {
+content-factory-worker  |         "message": "Custom Search API has not been used in project 513394804218 before or it i
+content-factory-worker  | 2026-01-06 06:40:08 [[32minfo[39m]: Γ£ù "kanban board" not in top 10
+content-factory-worker  | 2026-01-06 06:40:08 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 06:40:08 [[32minfo[39m]: Searching Google CSE for: "wiki software"
+content-factory-worker  | 2026-01-06 06:40:08 [[31merror[39m]: Google CSE API error (403): {
+content-factory-worker  |   "error": {
+content-factory-worker  |     "code": 403,
+content-factory-worker  |     "message": "Custom Search API has not been used in project 513394804218 before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/customsearch.googleapis.com/overview?project=513394804218 then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.",
+content-factory-worker  |     "errors": [
+content-factory-worker  |       {
+content-factory-worker  |         "message": "Custom Search API has not been used in project 513394804218 before or it i
+content-factory-worker  | 2026-01-06 06:40:08 [[32minfo[39m]: Γ£ù "wiki software" not in top 10
+content-factory-worker  | 2026-01-06 06:40:08 [[32minfo[39m]: Google CSE found no rankings, trying Gemini fallback

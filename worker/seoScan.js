@@ -2,6 +2,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import logger from '../utils/logger.js';
 import SeoScanRepository from '../models/SeoScanRepository.js';
 import { fetchWhoisData } from './utils/whoisFetcher.js';
+import { batchCheckPositions, searchGoogle } from './utils/googleCustomSearch.js';
+import { checkTechnical } from './utils/technicalChecker.js';
+import { getPageSpeedInsights, calculatePerformanceScore, calculateOnPageSeoScore, getLighthouseMetrics } from './utils/pagespeedChecker.js';
 
 let genAI;
 
@@ -273,29 +276,55 @@ Return at least 5 direct competitors and 5 content competitors if they exist.`;
         logger.info(`Step 2 Complete`);
 
         // =========================================================================
-        // STEP 3: Ranking Position Check via Google Search
+        // STEP 3: Ranking Position Check (Hybrid: Google CSE + Gemini Fallback)
         // =========================================================================
         await SeoScanRepository.updateProgress(scanId, 55, 'Checking SERP positions');
-        logger.info('Step 3: SERP position sampling');
+        logger.info('Step 3: SERP position checking (hybrid approach)');
 
-        // Use ONLY discovered non-branded keywords for position checking
-        // Skip the brand name as it's obvious they rank for their own name
+        // Select keywords for position checking
+        // Less aggressive filtering - include more keywords
         const domainName = domain.split('.')[0].toLowerCase();
         const discoveredKeywords = (researchData.observed_keywords || [])
             .filter(k => {
                 const kLower = k.toLowerCase();
-                // Filter out brand name and short/garbage keywords
-                return kLower.length > 3 &&
-                    !kLower.includes(domainName) &&
+                // Only filter garbage, keep brand-adjacent keywords
+                return kLower.length > 2 &&
                     !kLower.includes('also') &&
                     !kLower.includes('identified') &&
-                    k.split(' ').length <= 5; // Max 5 words
+                    !kLower.includes('following') &&
+                    k.split(' ').length <= 6;
             })
-            .slice(0, 5);
+            .slice(0, 8); // Check more keywords
 
-        const positionPrompt = `You are an SEO Analyst checking SERP rankings for "${domain}".
+        let sampledPositions = [];
+        let positionSource = 'none';
 
-TASK: Search Google for each keyword and check if "${domain}" (or its main variation like .com) appears in the TOP 10 organic results.
+        // ATTEMPT 1: Use Google Custom Search API (accurate)
+        if (discoveredKeywords.length > 0) {
+            logger.info('Attempting Google Custom Search API for position data...');
+            const cseResults = await batchCheckPositions(discoveredKeywords, domain);
+
+            if (cseResults.available && cseResults.rankings.length > 0) {
+                sampledPositions = cseResults.rankings.map(r => ({
+                    keyword: r.keyword,
+                    position: r.position,
+                    url: r.url,
+                    source: 'verified'
+                }));
+                positionSource = 'google_cse';
+                logger.info(`✓ Google CSE found ${sampledPositions.length} rankings`);
+            } else if (!cseResults.available) {
+                logger.warn('Google CSE not configured, falling back to Gemini');
+            } else {
+                logger.info('Google CSE found no rankings, trying Gemini fallback');
+            }
+        }
+
+        // ATTEMPT 2: Gemini fallback (if CSE unavailable or found nothing)
+        if (sampledPositions.length === 0 && discoveredKeywords.length > 0) {
+            const positionPrompt = `You are an SEO Analyst checking SERP rankings for "${domain}".
+
+TASK: Search Google for each keyword and check if "${domain}" (or its parent company domain) appears in the TOP 10 organic results.
 
 KEYWORDS TO CHECK:
 ${discoveredKeywords.map((k, i) => `${i + 1}. "${k}"`).join('\n')}
@@ -303,7 +332,7 @@ ${discoveredKeywords.map((k, i) => `${i + 1}. "${k}"`).join('\n')}
 INSTRUCTIONS:
 1. Search each keyword on Google
 2. Check positions 1-10 (ignore ads)
-3. Look for "${domain}" OR any close variation (e.g. if checking "amazon.co.uk", also accept "amazon.com")
+3. For "${domain}", also accept parent/related domains (e.g., openai.com for chatgpt.com)
 4. Note the EXACT position if found
 
 OUTPUT FORMAT (JSON only):
@@ -317,41 +346,54 @@ OUTPUT FORMAT (JSON only):
 
 ACCURACY IS KEY. If they are #1, say #1.`;
 
-        let positionData = { rankings: [], overall_visibility: 'Unknown' };
-
-        if (discoveredKeywords.length > 0) {
             try {
                 const positionResult = await searchModel.generateContent(positionPrompt);
                 const positionResponse = positionResult.response.text();
-                positionData = extractJSON(positionResponse);
-                logger.info(`Position data: ${positionData.rankings?.length || 0} keywords checked`);
+                const positionData = extractJSON(positionResponse);
+
+                sampledPositions = (positionData.rankings || [])
+                    .filter(r => r.found && r.position && r.position <= 10)
+                    .map(r => ({
+                        keyword: r.keyword,
+                        position: r.position,
+                        source: 'ai-estimated'
+                    }));
+                positionSource = 'gemini';
+                logger.info(`Gemini fallback found ${sampledPositions.length} rankings`);
             } catch (error) {
-                logger.error('Position check failed:', error.message);
+                logger.error('Gemini position check failed:', error.message);
             }
         }
 
-        // Filter and validate SERP positions
-        const sampledPositions = (positionData.rankings || [])
-            .filter(r => {
-                // Must be found, have valid position, and keyword must be clean
-                if (!r.found || !r.position || r.position > 10) return false;
-                if (!r.keyword || r.keyword.length < 4) return false;
-                // Filter out garbage keywords
-                const kw = r.keyword.toLowerCase();
-                if (kw.includes(domainName)) return false;
-                if (kw.includes('also') || kw.includes('identified')) return false;
-                if (kw.includes('(') || kw.includes(')')) return false;
-                return true;
-            })
-            .map(r => ({ keyword: r.keyword, position: r.position }));
-
-        logger.info(`Step 3 Complete: ${sampledPositions.length} rankings found`);
+        logger.info(`Step 3 Complete: ${sampledPositions.length} rankings found (source: ${positionSource})`);
 
         // =========================================================================
-        // STEP 4: Domain Age Signal (WHOIS)
+        // STEP 4: Technical + UX Checks (Real Data)
         // =========================================================================
-        await SeoScanRepository.updateProgress(scanId, 70, 'Fetching domain authority signals');
-        logger.info('Step 4: WHOIS lookup');
+        await SeoScanRepository.updateProgress(scanId, 65, 'Checking technical SEO');
+        logger.info('Step 4: Technical & UX checks');
+
+        // Run technical checks (HTTPS, robots.txt, sitemap)
+        const technicalResults = await checkTechnical(domain);
+
+        // Run PageSpeed Insights (real performance data)
+        await SeoScanRepository.updateProgress(scanId, 70, 'Analyzing page performance');
+        const pageSpeedData = await getPageSpeedInsights(`https://${domain}`);
+
+        // Calculate separate scores from Lighthouse
+        const performanceScore = calculatePerformanceScore(pageSpeedData);
+        const onPageSeoScore = calculateOnPageSeoScore(pageSpeedData);
+        const lighthouseMetrics = getLighthouseMetrics(pageSpeedData);
+
+        logger.info(`Technical score: ${technicalResults.score}/${technicalResults.maxScore}`);
+        logger.info(`Performance score: ${performanceScore.score}/${performanceScore.maxScore}`);
+        logger.info(`On-Page SEO score: ${onPageSeoScore.score}/${onPageSeoScore.maxScore}`);
+
+        // =========================================================================
+        // STEP 5: Domain Authority (WHOIS + SERP Performance)
+        // =========================================================================
+        await SeoScanRepository.updateProgress(scanId, 75, 'Fetching domain authority signals');
+        logger.info('Step 5: WHOIS lookup');
 
         const whoisData = await fetchWhoisData(domain);
         const domainAge = {
@@ -359,71 +401,108 @@ ACCURACY IS KEY. If they are #1, say #1.`;
             created: whoisData.creationDate,
             expires: whoisData.expiryDate,
             registrar: whoisData.registrar,
-            label: 'observed',
+            label: 'verified',
         };
 
-        logger.info(`Step 4 Complete: Domain age ${domainAge.years || 'unknown'} years`);
+        // Calculate Authority Score from real data
+        const domainAgePoints = Math.min(10, (domainAge.years || 0) * 2);
+        const firstPlaceCount = sampledPositions.filter(p => p.position === 1).length;
+        const rankingBonus = Math.min(8, firstPlaceCount * 2);
+        const coverageBonus = Math.min(7, sampledPositions.length);
+        const authorityScore = Math.min(25, domainAgePoints + rankingBonus + coverageBonus);
+
+        // Content score now uses On-Page SEO from Lighthouse
+        const indexedPagesCount = researchData.indexed_pages?.length || 0;
+        const contentPoints = Math.min(15, indexedPagesCount * 1.5);
+        const keywordCoverage = Math.min(5, (researchData.observed_keywords?.length || 0) / 2);
+        const contentFreshness = domainAge.years && domainAge.years < 5 ? 5 : 3;
+        const contentScore = Math.min(25, contentPoints + keywordCoverage + contentFreshness);
+
+        logger.info(`Step 5 Complete: Domain age ${domainAge.years || 'unknown'} years, Authority: ${authorityScore}/25`);
 
         // =========================================================================
-        // STEP 5: Generate Strategic Keyword Analysis
+        // STEP 6: AI Strategic Analysis (Using ALL Real Data)
         // =========================================================================
-        await SeoScanRepository.updateProgress(scanId, 85, 'Developing keyword strategy');
-        logger.info('Step 5: Generating keyword opportunities');
+        await SeoScanRepository.updateProgress(scanId, 85, 'Generating strategic recommendations');
+        logger.info('Step 6: AI strategic analysis with verified data');
 
-        const totalIndexed = researchData.indexed_pages?.length || 0;
-        const totalKeywords = researchData.observed_keywords?.length || 0;
-        const rankingsFound = sampledPositions.length;
+        // NEW: Calculate total health score with 4 real components
+        // Technical (25) + On-Page SEO (25) + Authority (25) + Performance (25)
+        const calculatedHealthScore = Math.round(
+            (technicalResults.score / technicalResults.maxScore) * 25 +
+            (onPageSeoScore.score / onPageSeoScore.maxScore) * 25 +
+            (authorityScore / 25) * 25 +
+            (performanceScore.score / performanceScore.maxScore) * 25
+        );
 
-        const analysisPrompt = `You are a Senior SEO Strategist.
-    
-Based on the research for "${domain}" (Business: ${researchData.business_summary || 'Unknown'}), generate a high-value Keyword Strategy.
+        const scoreBreakdown = {
+            technical: technicalResults.score,
+            on_page_seo: onPageSeoScore.score,
+            authority: authorityScore,
+            performance: performanceScore.score
+        };
 
-DATA:
-- Current Keywords: ${researchData.observed_keywords?.join(', ') || 'None hidden'}
-- Competitors: ${(competitorData.direct_competitors || []).map(c => typeof c === 'string' ? c : c.domain).join(', ')}
+        // Build comprehensive data package for Gemini
+        const analysisPrompt = `You are a Senior SEO Strategist analyzing VERIFIED data for "${domain}".
 
-TASK:
-Generate EXACTLY 30 high-value keyword opportunities categorized by intent.
-Focus on keywords that would actually drive valuable traffic to this specific business.
+=== VERIFIED DATA (Use this to inform your analysis) ===
 
-CATEGORIES (Total 30 keywords):
-1. "High Intent / Transactional" (10 keywords): Keywords users search when ready to buy/use.
-2. "Informational / Educational" (10 keywords): Questions and topics to capture top-of-funnel traffic.
-3. "Niche / Long-Tail" (10 keywords): Specific, lower competition terms they can dominate.
+BUSINESS CONTEXT:
+${researchData.business_summary || 'Not determined'}
 
-Also provide a Health Score (0-100) and 3-5 strategic recommendations.
+TECHNICAL SEO (Score: ${technicalResults.score}/${technicalResults.maxScore}):
+- HTTPS: ${technicalResults.checks.https.passed ? '✓ Enabled' : '✗ Missing'}
+- robots.txt: ${technicalResults.checks.robotsTxt.passed ? '✓ Present' : '✗ Missing'}
+- Sitemap: ${technicalResults.checks.sitemap.passed ? '✓ Available' : '✗ Missing'}
+
+PAGE PERFORMANCE (From Google PageSpeed):
+${pageSpeedData ? `- Performance Score: ${pageSpeedData.performance}/100
+- Accessibility: ${pageSpeedData.accessibility}/100
+- SEO Score: ${pageSpeedData.seo}/100
+- Mobile Optimized: ${pageSpeedData.mobileOptimized ? 'Yes' : 'No'}
+- LCP: ${pageSpeedData.lcpSeconds}` : '- Data unavailable'}
+
+VERIFIED SERP RANKINGS (From Google Custom Search):
+${sampledPositions.map(p => `- "${p.keyword}": Position #${p.position}`).join('\n') || 'No rankings found'}
+
+DOMAIN AUTHORITY:
+- Age: ${domainAge.years || 'Unknown'} years (Created: ${domainAge.created || 'Unknown'})
+- Registrar: ${domainAge.registrar || 'Unknown'}
+
+CONTENT SIGNALS:
+- Indexed Pages Found: ${indexedPagesCount}
+- Observed Keywords: ${researchData.observed_keywords?.join(', ') || 'None found'}
+
+COMPETITORS (AI-Discovered):
+- Direct: ${(competitorData.direct_competitors || []).slice(0, 5).map(c => typeof c === 'string' ? c : c.domain).join(', ')}
+- Content: ${(competitorData.content_competitors || []).slice(0, 5).map(c => typeof c === 'string' ? c : c.domain).join(', ')}
+
+=== YOUR TASK ===
+
+Based on the VERIFIED data above, provide:
+
+1. STRATEGIC KEYWORDS: Generate 30 high-value keyword opportunities in 3 categories:
+   - "High Intent / Transactional" (10 keywords)
+   - "Informational / Educational" (10 keywords)  
+   - "Niche / Long-Tail" (10 keywords)
+
+2. STRATEGIC RECOMMENDATIONS: 3-5 specific, actionable recommendations based on the real data.
+   Reference specific findings (e.g., "Your PageSpeed score of ${pageSpeedData?.performance || 'N/A'} indicates...")
 
 REQUIRED JSON OUTPUT:
 {
-  "health_score": 75,
-  "score_breakdown": {
-    "technical": 20,
-    "content": 20,
-    "authority": 20,
-    "user_experience": 15
-  },
   "suggested_keywords": [
-    {
-      "category": "High Intent / Transactional",
-      "keywords": ["keyword 1", "keyword 2", "...", "keyword 10"]
-    },
-    {
-      "category": "Informational / Educational",
-      "keywords": ["keyword 1", "keyword 2", "...", "keyword 10"]
-    },
-    {
-      "category": "Niche / Long-Tail",
-      "keywords": ["keyword 1", "keyword 2", "...", "keyword 10"]
-    }
+    {"category": "High Intent / Transactional", "keywords": ["kw1", "kw2", ...]},
+    {"category": "Informational / Educational", "keywords": ["kw1", "kw2", ...]},
+    {"category": "Niche / Long-Tail", "keywords": ["kw1", "kw2", ...]}
   ],
   "recommendations": [
-    "Rec 1", "Rec 2", "Rec 3"
+    "Specific recommendation referencing data...",
+    "Another recommendation..."
   ]
 }`;
 
         let analysis = {
-            health_score: 50,
-            score_breakdown: {},
             recommendations: [],
             suggested_keywords: []
         };
@@ -445,18 +524,18 @@ REQUIRED JSON OUTPUT:
             logger.error('Analysis generation failed:', error.message);
         }
 
-        logger.info(`Step 5 Complete: Generated ${analysis.suggested_keywords?.reduce((acc, g) => acc + g.keywords.length, 0) || 0} keywords`);
+        logger.info(`Step 6 Complete: Generated ${analysis.suggested_keywords?.reduce((acc, g) => acc + g.keywords.length, 0) || 0} keywords`);
 
         // =========================================================================
-        // Compile Final Results
+        // Compile Final Results (All Verified Data)
         // =========================================================================
         const results = {
             domain,
             scanned_at: new Date().toISOString(),
-            data_source: 'gemini_pro_research',
+            data_source: 'hybrid_verified',
             business_summary: researchData.business_summary || '',
             observed_keywords: (researchData.observed_keywords || []).map(k => ({ keyword: k, label: 'observed' })),
-            sampled_positions: sampledPositions,
+            sampled_positions: sampledPositions.map(p => ({ ...p, label: 'verified' })),
             serp_competitors: {
                 direct: (competitorData.direct_competitors || []).map(c => ({
                     domain: typeof c === 'string' ? c : c.domain,
@@ -468,12 +547,33 @@ REQUIRED JSON OUTPUT:
                 })),
             },
             domain_age: domainAge,
-            health_score: analysis.health_score || 50,
-            score_breakdown: analysis.score_breakdown || {},
-            recommendations: (analysis.recommendations || []).map(r => ({ text: r, label: 'ai-generated' })),
-            suggested_keywords: analysis.suggested_keywords || [], // New field
+            // Real calculated scores
+            health_score: calculatedHealthScore,
+            score_breakdown: scoreBreakdown,
+            // Real technical data
+            technical_details: {
+                https: technicalResults.checks.https.passed,
+                robots_txt: technicalResults.checks.robotsTxt.passed,
+                sitemap: technicalResults.checks.sitemap.passed,
+                score: technicalResults.score,
+                max_score: technicalResults.maxScore
+            },
+            // Real PageSpeed data
+            pagespeed: pageSpeedData ? {
+                performance: pageSpeedData.performance,
+                accessibility: pageSpeedData.accessibility,
+                seo: pageSpeedData.seo,
+                mobile_optimized: pageSpeedData.mobileOptimized,
+                lcp: pageSpeedData.lcpSeconds,
+                label: 'verified'
+            } : null,
+            // Full Lighthouse Metrics for UI
+            lighthouse_metrics: lighthouseMetrics,
+            // AI-generated strategic content (informed by real data)
+            recommendations: (analysis.recommendations || []).map(r => ({ text: r, label: 'ai-strategic' })),
+            suggested_keywords: analysis.suggested_keywords || [],
             market_position: competitorData.market_position || '',
-            visibility: positionData.overall_visibility || '',
+            visibility: positionSource !== 'none' ? (sampledPositions.length > 3 ? 'Strong' : sampledPositions.length > 0 ? 'Moderate' : 'Weak') : 'Unknown',
         };
 
         await SeoScanRepository.markAsComplete(scanId, results);

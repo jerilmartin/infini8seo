@@ -1,0 +1,80 @@
+content-factory-worker  | 2026-01-06 06:58:03 [[32minfo[39m]: Job f5268d14-54ad-4817-8c1a-c26d6c171e6c completed successfully
+content-factory-worker  | 2026-01-06 07:12:00 [[32minfo[39m]: Worker shutting down gracefully...
+content-factory-worker  | 2026-01-06 07:12:00 [[32minfo[39m]: Worker closed successfully
+content-factory-worker  | 2026-01-06 07:12:02 [[32minfo[39m]: Supabase client initialized successfully
+content-factory-worker  | 2026-01-06 07:12:02 [[32minfo[39m]: Connected to: https://iasuwapumbmswontonxn.supabase.co
+content-factory-worker  | (node:26) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+content-factory-worker  | (Use `node --trace-warnings ...` to show where the warning was created)
+content-factory-worker  | 2026-01-06 07:12:03 [[32minfo[39m]: Supabase connection test successful
+content-factory-worker  | 2026-01-06 07:12:03 [[32minfo[39m]: Worker: Supabase connected
+content-factory-worker  | 2026-01-06 07:12:03 [[32minfo[39m]: Content Factory Worker started successfully
+content-factory-worker  | 2026-01-06 07:12:03 [[32minfo[39m]: Listening on queue: content-generation
+content-factory-worker  | 2026-01-06 07:12:03 [[32minfo[39m]: Concurrency: 1 job at a time
+content-factory-worker  | 2026-01-06 07:12:03 [[32minfo[39m]: Redis connected successfully
+content-factory-worker  | 2026-01-06 07:12:34 [[32minfo[39m]: Job 110306d0-b851-437a-8918-8222e514c02b is now active
+content-factory-worker  | 2026-01-06 07:12:34 [[32minfo[39m]: Starting SEO scan job: 110306d0-b851-437a-8918-8222e514c02b
+content-factory-worker  | 2026-01-06 07:12:34 [[32minfo[39m]: URL: https://vercel.com/
+content-factory-worker  | 2026-01-06 07:12:34 [[32minfo[39m]: SEO Scan: Starting scan for https://vercel.com/ (ID: 110306d0-b851-437a-8918-8222e514c02b)
+content-factory-worker  | 2026-01-06 07:12:34 [[32minfo[39m]: Using Gemini 3 Pro with Google Search for SEO analysis
+content-factory-worker  | 2026-01-06 07:12:35 [[32minfo[39m]: Step 1: Deep research for vercel.com
+content-factory-worker  | 2026-01-06 07:13:09 [[32minfo[39m]: Research response length:
+content-factory-worker  | 2026-01-06 07:13:09 [[32minfo[39m]: Research found: 10 pages, 12 keywords
+content-factory-worker  | 2026-01-06 07:13:09 [[32minfo[39m]: Step 1 Complete: 10 indexed pages, 12 keywords
+content-factory-worker  | 2026-01-06 07:13:10 [[32minfo[39m]: Step 2: Competitor discovery
+content-factory-worker  | 2026-01-06 07:13:57 [[32minfo[39m]: Competitors found: 9 direct, 6 content
+content-factory-worker  | 2026-01-06 07:13:57 [[32minfo[39m]: Step 2 Complete
+content-factory-worker  | 2026-01-06 07:13:58 [[32minfo[39m]: Step 3: SERP position checking (hybrid approach)
+content-factory-worker  | 2026-01-06 07:13:58 [[32minfo[39m]: Attempting Google Custom Search API for position data...
+content-factory-worker  | 2026-01-06 07:13:58 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 07:13:58 [[32minfo[39m]: Searching Google CSE for: "Frontend Cloud"
+content-factory-worker  | 2026-01-06 07:13:58 [[32minfo[39m]: Google CSE returned 10 results for "Frontend Cloud"
+content-factory-worker  | 2026-01-06 07:13:58 [[32minfo[39m]: Γ£ô Found "Frontend Cloud" at position #1
+content-factory-worker  | 2026-01-06 07:13:59 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 07:13:59 [[32minfo[39m]: Searching Google CSE for: "Next.js Deployment"
+content-factory-worker  | 2026-01-06 07:13:59 [[32minfo[39m]: Google CSE returned 10 results for "Next.js Deployment"
+content-factory-worker  | 2026-01-06 07:13:59 [[32minfo[39m]: Γ£ô Found "Next.js Deployment" at position #5
+content-factory-worker  | 2026-01-06 07:13:59 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 07:13:59 [[32minfo[39m]: Searching Google CSE for: "Serverless Functions"
+content-factory-worker  | 2026-01-06 07:13:59 [[32minfo[39m]: Google CSE returned 10 results for "Serverless Functions"
+content-factory-worker  | 2026-01-06 07:13:59 [[32minfo[39m]: Γ£ô Found "Serverless Functions" at position #3
+content-factory-worker  | 2026-01-06 07:13:59 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 07:13:59 [[32minfo[39m]: Searching Google CSE for: "Edge Middleware"
+content-factory-worker  | 2026-01-06 07:14:00 [[32minfo[39m]: Google CSE returned 10 results for "Edge Middleware"
+content-factory-worker  | 2026-01-06 07:14:00 [[32minfo[39m]: Γ£ô Found "Edge Middleware" at position #1
+content-factory-worker  | 2026-01-06 07:14:00 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 07:14:00 [[32minfo[39m]: Searching Google CSE for: "Web Analytics"
+content-factory-worker  | 2026-01-06 07:14:00 [[32minfo[39m]: Google CSE returned 10 results for "Web Analytics"
+content-factory-worker  | 2026-01-06 07:14:00 [[32minfo[39m]: Γ£ù "Web Analytics" not in top 10
+content-factory-worker  | 2026-01-06 07:14:00 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 07:14:00 [[32minfo[39m]: Searching Google CSE for: "React Framework"
+content-factory-worker  | 2026-01-06 07:14:01 [[32minfo[39m]: Google CSE returned 10 results for "React Framework"
+content-factory-worker  | 2026-01-06 07:14:01 [[32minfo[39m]: Γ£ù "React Framework" not in top 10
+content-factory-worker  | 2026-01-06 07:14:01 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 07:14:01 [[32minfo[39m]: Searching Google CSE for: "Zero Configuration"
+content-factory-worker  | 2026-01-06 07:14:01 [[32minfo[39m]: Google CSE returned 10 results for "Zero Configuration"
+content-factory-worker  | 2026-01-06 07:14:01 [[32minfo[39m]: Γ£ô Found "Zero Configuration" at position #8
+content-factory-worker  | 2026-01-06 07:14:02 [[32minfo[39m]: Google CSE check: API Key=SET (AIzaSyDN-p...), CX=0626fc45ff48d4ec5
+content-factory-worker  | 2026-01-06 07:14:02 [[32minfo[39m]: Searching Google CSE for: "Global CDN"
+content-factory-worker  | 2026-01-06 07:14:02 [[32minfo[39m]: Google CSE returned 10 results for "Global CDN"
+content-factory-worker  | 2026-01-06 07:14:02 [[32minfo[39m]: Γ£ù "Global CDN" not in top 10
+content-factory-worker  | 2026-01-06 07:14:02 [[32minfo[39m]: Γ£ô Google CSE found 5 rankings
+content-factory-worker  | 2026-01-06 07:14:02 [[32minfo[39m]: Step 3 Complete: 5 rankings found (source: google_cse)
+content-factory-worker  | 2026-01-06 07:14:02 [[32minfo[39m]: Step 4: Technical & UX checks
+content-factory-worker  | 2026-01-06 07:14:02 [[32minfo[39m]: Running technical checks for vercel.com...
+content-factory-worker  | 2026-01-06 07:14:03 [[32minfo[39m]: Technical score: 25/25
+content-factory-worker  | 2026-01-06 07:14:03 [[32minfo[39m]: Fetching PageSpeed Insights for https://vercel.com (mobile)...
+content-factory-worker  | 2026-01-06 07:14:04 [[31merror[39m]: PageSpeed API error (429): {
+content-factory-worker  |   "error": {
+content-factory-worker  |     "code": 429,
+content-factory-worker  |     "message": "Quota exceeded for quota metric 'Queries' and limit 'Queries per day' of service 'pagespeedonline.googleapis.com' for consumer 'project_number:583797351
+content-factory-worker  | 2026-01-06 07:14:04 [[32minfo[39m]: Technical score: 25/25
+content-factory-worker  | 2026-01-06 07:14:04 [[32minfo[39m]: UX score: 0/25
+content-factory-worker  | 2026-01-06 07:14:04 [[32minfo[39m]: Step 5: WHOIS lookup
+content-factory-worker  | 2026-01-06 07:14:04 [[32minfo[39m]: Fetching WHOIS for domain: vercel.com
+content-factory-worker  | 2026-01-06 07:14:05 [[32minfo[39m]: WHOIS parsed for vercel.com:
+content-factory-worker  | 2026-01-06 07:14:05 [[32minfo[39m]: Step 5 Complete: Domain age 26 years, Authority: 19/25
+content-factory-worker  | 2026-01-06 07:14:05 [[32minfo[39m]: Step 6: AI strategic analysis with verified data
+content-factory-worker  | 2026-01-06 07:14:11 [[32minfo[39m]: Step 6 Complete: Generated 30 keywords
+content-factory-worker  | 2026-01-06 07:14:11 [[32minfo[39m]: SEO Scan Complete: 110306d0-b851-437a-8918-8222e514c02b - Score: 67
+content-factory-worker  | 2026-01-06 07:14:11 [[32minfo[39m]: SEO Scan 110306d0-b851-437a-8918-8222e514c02b completed successfully
+content-factory-worker  | 2026-01-06 07:14:11 [[32minfo[39m]: Job 110306d0-b851-437a-8918-8222e514c02b completed successfully
