@@ -19,6 +19,11 @@ Content Factory automates content strategy and creation. Provide your business n
 - Unsplash integration for stock imagery
 - Real-time progress tracking
 - Markdown export
+- **AI-Powered SEO Scanner**:
+  - Real-time SERP position tracking via Google Custom Search
+  - Integrated PageSpeed Insights (Lighthouse) for Performance/SEO metrics
+  - Technical SEO auditing (HTTPS, robots.txt, sitemap)
+  - Data-driven keyword strategy and recommendations
 
 ## AIO (Answer Engine Optimization)
 
@@ -163,6 +168,11 @@ UNSPLASH_ACCESS_KEY=your_unsplash_key
 # Redis
 REDIS_HOST=localhost
 REDIS_PORT=6379
+
+# Google Custom Search (Required for SEO Scanner)
+# Enable "Custom Search API" and "PageSpeed Insights API" in Google Cloud Console
+GOOGLE_CSE_ID=your_custom_search_engine_id
+GOOGLE_CSE_API_KEY=your_google_cloud_api_key
 ```
 
 ### 3. Set Up Database
@@ -278,6 +288,25 @@ List all jobs with optional filtering.
 ### DELETE /api/job/:jobId
 
 Delete a job and its content.
+
+### POST /api/scan-seo
+
+Initiate an SEO scan for a target website.
+
+**Request:**
+```json
+{
+  "url": "https://example.com"
+}
+```
+
+### GET /api/seo-scan/:scanId
+
+Get SEO scan results, including Domain Health Score, PageSpeed metrics, and AI recommendations.
+
+### DELETE /api/seo-scan/:scanId
+
+Delete a specific SEO scan record.
 
 ## Auto-Cleanup
 
