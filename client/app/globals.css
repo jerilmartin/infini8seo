@@ -36,44 +36,65 @@
     --preview-title: 228 15% 93%;
   }
 
-  /* Light Mode - HIGH CONTRAST (mirroring dark mode clarity) */
+  /* Light Mode - 4-Layer Visual Hierarchy System */
   [data-theme="light"] {
-    /* Level 1: Page Canvas - Grey for contrast */
-    --background: 220 16% 92%;
-    /* #e2e5eb - slightly lighter grey */
+    /* ═══════════════════════════════════════════════════════════════
+       LAYER 1: Page Canvas (calm backdrop, NOT white)
+       ═══════════════════════════════════════════════════════════════ */
+    --background: 220 14% 96%;
+    /* #f6f7f9 */
 
-    /* Level 2: Cards - Pure white with strong elevation */
+    /* ═══════════════════════════════════════════════════════════════
+       LAYER 2: Primary Cards (elevated, obvious)
+       ═══════════════════════════════════════════════════════════════ */
     --card: 0 0% 100%;
     /* #ffffff */
     --card-foreground: 222 47% 11%;
+    --card-elevated: 0 0% 100%;
 
-    /* Level 3: List Rows */
-    --row-hover: 220 14% 96%;
-    --divider: 220 13% 80%;
-    /* Visible dividers */
+    /* Card shadows for elevation */
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+    --card-shadow-hover: 0 1px 3px rgba(0, 0, 0, 0.05), 0 12px 32px rgba(0, 0, 0, 0.08);
 
-    /* Primary Accent */
+    /* ═══════════════════════════════════════════════════════════════
+       LAYER 3: Inner Rows (dividers, not boxes)
+       ═══════════════════════════════════════════════════════════════ */
+    --divider: 220 13% 91%;
+    /* #e5e7eb - clear but thin */
+    --row-hover: 220 14% 98%;
+
+    /* ═══════════════════════════════════════════════════════════════
+       LAYER 4: Accent (very limited - CTA, active tab, key metrics)
+       ═══════════════════════════════════════════════════════════════ */
     --primary: 221 83% 53%;
     --primary-foreground: 0 0% 100%;
-
-    /* Text - High contrast */
-    --foreground: 222 47% 11%;
-    --muted: 220 14% 90%;
-    --muted-foreground: 220 9% 35%;
-    --secondary-foreground: 220 14% 25%;
-
-    /* Secondary surfaces */
-    --secondary: 220 14% 94%;
-
-    /* Input surfaces */
-    --input: 0 0% 100%;
-    --input-highlight: 220 14% 96%;
-
-    /* Borders - STRONG visibility */
-    --border: 220 13% 75%;
-    --destructive: 0 72% 51%;
     --ring: 220 70% 50%;
-    --radius: 0.5rem;
+
+    /* ═══════════════════════════════════════════════════════════════
+       TYPOGRAPHY - Never pure black
+       ═══════════════════════════════════════════════════════════════ */
+    /* Primary text: #0f172a (slate-900) - titles, headings */
+    --foreground: 222 47% 11%;
+    /* Secondary text: #334155 (slate-700) - body, descriptions */
+    --secondary-foreground: 215 25% 27%;
+    /* Muted text: #64748b (slate-500) - labels, captions */
+    --muted-foreground: 215 16% 47%;
+
+    /* ═══════════════════════════════════════════════════════════════
+       SURFACES & INPUTS
+       ═══════════════════════════════════════════════════════════════ */
+    --secondary: 220 14% 96%;
+    --muted: 220 14% 96%;
+    --input: 0 0% 100%;
+    --input-highlight: 220 14% 98%;
+
+    /* ═══════════════════════════════════════════════════════════════
+       BORDERS - Clear but not harsh
+       ═══════════════════════════════════════════════════════════════ */
+    --border: 220 13% 87%;
+    --destructive: 0 72% 51%;
+    --radius: 0.875rem;
+    /* 14px for cards */
 
     /* Other */
     --preview-title: 222 47% 11%;
@@ -106,6 +127,26 @@
 
   .btn-ghost {
     @apply btn hover:bg-secondary h-9 px-3 text-secondary-foreground;
+  }
+
+  /* Card elevation for light mode - Layer 2 */
+  .card-elevated {
+    @apply bg-card rounded-xl border border-border;
+    box-shadow: var(--card-shadow, none);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+
+  .card-elevated:hover {
+    box-shadow: var(--card-shadow-hover, var(--card-shadow, none));
+  }
+
+  /* Inner row styling - Layer 3 */
+  .inner-row {
+    @apply py-3.5 border-b border-border/50;
+  }
+
+  .inner-row:last-child {
+    @apply border-b-0;
   }
 
   /* Cards with distinct surfaces */

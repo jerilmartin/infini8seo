@@ -196,133 +196,135 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
             {/* Form Column */}
             <div className="animate-fade-in" style={{ animationDelay: '50ms' }}>
-              <form onSubmit={handleContentSubmit} className="space-y-3">
-                {/* Niche */}
-                <section>
-                  <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-1.5 block">Your Niche</label>
-                  <input
-                    type="text"
-                    value={niche}
-                    onChange={(e) => setNiche(e.target.value)}
-                    placeholder="e.g., B2B SaaS, Personal Finance"
-                    className="input text-[14px] h-10"
-                    disabled={loading}
-                  />
-                </section>
+              <div className="card-elevated p-6">
+                <form onSubmit={handleContentSubmit} className="space-y-3">
+                  {/* Niche */}
+                  <section>
+                    <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-1.5 block">Your Niche</label>
+                    <input
+                      type="text"
+                      value={niche}
+                      onChange={(e) => setNiche(e.target.value)}
+                      placeholder="e.g., B2B SaaS, Personal Finance"
+                      className="input text-[14px] h-10"
+                      disabled={loading}
+                    />
+                  </section>
 
-                {/* Specialties */}
-                <section>
-                  <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-1.5 block">What You Offer</label>
-                  <div className="space-y-2">
-                    {valuePropositions.map((vp, i) => (
-                      <div key={i} className="flex gap-2">
+                  {/* Specialties */}
+                  <section>
+                    <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-1.5 block">What You Offer</label>
+                    <div className="space-y-2">
+                      {valuePropositions.map((vp, i) => (
+                        <div key={i} className="flex gap-2">
+                          <input
+                            type="text"
+                            value={vp}
+                            onChange={(e) => handleValuePropChange(i, e.target.value)}
+                            placeholder="A key service or angle"
+                            className="input flex-1 text-[14px] h-10"
+                            disabled={loading}
+                          />
+                          {valuePropositions.length > 1 && (
+                            <button type="button" onClick={() => removeValueProp(i)} className="px-2 text-secondary-foreground hover:text-foreground text-lg transition-colors" disabled={loading}>×</button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {valuePropositions.length < 5 && (
+                      <button type="button" onClick={addValueProp} className="mt-1.5 text-[11px] text-secondary-foreground hover:text-foreground transition-colors" disabled={loading}>
+                        + Add another
+                      </button>
+                    )}
+                  </section>
+
+                  {/* Content Mix - Discrete +/- Controls */}
+                  <section>
+                    <div className="flex items-baseline justify-between mb-2">
+                      <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide">Content Mix</label>
+                      <span className="text-[12px] tabular-nums text-secondary-foreground">{totalPosts} posts</span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {CONTENT_TYPES.map((type) => {
+                        const value = allocations[type.key];
+                        return (
+                          <div key={type.key} className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/30 border border-border/30">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[14px] font-medium text-foreground">{type.label}</span>
+                              <span className="text-[11px] text-muted-foreground">{type.desc}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleAllocationChange(type.key, value - 1)}
+                                disabled={loading || value <= 0}
+                                className="w-7 h-7 rounded flex items-center justify-center bg-secondary hover:bg-muted text-foreground/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                              >
+                                −
+                              </button>
+                              <span className="w-6 text-center text-[14px] tabular-nums font-medium text-foreground">{value}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleAllocationChange(type.key, value + 1)}
+                                disabled={loading || value >= MAX_PER_TYPE}
+                                className="w-7 h-7 rounded flex items-center justify-center bg-secondary hover:bg-muted text-foreground/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+
+                  {/* Settings Row */}
+                  <section className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-1.5 block">Tone</label>
+                      <select value={tone} onChange={(e) => setTone(e.target.value)} className="select text-[14px] h-10" disabled={loading}>
+                        {TONES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-1.5 block">Length</label>
+                      <div className="flex items-center gap-3 h-10">
                         <input
-                          type="text"
-                          value={vp}
-                          onChange={(e) => handleValuePropChange(i, e.target.value)}
-                          placeholder="A key service or angle"
-                          className="input flex-1 text-[14px] h-10"
+                          type="range"
+                          min={MIN_WORD_COUNT}
+                          max={MAX_WORD_COUNT}
+                          step={100}
+                          value={targetWordCount}
+                          onChange={(e) => setTargetWordCount(Number(e.target.value))}
+                          className="flex-1"
                           disabled={loading}
                         />
-                        {valuePropositions.length > 1 && (
-                          <button type="button" onClick={() => removeValueProp(i)} className="px-2 text-secondary-foreground hover:text-foreground text-lg transition-colors" disabled={loading}>×</button>
-                        )}
+                        <span className="text-[12px] tabular-nums text-secondary-foreground w-12 text-right">{targetWordCount}w</span>
                       </div>
-                    ))}
-                  </div>
-                  {valuePropositions.length < 5 && (
-                    <button type="button" onClick={addValueProp} className="mt-1.5 text-[11px] text-secondary-foreground hover:text-foreground transition-colors" disabled={loading}>
-                      + Add another
-                    </button>
-                  )}
-                </section>
-
-                {/* Content Mix - Discrete +/- Controls */}
-                <section>
-                  <div className="flex items-baseline justify-between mb-2">
-                    <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide">Content Mix</label>
-                    <span className="text-[12px] tabular-nums text-secondary-foreground">{totalPosts} posts</span>
-                  </div>
-
-                  <div className="space-y-2">
-                    {CONTENT_TYPES.map((type) => {
-                      const value = allocations[type.key];
-                      return (
-                        <div key={type.key} className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/30 border border-border/30">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[14px] font-medium text-foreground">{type.label}</span>
-                            <span className="text-[11px] text-muted-foreground">{type.desc}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleAllocationChange(type.key, value - 1)}
-                              disabled={loading || value <= 0}
-                              className="w-7 h-7 rounded flex items-center justify-center bg-secondary hover:bg-muted text-foreground/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-                            >
-                              −
-                            </button>
-                            <span className="w-6 text-center text-[14px] tabular-nums font-medium text-foreground">{value}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleAllocationChange(type.key, value + 1)}
-                              disabled={loading || value >= MAX_PER_TYPE}
-                              className="w-7 h-7 rounded flex items-center justify-center bg-secondary hover:bg-muted text-foreground/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-
-                {/* Settings Row */}
-                <section className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-1.5 block">Tone</label>
-                    <select value={tone} onChange={(e) => setTone(e.target.value)} className="select text-[14px] h-10" disabled={loading}>
-                      {TONES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-1.5 block">Length</label>
-                    <div className="flex items-center gap-3 h-10">
-                      <input
-                        type="range"
-                        min={MIN_WORD_COUNT}
-                        max={MAX_WORD_COUNT}
-                        step={100}
-                        value={targetWordCount}
-                        onChange={(e) => setTargetWordCount(Number(e.target.value))}
-                        className="flex-1"
-                        disabled={loading}
-                      />
-                      <span className="text-[12px] tabular-nums text-secondary-foreground w-12 text-right">{targetWordCount}w</span>
                     </div>
-                  </div>
-                </section>
+                  </section>
 
-                {error && (
-                  <div className="p-2 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-[12px]">{error}</div>
-                )}
-
-                <button type="submit" disabled={loading || totalPosts === 0} className="btn-primary w-full justify-center text-[14px] h-10 mt-1">
-                  {loading ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting...</>
-                  ) : (
-                    <>Create {totalPosts} posts<ArrowRight className="w-4 h-4 ml-2" /></>
+                  {error && (
+                    <div className="p-2 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-[12px]">{error}</div>
                   )}
-                </button>
 
-                <p className="text-[11px] text-secondary-foreground text-center mb-18">Takes about 10-15 minutes</p>
-              </form>
+                  <button type="submit" disabled={loading || totalPosts === 0} className="btn-primary w-full justify-center text-[14px] h-10 mt-1">
+                    {loading ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting...</>
+                    ) : (
+                      <>Create {totalPosts} posts<ArrowRight className="w-4 h-4 ml-2" /></>
+                    )}
+                  </button>
+
+                  <p className="text-[11px] text-secondary-foreground text-center mb-18">Takes about 10-15 minutes</p>
+                </form>
+              </div>
             </div>
 
             {/* Preview Column */}
             <aside className="animate-fade-in" style={{ animationDelay: '100ms' }}>
-              <div className="bg-secondary rounded-lg p-5 border border-border/30">
+              <div className="card-elevated p-6">
                 <p className="text-[10px] font-medium text-foreground/80 uppercase tracking-wide mb-4">What you'll get</p>
 
                 {/* Preview Titles */}
@@ -384,42 +386,44 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             {/* Form Column */}
             <div className="animate-fade-in" style={{ animationDelay: '50ms' }}>
-              <form onSubmit={handleSeoSubmit} className="space-y-5">
-                {/* URL Input */}
-                <section>
-                  <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-2 block">Website URL</label>
-                  <input
-                    type="text"
-                    value={scanUrl}
-                    onChange={(e) => setScanUrl(e.target.value)}
-                    placeholder="e.g., example.com or https://example.com"
-                    className="input text-[14px] h-10"
-                    disabled={scanLoading}
-                  />
-                  <p className="text-[11px] text-secondary-foreground mt-1.5">
-                    Enter any website URL to analyze its SEO performance
-                  </p>
-                </section>
+              <div className="card-elevated p-6">
+                <form onSubmit={handleSeoSubmit} className="space-y-5">
+                  {/* URL Input */}
+                  <section>
+                    <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-2 block">Website URL</label>
+                    <input
+                      type="text"
+                      value={scanUrl}
+                      onChange={(e) => setScanUrl(e.target.value)}
+                      placeholder="e.g., example.com or https://example.com"
+                      className="input text-[14px] h-10"
+                      disabled={scanLoading}
+                    />
+                    <p className="text-[11px] text-secondary-foreground mt-1.5">
+                      Enter any website URL to analyze its SEO performance
+                    </p>
+                  </section>
 
-                {scanError && (
-                  <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-[13px]">{scanError}</div>
-                )}
-
-                <button type="submit" disabled={scanLoading || !scanUrl.trim()} className="btn-primary w-full justify-center text-[14px] h-10 mt-1">
-                  {scanLoading ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Scanning...</>
-                  ) : (
-                    <><Search className="w-4 h-4 mr-2" />Scan for SEO</>
+                  {scanError && (
+                    <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-[13px]">{scanError}</div>
                   )}
-                </button>
 
-                <p className="text-[11px] text-secondary-foreground text-center">Takes about 1-2 minutes</p>
-              </form>
+                  <button type="submit" disabled={scanLoading || !scanUrl.trim()} className="btn-primary w-full justify-center text-[14px] h-10 mt-1">
+                    {scanLoading ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Scanning...</>
+                    ) : (
+                      <><Search className="w-4 h-4 mr-2" />Scan for SEO</>
+                    )}
+                  </button>
+
+                  <p className="text-[11px] text-secondary-foreground text-center">Takes about 1-2 minutes</p>
+                </form>
+              </div>
             </div>
 
             {/* Preview Column */}
             <aside className="animate-fade-in" style={{ animationDelay: '100ms' }}>
-              <div className="bg-card/50 rounded-xl p-7">
+              <div className="card-elevated p-7">
                 <p className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-6">What you'll get</p>
 
                 {/* Preview Items - matching Content Factory style */}
