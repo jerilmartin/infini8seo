@@ -3,9 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Sun, Moon, ExternalLink, Copy, Plus, Star, ChevronDown, ChevronUp, Search, Zap, Activity, Info } from 'lucide-react';
-import axios from 'axios';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { api } from '@/utils/api';
 
 interface SeoResults {
     domain: string;
@@ -279,7 +277,7 @@ export default function SeoResultsPage() {
 
         const fetchScan = async () => {
             try {
-                const res = await axios.get(`${API_URL}/api/seo-scan/${scanId}`);
+                const res = await api.get(`/api/seo-scan/${scanId}`);
                 setScanData(res.data);
 
                 if (res.data.status === 'ENQUEUED' || res.data.status === 'SCANNING') {

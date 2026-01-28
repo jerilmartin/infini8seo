@@ -34,17 +34,24 @@ class SeoScanRepository {
                 throw new Error('Missing required fields: url, domain');
             }
 
+            const insertData = {
+                url: scanData.url,
+                domain: scanData.domain,
+                status: 'ENQUEUED',
+                progress: 0,
+                current_step: 'Initializing',
+                data_source: scanData.dataSource || 'manual_serp',
+                started_at: new Date().toISOString()
+            };
+
+            // Add user_id if provided (for authenticated requests)
+            if (scanData.userId) {
+                insertData.user_id = scanData.userId;
+            }
+
             const { data, error } = await this.supabase
                 .from(this.table)
-                .insert([{
-                    url: scanData.url,
-                    domain: scanData.domain,
-                    status: 'ENQUEUED',
-                    progress: 0,
-                    current_step: 'Initializing',
-                    data_source: scanData.dataSource || 'manual_serp',
-                    started_at: new Date().toISOString()
-                }])
+                .insert([insertData])
                 .select()
                 .single();
 

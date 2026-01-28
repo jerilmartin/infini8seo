@@ -38,19 +38,26 @@ class JobRepository {
         throw new Error('Missing required field: totalBlogs');
       }
 
-      const { data, error} = await this.supabase
+      const insertData = {
+        niche: jobData.niche,
+        value_propositions: jobData.valuePropositions,
+        tone: jobData.tone,
+        total_blogs: jobData.totalBlogs,
+        blog_type_allocations: jobData.blogTypeAllocations || null,
+        target_word_count: jobData.targetWordCount || 1200,
+        status: 'ENQUEUED',
+        progress: 0,
+        started_at: new Date().toISOString()
+      };
+
+      // Add user_id if provided (for authenticated requests)
+      if (jobData.userId) {
+        insertData.user_id = jobData.userId;
+      }
+
+      const { data, error } = await this.supabase
         .from(this.table)
-        .insert([{
-          niche: jobData.niche,
-          value_propositions: jobData.valuePropositions,
-          tone: jobData.tone,
-          total_blogs: jobData.totalBlogs,
-          blog_type_allocations: jobData.blogTypeAllocations || null,
-          target_word_count: jobData.targetWordCount || 1200,
-          status: 'ENQUEUED',
-          progress: 0,
-          started_at: new Date().toISOString()
-        }])
+        .insert([insertData])
         .select()
         .single();
 
@@ -92,7 +99,7 @@ class JobRepository {
    * Update job
    */
   async update(jobId, updates) {
-    const { data, error} = await this.supabase
+    const { data, error } = await this.supabase
       .from(this.table)
       .update(updates)
       .eq('id', jobId)

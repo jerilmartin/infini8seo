@@ -3,9 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Loader2, Check, X, ArrowLeft, Circle } from 'lucide-react';
-import axios from 'axios';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { api } from '@/utils/api';
 
 interface GeneratedTitle {
   title: string;
@@ -36,7 +34,7 @@ export default function ProgressPage() {
 
   const fetchJobStatus = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/status/${jobId}`);
+      const response = await api.get(`/api/status/${jobId}`);
       const data = response.data;
       setJobStatus(data);
 

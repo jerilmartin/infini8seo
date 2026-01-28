@@ -3,12 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Download, Copy, Check, ArrowLeft, FileText, Sun, Moon } from 'lucide-react';
-import axios from 'axios';
+import { api } from '@/utils/api';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface BlogPost {
   scenarioId: number;
@@ -62,7 +60,7 @@ export default function ResultsPage() {
 
   useEffect(() => {
     if (!jobId) return;
-    axios.get(`${API_URL}/api/content/${jobId}`)
+    api.get(`/api/content/${jobId}`)
       .then(res => {
         setContentData(res.data);
         if (res.data.content?.length > 0) {

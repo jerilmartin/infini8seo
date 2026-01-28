@@ -7,6 +7,14 @@ import logger from '../utils/logger.js';
 import JobRepository from '../models/JobRepository.js';
 import ContentRepository from '../models/ContentRepository.js';
 import SeoScanRepository from '../models/SeoScanRepository.js';
+import {
+  initAuthClient,
+  authMiddleware,
+  generateToken,
+  getGoogleAuthUrl,
+  exchangeCodeForSession,
+  verifyToken
+} from '../services/authService.js';
 
 dotenv.config();
 
@@ -14,10 +22,11 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const MAX_TOTAL_BLOGS = 50;
 const BLOG_TYPES = ['functional', 'transactional', 'commercial', 'informational'];
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: FRONTEND_URL,
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -27,6 +36,9 @@ app.use((req, res, next) => {
   logger.info(`${req.method} ${req.path}`);
   next();
 });
+
+// Apply auth middleware to all routes
+app.use(authMiddleware);
 
 let contentQueue;
 
@@ -39,6 +51,144 @@ app.get('/health', (req, res) => {
     service: 'Content Factory API'
   });
 });
+
+// ============================================================================
+// AUTHENTICATION ROUTES
+// ============================================================================
+
+/**
+ * GET /api/auth/google
+ * Initiate Google OAuth - returns the OAuth URL
+ */
+app.get('/api/auth/google', async (req, res) => {
+  try {
+    const callbackUrl = `${process.env.API_URL || 'http://localhost:3001'}/api/auth/callback`;
+    const authUrl = await getGoogleAuthUrl(callbackUrl);
+
+    res.json({
+      success: true,
+      url: authUrl
+    });
+  } catch (error) {
+    logger.error('Error initiating Google OAuth:', error);
+    res.status(500).json({
+      error: 'Authentication Error',
+      message: 'Failed to initiate Google login'
+    });
+  }
+});
+
+/**
+ * GET /api/auth/callback
+ * OAuth callback - exchanges code for session and redirects to frontend
+ */
+app.get('/api/auth/callback', async (req, res) => {
+  try {
+    const { code, error: authError } = req.query;
+
+    if (authError) {
+      logger.error('OAuth error:', authError);
+      return res.redirect(`${FRONTEND_URL}/login?error=auth_failed`);
+    }
+
+    if (!code) {
+      return res.redirect(`${FRONTEND_URL}/login?error=no_code`);
+    }
+
+    // Exchange code for session
+    const { session, user } = await exchangeCodeForSession(code);
+
+    if (!user) {
+      return res.redirect(`${FRONTEND_URL}/login?error=no_user`);
+    }
+
+    // Generate our own JWT token
+    const token = generateToken(user);
+
+    logger.info(`User authenticated: ${user.email}`);
+
+    // Redirect to frontend with token
+    res.redirect(`${FRONTEND_URL}/auth/success?token=${token}`);
+  } catch (error) {
+    logger.error('OAuth callback error:', error);
+    res.redirect(`${FRONTEND_URL}/login?error=callback_failed`);
+  }
+});
+
+/**
+ * GET /api/auth/me
+ * Get current authenticated user
+ */
+app.get('/api/auth/me', (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Not authenticated'
+    });
+  }
+
+  res.json({
+    success: true,
+    user: {
+      id: req.user.userId,
+      email: req.user.email,
+      name: req.user.name,
+      avatar: req.user.avatar,
+      provider: req.user.provider
+    }
+  });
+});
+
+/**
+ * POST /api/auth/logout
+ * Logout user (client should clear token)
+ */
+app.post('/api/auth/logout', (req, res) => {
+  // With JWT, logout is handled client-side by removing the token
+  res.json({
+    success: true,
+    message: 'Logged out successfully'
+  });
+});
+
+/**
+ * POST /api/auth/verify
+ * Verify a token is valid
+ */
+app.post('/api/auth/verify', (req, res) => {
+  const { token } = req.body;
+
+  if (!token) {
+    return res.status(400).json({
+      error: 'Bad Request',
+      message: 'Token is required'
+    });
+  }
+
+  const decoded = verifyToken(token);
+
+  if (!decoded) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid or expired token'
+    });
+  }
+
+  res.json({
+    success: true,
+    valid: true,
+    user: {
+      id: decoded.userId,
+      email: decoded.email,
+      name: decoded.name,
+      avatar: decoded.avatar
+    }
+  });
+});
+
+// ============================================================================
+// CONTENT GENERATION ROUTES
+// ============================================================================
 
 /**
  * POST /api/generate-content
@@ -145,7 +295,7 @@ app.post('/api/generate-content', async (req, res) => {
       });
     }
 
-    logger.info(`Creating new content generation job for niche: ${niche}`);
+    logger.info(`Creating new content generation job for niche: ${niche}${req.userId ? ' for user ' + req.userId : ''}`);
 
     const job = await JobRepository.create({
       niche: niche.trim(),
@@ -153,7 +303,8 @@ app.post('/api/generate-content', async (req, res) => {
       tone: tone.toLowerCase(),
       totalBlogs: sanitizedTotalBlogs,
       blogTypeAllocations: sanitizedAllocations,
-      targetWordCount: sanitizedWordCount
+      targetWordCount: sanitizedWordCount,
+      userId: req.userId // Associate job with authenticated user
     });
 
     logger.info(`Job created with ID: ${job.id}`);
@@ -487,11 +638,12 @@ app.post('/api/scan-seo', async (req, res) => {
 
     const domain = parsedUrl.hostname.replace(/^www\./, '');
 
-    logger.info(`Creating new SEO scan for: ${domain}`);
+    logger.info(`Creating new SEO scan for: ${domain}${req.userId ? ' for user ' + req.userId : ''}`);
 
     const scan = await SeoScanRepository.create({
       url: parsedUrl.href,
-      domain
+      domain,
+      userId: req.userId // Associate scan with authenticated user
     });
 
     logger.info(`SEO scan created with ID: ${scan.id}`);
@@ -691,6 +843,10 @@ const startServer = async () => {
   try {
     initSupabase();
     await testConnection();
+
+    // Initialize auth client
+    initAuthClient();
+    logger.info('Auth service initialized');
 
     contentQueue = createContentQueue();
     logger.info('BullMQ queue initialized');

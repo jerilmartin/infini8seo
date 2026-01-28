@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Manrope } from 'next/font/google'
 import './globals.css'
+import { AuthProvider } from '@/components/AuthProvider'
 
 const manrope = Manrope({
   subsets: ['latin'],
@@ -9,8 +10,8 @@ const manrope = Manrope({
 })
 
 export const metadata: Metadata = {
-  title: 'Content Factory | Blog Generation',
-  description: 'Generate high-quality, SEO-optimized blog posts',
+  title: 'Infini8seo | AI-Powered SEO & Content',
+  description: 'Generate high-quality, SEO-optimized blog posts with AI-powered content intelligence',
 }
 
 export default function RootLayout({
@@ -21,7 +22,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${manrope.variable} font-sans min-h-screen bg-background`}>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   )
