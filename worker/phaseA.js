@@ -176,7 +176,7 @@ export async function executePhaseA({ niche, valuePropositions, tone, totalBlogs
     }
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-2.0-flash-exp',
       generationConfig: {
         temperature: 1.0,
         topP: 0.95,

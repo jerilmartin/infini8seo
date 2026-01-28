@@ -122,7 +122,7 @@ export async function executeSeoScan({ scanId, url }) {
 
         // Use the same model configuration as Phase A (proven to work well)
         const searchModel = genAI.getGenerativeModel({
-            model: 'gemini-3-pro-preview',
+            model: 'gemini-2.0-flash-exp',
             generationConfig: {
                 temperature: 0.8,
                 topP: 0.95,

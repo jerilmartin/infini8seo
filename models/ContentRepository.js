@@ -37,7 +37,7 @@ class ContentRepository {
 
       // Generate slug from title
       const slug = this.generateSlug(contentData.blogTitle);
-      
+
       // Generate meta description
       const metaDescription = this.generateMetaDescription(contentData.blogContent);
 
@@ -176,7 +176,7 @@ class ContentRepository {
       stats.avgWordCount = Math.round(
         completed.reduce((sum, c) => sum + c.word_count, 0) / completed.length
       );
-      
+
       const withTime = completed.filter(c => c.generation_time_ms);
       if (withTime.length > 0) {
         stats.avgGenerationTime = Math.round(
@@ -231,14 +231,28 @@ class ContentRepository {
    */
   generateMetaDescription(content) {
     if (!content) return '';
-    
-    // Remove markdown syntax
-    const plainText = content
-      .replace(/#{1,6}\s/g, '')
-      .replace(/[*_~`]/g, '')
-      .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+
+    // Split into lines to identify and remove the title if it exists
+    const lines = content.split('\n');
+
+    // Filter out empty lines and the main H1 title
+    const bodyLines = lines.filter(line => {
+      const trimmed = line.trim();
+      return trimmed.length > 0 && !trimmed.startsWith('# ');
+    });
+
+    // Join lines with spaces to create a continuous string
+    const bodyContent = bodyLines.join(' ');
+
+    // Remove markdown syntax and HTML tags
+    const plainText = bodyContent
+      .replace(/#{1,6}\s/g, '')             // Remove other headers
+      .replace(/[*_~`]/g, '')               // Remove bold/italic/code markers
+      .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // Remove links, keep text
+      .replace(/<[^>]*>/g, '')              // Remove HTML tags (like <mark>)
+      .replace(/\s+/g, ' ')                 // Collapse multiple spaces
       .trim();
-    
+
     return plainText.substring(0, 150).trim() + '...';
   }
 }
