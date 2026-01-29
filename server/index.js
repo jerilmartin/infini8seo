@@ -13,6 +13,7 @@ import {
   generateToken,
   getGoogleAuthUrl,
   exchangeCodeForSession,
+  getUserFromSupabaseToken,
   verifyToken
 } from '../services/authService.js';
 
@@ -57,6 +58,55 @@ app.get('/health', (req, res) => {
 // ============================================================================
 
 /**
+ * POST /api/auth/exchange-token
+ * Exchange Supabase access token for backend JWT
+ */
+app.post('/api/auth/exchange-token', async (req, res) => {
+  try {
+    const { supabaseAccessToken } = req.body;
+
+    if (!supabaseAccessToken) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Supabase access token is required'
+      });
+    }
+
+    // Get user from Supabase token
+    const user = await getUserFromSupabaseToken(supabaseAccessToken);
+
+    if (!user) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid Supabase token'
+      });
+    }
+
+    // Generate our own JWT token
+    const token = generateToken(user);
+
+    logger.info(`Token exchanged for user: ${user.email} (${user.id})`);
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.user_metadata?.full_name || user.email?.split('@')[0],
+        avatar: user.user_metadata?.avatar_url
+      }
+    });
+  } catch (error) {
+    logger.error('Token exchange error:', error.message);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to exchange token'
+    });
+  }
+});
+
+/**
  * GET /api/auth/google
  * Initiate Google OAuth - returns the OAuth URL
  */
@@ -84,34 +134,44 @@ app.get('/api/auth/google', async (req, res) => {
  */
 app.get('/api/auth/callback', async (req, res) => {
   try {
-    const { code, error: authError } = req.query;
+    const { code, error: authError, error_description } = req.query;
+
+    logger.info('OAuth callback received:', { 
+      hasCode: !!code, 
+      authError, 
+      error_description,
+      queryKeys: Object.keys(req.query)
+    });
 
     if (authError) {
-      logger.error('OAuth error:', authError);
-      return res.redirect(`${FRONTEND_URL}/login?error=auth_failed`);
+      logger.error('OAuth error:', authError, error_description);
+      return res.redirect(`${FRONTEND_URL}/login?error=auth_failed&details=${encodeURIComponent(error_description || authError)}`);
     }
 
     if (!code) {
+      logger.error('No authorization code received. Query params:', req.query);
       return res.redirect(`${FRONTEND_URL}/login?error=no_code`);
     }
 
     // Exchange code for session
+    logger.info('Exchanging code for session...');
     const { session, user } = await exchangeCodeForSession(code);
 
     if (!user) {
+      logger.error('No user returned from session exchange');
       return res.redirect(`${FRONTEND_URL}/login?error=no_user`);
     }
 
     // Generate our own JWT token
     const token = generateToken(user);
 
-    logger.info(`User authenticated: ${user.email}`);
+    logger.info(`User authenticated successfully: ${user.email} (${user.id})`);
 
     // Redirect to frontend with token
     res.redirect(`${FRONTEND_URL}/auth/success?token=${token}`);
   } catch (error) {
-    logger.error('OAuth callback error:', error);
-    res.redirect(`${FRONTEND_URL}/login?error=callback_failed`);
+    logger.error('OAuth callback error:', error.message, error.stack);
+    res.redirect(`${FRONTEND_URL}/login?error=callback_failed&details=${encodeURIComponent(error.message)}`);
   }
 });
 

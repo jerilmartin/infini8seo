@@ -73,6 +73,7 @@ export const getGoogleAuthUrl = async (redirectUrl) => {
         provider: 'google',
         options: {
             redirectTo: redirectUrl,
+            skipBrowserRedirect: true,
             queryParams: {
                 access_type: 'offline',
                 prompt: 'consent',
@@ -81,6 +82,7 @@ export const getGoogleAuthUrl = async (redirectUrl) => {
     });
 
     if (error) {
+        logger.error('Error generating OAuth URL:', error);
         throw error;
     }
 
@@ -96,13 +98,38 @@ export const exchangeCodeForSession = async (code) => {
         throw new Error('Auth client not initialized');
     }
 
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    try {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (error) {
+            logger.error('Error exchanging code for session:', error);
+            throw error;
+        }
+
+        return data;
+    } catch (err) {
+        logger.error('Exception in exchangeCodeForSession:', err);
+        throw err;
+    }
+};
+
+/**
+ * Get user by ID using service role
+ */
+export const getUserById = async (userId) => {
+    const supabase = getAuthClient();
+    if (!supabase) {
+        throw new Error('Auth client not initialized');
+    }
+
+    const { data, error } = await supabase.auth.admin.getUserById(userId);
 
     if (error) {
+        logger.error('Error getting user by ID:', error);
         throw error;
     }
 
-    return data;
+    return data.user;
 };
 
 /**
@@ -177,6 +204,7 @@ export default {
     getGoogleAuthUrl,
     exchangeCodeForSession,
     getUserFromSupabaseToken,
+    getUserById,
     authMiddleware,
     requireAuth
 };

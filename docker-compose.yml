@@ -22,13 +22,19 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3001
+      - API_URL=http://localhost:3001
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=7d
       - FRONTEND_URL=http://localhost:3000
       - UNSPLASH_ACCESS_KEY=${UNSPLASH_ACCESS_KEY}
+      - GOOGLE_CSE_ID=${GOOGLE_CSE_ID}
+      - GOOGLE_CSE_API_KEY=${GOOGLE_CSE_API_KEY}
       - NODE_TLS_REJECT_UNAUTHORIZED=0
     depends_on:
       - redis
@@ -39,6 +45,7 @@ services:
       - 8.8.4.4
     volumes:
       - ./server:/app/server
+      - ./services:/app/services
       - ./config:/app/config
       - ./models:/app/models
       - ./utils:/app/utils
@@ -58,6 +65,7 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - MAX_CONCURRENT_CONTENT_GENERATION=10
       - UNSPLASH_ACCESS_KEY=${UNSPLASH_ACCESS_KEY}
       - GOOGLE_CSE_ID=${GOOGLE_CSE_ID}
@@ -88,6 +96,8 @@ services:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:3001
+      - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - NODE_ENV=development
       - WATCHPACK_POLLING=true
     depends_on:
@@ -97,6 +107,7 @@ services:
     volumes:
       - ./client:/app
       - /app/node_modules
+      - /app/.next
 
   cleanup:
     build:

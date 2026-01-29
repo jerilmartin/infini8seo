@@ -147,9 +147,8 @@ export default function Home() {
   };
 
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-6 py-4 pb-16">
+    <div className="min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto px-6 py-4 pb-16">
           {/* Brand + Header */}
           <header className="mb-1 animate-fade-in">
             <div className="flex items-center justify-between mb-4">
@@ -650,6 +649,5 @@ export default function Home() {
           </div>
         </footer>
       </div>
-    </ProtectedRoute>
   );
 }
