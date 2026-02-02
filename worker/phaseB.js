@@ -254,7 +254,7 @@ async function generateSingleBlogPost({ scenario, niche, valuePropositions, tone
   }
 
   const model = genAI.getGenerativeModel({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-2.0-flash',
     generationConfig: {
       temperature: 0.9,
       topP: 0.95,

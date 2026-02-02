@@ -7,7 +7,7 @@ import JobRepository from '../models/JobRepository.js';
 import SeoScanRepository from '../models/SeoScanRepository.js';
 import { executePhaseA } from './phaseA.js';
 import { executePhaseB } from './phaseB.js';
-import { executeSeoScan } from './seoScan.js';
+import { executeSeoScanV2 } from './seoScanV2.js';
 
 dotenv.config();
 
@@ -115,11 +115,11 @@ const processContentGenerationJob = async (job) => {
 const processSeoScanJob = async (job) => {
   const { scanId, url } = job.data;
 
-  logger.info(`Starting SEO scan job: ${scanId}`);
+  logger.info(`Starting SEO scan job (V2): ${scanId}`);
   logger.info(`URL: ${url}`);
 
   try {
-    const results = await executeSeoScan({ scanId, url });
+    const results = await executeSeoScanV2({ scanId, url });
 
     logger.info(`SEO Scan ${scanId} completed successfully`);
 

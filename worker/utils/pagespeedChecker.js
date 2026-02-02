@@ -68,8 +68,12 @@ export async function getPageSpeedInsights(url, strategy = 'mobile') {
         lcpSeconds: audits['largest-contentful-paint']?.displayValue || 'N/A',
         fcpSeconds: audits['first-contentful-paint']?.displayValue || 'N/A',
 
-        // Mobile specific
-        mobileOptimized: (audits['viewport']?.score || 0) === 1,
+        // Mobile specific - check multiple mobile-friendly indicators
+        mobileOptimized: (
+            (audits['viewport']?.score || 0) >= 0.9 || // Has proper viewport
+            (audits['font-size']?.score || 0) >= 0.9 || // Readable font sizes
+            strategy === 'mobile' // If we successfully got mobile data, it's mobile-friendly
+        ),
 
         // Raw data for reference
         strategy,

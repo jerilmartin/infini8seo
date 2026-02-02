@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Sun, Moon, ExternalLink, Copy, Plus, Star, ChevronDown, ChevronUp, Search, Zap, Activity, Info } from 'lucide-react';
 import { api } from '@/utils/api';
 import { QuickWinsSection, HighOpportunitiesSection, RegionalRankingsSection, DeviceComparisonSection } from '@/components/SerpFeatures';
+import { KeywordClustersSection, ContentGapsSection, FeaturedSnippetSection, LocalSEOSection, CompetitorStrategySection, ContentQualitySection } from '@/components/AdvancedSerpFeatures';
 
 interface SeoResults {
     domain: string;
@@ -90,6 +91,38 @@ interface SeoResults {
         difference: number;
         analysis: string;
         recommendation: string;
+    } | null;
+    // V2 Advanced Features
+    keyword_clusters?: Array<{
+        name: string;
+        keywords: string[];
+        priority: string;
+        action: string;
+    }>;
+    content_gaps?: Array<{
+        topic: string;
+        competitors: string[];
+        opportunity: string;
+        action: string;
+    }>;
+    featured_snippet_opportunities?: Array<{
+        keyword: string;
+        owner: string;
+        format: string;
+        recommendation: string;
+    }>;
+    local_seo_insights?: {
+        has_local_intent: boolean;
+        recommendations: string[];
+    } | null;
+    competitor_strategy?: {
+        patterns: string[];
+        strengths: string[];
+        weaknesses: string[];
+    } | null;
+    content_quality_score?: {
+        score: number;
+        improvements: string[];
     } | null;
 }
 
@@ -521,7 +554,7 @@ export default function SeoResultsPage() {
                             </div>
 
                             {/* Visibility Percentage - Premium Circular Metric */}
-                            <div className="hidden md:flex flex-col items-center justify-center p-6 bg-primary/5 rounded-2xl border border-primary/10">
+                            <div className="hidden md:flex flex-col items-center justify-center p-6 bg-primary/5 rounded-2xl border border-primary/10 group relative">
                                 <div className="relative w-24 h-24 mb-2">
                                     <svg className="w-full h-full transform -rotate-90">
                                         <circle
@@ -549,35 +582,71 @@ export default function SeoResultsPage() {
                                         <span className="text-xl font-bold text-foreground">{results.visibility_percentage || 0}%</span>
                                     </div>
                                 </div>
-                                <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Visibility</p>
+                                <div className="flex items-center gap-1">
+                                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Visibility</p>
+                                    <Info className="w-3 h-3 text-primary/50 cursor-help" />
+                                </div>
+                                {/* Tooltip */}
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-slate-800 text-white text-[11px] leading-relaxed rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                                    Percentage of checked keywords where your site ranks in top 100. Higher visibility = more keywords ranking.
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                </div>
                             </div>
 
                             {/* Detailed Metrics Grid */}
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 w-full lg:w-auto mt-6 lg:mt-0">
                                 {/* Technical */}
-                                <div className="space-y-1 text-center lg:text-right">
-                                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Technical</p>
+                                <div className="space-y-1 text-center lg:text-right group relative">
+                                    <div className="flex items-center justify-center lg:justify-end gap-1">
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Technical</p>
+                                        <Info className="w-3 h-3 text-muted-foreground/50 cursor-help" />
+                                    </div>
                                     <p className="text-2xl font-bold text-foreground">{results.score_breakdown?.technical || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
+                                    {/* Tooltip */}
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-slate-800 text-white text-[11px] leading-relaxed rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                                        HTTPS, robots.txt, sitemap, mobile-friendly, page speed, and crawlability
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                    </div>
                                 </div>
                                 {/* On-Page SEO */}
-                                <div className="space-y-1 text-center lg:text-right">
-                                    <p className="text-xs text-muted-foreground uppercase tracking-wide">On-Page SEO</p>
+                                <div className="space-y-1 text-center lg:text-right group relative">
                                     <div className="flex items-center justify-center lg:justify-end gap-1.5">
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wide">On-Page SEO</p>
                                         <Search className="w-3.5 h-3.5 text-blue-500" />
-                                        <p className="text-2xl font-bold text-foreground">{results.score_breakdown?.on_page_seo || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
+                                        <Info className="w-3 h-3 text-muted-foreground/50 cursor-help" />
+                                    </div>
+                                    <p className="text-2xl font-bold text-foreground">{results.score_breakdown?.on_page_seo || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
+                                    {/* Tooltip */}
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-slate-800 text-white text-[11px] leading-relaxed rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                                        Title tags, meta descriptions, headings, content quality, keyword usage, and internal linking
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
                                     </div>
                                 </div>
                                 {/* Authority */}
-                                <div className="space-y-1 text-center lg:text-right">
-                                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Authority</p>
+                                <div className="space-y-1 text-center lg:text-right group relative">
+                                    <div className="flex items-center justify-center lg:justify-end gap-1">
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Authority</p>
+                                        <Info className="w-3 h-3 text-muted-foreground/50 cursor-help" />
+                                    </div>
                                     <p className="text-2xl font-bold text-foreground">{results.score_breakdown?.authority || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
+                                    {/* Tooltip */}
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-slate-800 text-white text-[11px] leading-relaxed rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                                        Domain age, Knowledge Graph recognition, brand authority, and backlink profile
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                    </div>
                                 </div>
                                 {/* Performance */}
-                                <div className="space-y-1 text-center lg:text-right">
-                                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Performance</p>
+                                <div className="space-y-1 text-center lg:text-right group relative">
                                     <div className="flex items-center justify-center lg:justify-end gap-1.5">
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Performance</p>
                                         <Zap className="w-3.5 h-3.5 text-amber-500" />
-                                        <p className="text-2xl font-bold text-foreground">{results.score_breakdown?.performance || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
+                                        <Info className="w-3 h-3 text-muted-foreground/50 cursor-help" />
+                                    </div>
+                                    <p className="text-2xl font-bold text-foreground">{results.score_breakdown?.performance || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
+                                    {/* Tooltip */}
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-slate-800 text-white text-[11px] leading-relaxed rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                                        Page load speed, Core Web Vitals (LCP, FCP, CLS), and overall site performance
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
                                     </div>
                                 </div>
                             </div>
@@ -911,6 +980,31 @@ export default function SeoResultsPage() {
                         <DeviceComparisonSection device={results.device_comparison} />
                     )}
                 </div>
+
+                {/* V2 Advanced Features */}
+                {results.keyword_clusters && results.keyword_clusters.length > 0 && (
+                    <KeywordClustersSection clusters={results.keyword_clusters} />
+                )}
+
+                {results.content_gaps && results.content_gaps.length > 0 && (
+                    <ContentGapsSection gaps={results.content_gaps} />
+                )}
+
+                {results.featured_snippet_opportunities && results.featured_snippet_opportunities.length > 0 && (
+                    <FeaturedSnippetSection opportunities={results.featured_snippet_opportunities} />
+                )}
+
+                {results.local_seo_insights && (
+                    <LocalSEOSection localSeo={results.local_seo_insights} />
+                )}
+
+                {results.competitor_strategy && (
+                    <CompetitorStrategySection strategy={results.competitor_strategy} />
+                )}
+
+                {results.content_quality_score && (
+                    <ContentQualitySection quality={results.content_quality_score} />
+                )}
 
                 {/* Strategic Keyword Opportunities - Enhanced */}
                 {

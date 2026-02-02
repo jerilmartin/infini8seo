@@ -83,7 +83,7 @@ export function extractRealKeywords(pageContent) {
         return [];
     }
 
-    const stopWords = ['the', 'and', 'for', 'with', 'from', 'that', 'this', 'have', 'been', 'will', 'your', 'their', 'about', 'more', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'between'];
+    const stopWords = ['the', 'and', 'for', 'with', 'from', 'that', 'this', 'have', 'been', 'will', 'your', 'their', 'about', 'more', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'discover', 'explore', 'shop', 'everything', 'world', 'plus', 'innovative'];
     
     // Helper function to extract phrases from text
     function extractPhrasesFromText(text, maxPhrases = 10) {
