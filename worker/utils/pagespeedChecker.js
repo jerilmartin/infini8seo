@@ -18,7 +18,8 @@ export async function getPageSpeedInsights(url, strategy = 'mobile') {
 
     const fetchWithRetry = async (attemptStrategy) => {
         try {
-            const apiKey = process.env.GOOGLE_CSE_API_KEY;
+            // Use GEMINI_API_KEY instead of GOOGLE_CSE_API_KEY
+            const apiKey = process.env.GEMINI_API_KEY;
             // Add key and strategy
             const apiUrl = `${PAGESPEED_API}?url=${encodeURIComponent(url)}&strategy=${attemptStrategy}&category=performance&category=accessibility&category=seo&key=${apiKey}`;
 

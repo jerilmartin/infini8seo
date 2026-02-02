@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft, Sun, Moon, ExternalLink, Copy, Plus, Star, ChevronDown, ChevronUp, Search, Zap, Activity, Info } from 'lucide-react';
 import { api } from '@/utils/api';
+import { QuickWinsSection, HighOpportunitiesSection, RegionalRankingsSection, DeviceComparisonSection } from '@/components/SerpFeatures';
 
 interface SeoResults {
     domain: string;
@@ -23,8 +24,8 @@ interface SeoResults {
     };
     health_score: number;
     score_breakdown: Record<string, number>;
-    recommendations: Array<{ text: string }>;
-    suggested_keywords: Array<{ category: string; keywords: string[] }>;
+    recommendations: Array<{ text: string; title?: string; impact?: string }>;
+    suggested_keywords: Array<{ category: string; keywords: Array<{ word: string; intent: string }> }>;
     lighthouse_metrics?: {
         performance: { score: number; label: string; color: string };
         seo: { score: number; label: string; color: string };
@@ -32,6 +33,64 @@ interface SeoResults {
         core_web_vitals: { lcp: string; fcp: string; cls: string | number };
         mobile_optimized: boolean;
     };
+    visibility_percentage?: number;
+    entity_verification?: {
+        recognized: boolean;
+        name?: string;
+        types?: string[];
+        score?: number;
+        description?: string;
+    };
+    content_salience?: Array<{
+        entity: string;
+        type: string;
+        weight: number;
+        label: string;
+    }>;
+    // New SERP features
+    quick_wins?: Array<{
+        keyword: string;
+        score: number;
+        priority: string;
+        current_position: number | null;
+        difficulty: string;
+        recommendation: string;
+    }>;
+    high_opportunity_keywords?: Array<{
+        keyword: string;
+        opportunity_score: number;
+        total_opportunities: number;
+        opportunities: Array<{
+            type: string;
+            description: string;
+            action?: string;
+        }>;
+        current_position: number | null;
+    }>;
+    regional_analysis?: {
+        keyword: string;
+        locations: Array<{
+            location: string;
+            position: number | null;
+        }>;
+        analysis: {
+            avg_position: number | null;
+            best_location: string;
+            best_position: number;
+            worst_location: string;
+            worst_position: number;
+            ranking_in: number;
+            not_ranking_in: number;
+        };
+    } | null;
+    device_comparison?: {
+        keyword: string;
+        desktop: { position: number | null };
+        mobile: { position: number | null };
+        difference: number;
+        analysis: string;
+        recommendation: string;
+    } | null;
 }
 
 interface ScanData {
@@ -119,7 +178,7 @@ const KeywordCategoryCard = ({
     onToggleExpand
 }: {
     category: string;
-    keywords: string[];
+    keywords: Array<{ word: string; intent: string }>;
     onCopy: (kw: string) => void;
     isExpanded: boolean;
     onToggleExpand: () => void;
@@ -168,20 +227,27 @@ const KeywordCategoryCard = ({
 
             {/* Keywords List */}
             <div className="flex-1">
-                {displayedKeywords.map((kw, idx) => (
+                {displayedKeywords.map((kwObj, idx) => (
                     <div
                         key={`${category}-${idx}`}
-                        className="group flex items-center justify-between px-5 py-3 border-b border-border/30 last:border-0 hover:bg-secondary/50 transition-colors"
+                        className="group flex flex-col px-5 py-3 border-b border-border/30 last:border-0 hover:bg-secondary/50 transition-colors"
                     >
-                        <span className="text-[13px] text-foreground truncate max-w-[80%]">
-                            {kw}
-                        </span>
-                        <button
-                            onClick={() => copyKeyword(kw)}
-                            className="p-1.5 rounded opacity-0 group-hover:opacity-100 hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
-                        >
-                            <Copy className={`w-3.5 h-3.5 ${copied === kw ? 'text-emerald-500' : ''}`} />
-                        </button>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[13px] font-medium text-foreground truncate max-w-[80%]">
+                                {kwObj.word}
+                            </span>
+                            <button
+                                onClick={() => copyKeyword(kwObj.word)}
+                                className="p-1.5 rounded opacity-0 group-hover:opacity-100 hover:bg-secondary text-muted-foreground hover:text-foreground transition-all"
+                            >
+                                <Copy className={`w-3.5 h-3.5 ${copied === kwObj.word ? 'text-emerald-500' : ''}`} />
+                            </button>
+                        </div>
+                        {kwObj.intent && (
+                            <span className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">
+                                {kwObj.intent}
+                            </span>
+                        )}
                     </div>
                 ))}
             </div>
@@ -454,6 +520,38 @@ export default function SeoResultsPage() {
                                 </p>
                             </div>
 
+                            {/* Visibility Percentage - Premium Circular Metric */}
+                            <div className="hidden md:flex flex-col items-center justify-center p-6 bg-primary/5 rounded-2xl border border-primary/10">
+                                <div className="relative w-24 h-24 mb-2">
+                                    <svg className="w-full h-full transform -rotate-90">
+                                        <circle
+                                            cx="48"
+                                            cy="48"
+                                            r="40"
+                                            stroke="currentColor"
+                                            strokeWidth="8"
+                                            fill="transparent"
+                                            className="text-muted/10"
+                                        />
+                                        <circle
+                                            cx="48"
+                                            cy="48"
+                                            r="40"
+                                            stroke="currentColor"
+                                            strokeWidth="8"
+                                            fill="transparent"
+                                            strokeDasharray={251.2}
+                                            strokeDashoffset={251.2 - (251.2 * (results.visibility_percentage || 0)) / 100}
+                                            className="text-primary transition-all duration-1000 ease-out"
+                                        />
+                                    </svg>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span className="text-xl font-bold text-foreground">{results.visibility_percentage || 0}%</span>
+                                    </div>
+                                </div>
+                                <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Visibility</p>
+                            </div>
+
                             {/* Detailed Metrics Grid */}
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 w-full lg:w-auto mt-6 lg:mt-0">
                                 {/* Technical */}
@@ -704,7 +802,115 @@ export default function SeoResultsPage() {
                             </div>
                         </div>
                     </div>
+
+                    {/* SCIENTIFIC EXTRACTIONS - Power Data */}
+                    <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                        {/* Entity Verification */}
+                        <div className="bg-card rounded-xl border border-border/30 overflow-hidden">
+                            <div className="px-6 py-4 border-b border-border/40 bg-primary/5">
+                                <div className="flex items-center gap-2">
+                                    <Activity className="w-4 h-4 text-primary" />
+                                    <h3 className="text-sm font-semibold text-foreground">Google Entity Verification</h3>
+                                </div>
+                            </div>
+                            <div className="p-6">
+                                {results.entity_verification?.recognized ? (
+                                    <div className="space-y-4">
+                                        <div className="flex items-start justify-between">
+                                            <div>
+                                                <h4 className="text-lg font-bold text-foreground">{results.entity_verification.name}</h4>
+                                                <p className="text-xs text-primary font-medium">{results.entity_verification.types?.join(' • ')}</p>
+                                            </div>
+                                            <div className="bg-emerald-500/10 text-emerald-500 text-[10px] font-bold py-1 px-2 rounded-full border border-emerald-500/20">
+                                                VERIFIED ENTITY
+                                            </div>
+                                        </div>
+                                        <p className="text-[13px] text-muted-foreground leading-relaxed">
+                                            {results.entity_verification.description}
+                                        </p>
+                                        <div className="flex items-center gap-4 pt-2">
+                                            <div className="text-center">
+                                                <p className="text-[10px] text-muted-foreground uppercase font-bold">Authority Score</p>
+                                                <p className="text-lg font-bold text-foreground">{(results.entity_verification.score || 0).toFixed(1)}</p>
+                                            </div>
+                                            <div className="h-8 w-px bg-border/40" />
+                                            <div className="text-center">
+                                                <p className="text-[10px] text-muted-foreground uppercase font-bold">Source</p>
+                                                <p className="text-[13px] font-medium text-foreground">Knowledge Graph</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-6 text-center">
+                                        <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mb-3">
+                                            <Search className="w-5 h-5 text-muted-foreground/50" />
+                                        </div>
+                                        <p className="text-sm font-medium text-foreground">No Entity Match</p>
+                                        <p className="text-[12px] text-muted-foreground mt-1 px-4">Brand not yet recognized as a distinct entity in Google's Knowledge Graph.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Content Salience (NLP) */}
+                        <div className="bg-card rounded-xl border border-border/30 overflow-hidden">
+                            <div className="px-6 py-4 border-b border-border/40 bg-primary/5">
+                                <div className="flex items-center gap-2">
+                                    <Activity className="w-4 h-4 text-primary" />
+                                    <h3 className="text-sm font-semibold text-foreground">Content Salience Analysis</h3>
+                                </div>
+                            </div>
+                            <div className="p-6">
+                                {results.content_salience && results.content_salience.length > 0 ? (
+                                    <div className="space-y-3">
+                                        <p className="text-[11px] text-muted-foreground uppercase tracking-widest mb-4">Prime Topics Detected (Scientific Extraction)</p>
+                                        {results.content_salience.slice(0, 5).map((entity, i) => (
+                                            <div key={i} className="space-y-1.5">
+                                                <div className="flex items-center justify-between text-[12px]">
+                                                    <span className="font-semibold text-foreground">{entity.entity}</span>
+                                                    <span className="text-muted-foreground">{(entity.weight * 100).toFixed(1)}% weight</span>
+                                                </div>
+                                                <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-primary rounded-full"
+                                                        style={{ width: `${entity.weight * 100}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-6 text-center">
+                                        <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mb-3">
+                                            <Zap className="w-5 h-5 text-muted-foreground/50" />
+                                        </div>
+                                        <p className="text-sm font-medium text-foreground">NLP Analysis Pending</p>
+                                        <p className="text-[12px] text-muted-foreground mt-1 px-4">Content volume too low for high-confidence salience extraction.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div >
+
+                {/* New SERP Intelligence Sections */}
+                {results.quick_wins && results.quick_wins.length > 0 && (
+                    <QuickWinsSection quickWins={results.quick_wins} />
+                )}
+
+                {results.high_opportunity_keywords && results.high_opportunity_keywords.length > 0 && (
+                    <HighOpportunitiesSection opportunities={results.high_opportunity_keywords} />
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    {results.regional_analysis && (
+                        <RegionalRankingsSection regional={results.regional_analysis} />
+                    )}
+
+                    {results.device_comparison && (
+                        <DeviceComparisonSection device={results.device_comparison} />
+                    )}
+                </div>
 
                 {/* Strategic Keyword Opportunities - Enhanced */}
                 {
@@ -754,23 +960,38 @@ export default function SeoResultsPage() {
                 }
 
                 {/* Recommendations */}
-                {
-                    results.recommendations.length > 0 && (
-                        <div className="bg-card rounded-xl p-6 border border-border/30">
-                            <h3 className="text-sm font-semibold text-foreground mb-4">Strategic Recommendations</h3>
-                            <div className="space-y-3">
-                                {results.recommendations.map((rec, i) => (
-                                    <div key={i} className="flex items-start gap-3 py-3 border-b border-border/20 last:border-0">
-                                        <span className="w-5 h-5 rounded text-[11px] text-muted-foreground flex items-center justify-center font-medium shrink-0">
-                                            {i + 1}.
+                {results.recommendations && results.recommendations.length > 0 && (
+                    <div className="bg-card rounded-xl p-8 border border-border/30 mb-12">
+                        <h3 className="text-base font-semibold text-foreground mb-6 flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-primary" />
+                            Strategic Action Plan
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {results.recommendations.map((rec, i) => (
+                                <div key={i} className="flex flex-col p-5 rounded-xl bg-secondary/30 border border-border/20 hover:border-primary/30 transition-all group">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <span className="text-[10px] font-bold text-primary uppercase tracking-tighter bg-primary/10 px-2 py-0.5 rounded">
+                                            Task 0{i + 1}
                                         </span>
-                                        <p className="text-[14px] text-foreground">{rec.text}</p>
+                                        {rec.impact && (
+                                            <span className={`text-[10px] font-bold uppercase py-0.5 px-2 rounded ${rec.impact.toLowerCase().includes('high') ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                                {rec.impact} Impact
+                                            </span>
+                                        )}
                                     </div>
-                                ))}
-                            </div>
+                                    {rec.title && (
+                                        <h4 className="text-[15px] font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+                                            {rec.title}
+                                        </h4>
+                                    )}
+                                    <p className="text-[13px] text-muted-foreground leading-relaxed">
+                                        {rec.text}
+                                    </p>
+                                </div>
+                            ))}
                         </div>
-                    )
-                }
+                    </div>
+                )}
             </main >
         </div >
     );

@@ -2,9 +2,14 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import logger from '../utils/logger.js';
 import SeoScanRepository from '../models/SeoScanRepository.js';
 import { fetchWhoisData } from './utils/whoisFetcher.js';
-import { batchCheckPositions, searchGoogle } from './utils/googleCustomSearch.js';
 import { checkTechnical } from './utils/technicalChecker.js';
 import { getPageSpeedInsights, calculatePerformanceScore, calculateOnPageSeoScore, getLighthouseMetrics } from './utils/pagespeedChecker.js';
+import { searchKnowledgeGraph } from './utils/knowledgeGraph.js';
+import { analyzeContentEntities } from './utils/naturalLanguage.js';
+import { fetchPageContent } from './utils/htmlFetcher.js';
+import { searchSerpApi, batchCheckKeywords, calculateKeywordDifficulty, analyzeSerpFeatures, analyzeCompetitorGap, classifySearchIntent, calculateQuickWinScore, calculateOpportunityScore, checkRegionalRankings, compareMobileVsDesktop, analyzeCTRPotential } from './utils/serpApi.js';
+import { extractRealKeywords } from './utils/keywordPlanner.js';
+import { extractTechnicalIssues } from './utils/lighthouseAudits.js';
 
 let genAI;
 
@@ -18,85 +23,25 @@ function initGemini() {
     return genAI;
 }
 
-/**
- * Aggressive JSON extraction - tries multiple methods
- */
 function extractJSON(text) {
-    // Try direct parse first
     try {
         const parsed = JSON.parse(text);
-        if (parsed && typeof parsed === 'object') {
-            return parsed;
-        }
+        if (parsed && typeof parsed === 'object') return parsed;
     } catch (e) { }
 
-    // Remove markdown code blocks
     let cleaned = text.trim();
-    if (cleaned.startsWith('```json')) {
-        cleaned = cleaned.substring(7);
-    } else if (cleaned.startsWith('```')) {
-        cleaned = cleaned.substring(3);
-    }
-    if (cleaned.endsWith('```')) {
-        cleaned = cleaned.substring(0, cleaned.length - 3);
-    }
+    if (cleaned.startsWith('```json')) cleaned = cleaned.substring(7);
+    else if (cleaned.startsWith('```')) cleaned = cleaned.substring(3);
+    if (cleaned.endsWith('```')) cleaned = cleaned.substring(0, cleaned.length - 3);
     cleaned = cleaned.trim();
 
     try {
         return JSON.parse(cleaned);
-    } catch (e) { }
-
-    // Find JSON object using brace balancing
-    let braceCount = 0;
-    let startIndex = -1;
-    let endIndex = -1;
-    let inString = false;
-    let escapeNext = false;
-
-    for (let i = 0; i < cleaned.length; i++) {
-        const char = cleaned[i];
-
-        if (escapeNext) {
-            escapeNext = false;
-            continue;
-        }
-        if (char === '\\') {
-            escapeNext = true;
-            continue;
-        }
-        if (char === '"' && !escapeNext) {
-            inString = !inString;
-            continue;
-        }
-
-        if (!inString) {
-            if (char === '{') {
-                if (startIndex === -1) startIndex = i;
-                braceCount++;
-            } else if (char === '}') {
-                braceCount--;
-                if (braceCount === 0 && startIndex !== -1) {
-                    endIndex = i + 1;
-                    break;
-                }
-            }
-        }
+    } catch (e) {
+        throw new Error('Could not extract valid JSON from response');
     }
-
-    if (startIndex !== -1 && endIndex !== -1) {
-        try {
-            return JSON.parse(cleaned.substring(startIndex, endIndex));
-        } catch (e2) {
-            logger.error('Brace-balanced extraction failed');
-        }
-    }
-
-    throw new Error('Could not extract valid JSON from response');
 }
 
-/**
- * Extract domain from URL
- */
 function extractDomain(url) {
     try {
         const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
@@ -106,451 +51,690 @@ function extractDomain(url) {
     }
 }
 
+function calculateVisibility(rankings) {
+    if (!rankings || rankings.length === 0) return 0;
+    const weights = { 1: 0.312, 2: 0.156, 3: 0.098, 4: 0.069, 5: 0.048, 6: 0.038, 7: 0.031, 8: 0.027, 9: 0.024, 10: 0.021 };
+    let actualCTR = 0;
+    let maxPotentialCTR = rankings.length * weights[1];
+    rankings.forEach(r => {
+        if (r.position && weights[r.position]) actualCTR += weights[r.position];
+        else if (r.position > 10) actualCTR += 0.01;
+    });
+    return Math.round((actualCTR / maxPotentialCTR) * 100);
+}
+
+function calculateKeywordDistribution(rankings) {
+    const dist = { top3: 0, top10: 0, top50: 0, top100: 0 };
+    rankings.forEach(r => {
+        if (!r.position) return;
+        if (r.position <= 3) dist.top3++;
+        if (r.position <= 10) dist.top10++;
+        if (r.position <= 50) dist.top50++;
+        if (r.position <= 100) dist.top100++;
+    });
+    return dist;
+}
+
 /**
- * Execute SEO Scan - Using Gemini 3 Pro with Google Search Grounding
- * Mirrors the successful approach from Phase A
+ * SERP-FIRST SEO Scan - Uses SERP API as primary data source
  */
 export async function executeSeoScan({ scanId, url }) {
-    logger.info(`SEO Scan: Starting scan for ${url} (ID: ${scanId})`);
-
+    logger.info(`SEO Scan: Starting SERP-first scan for ${url} (ID: ${scanId})`);
     const domain = extractDomain(url);
 
     try {
-        if (!genAI) {
-            genAI = initGemini();
-        }
-
-        // Use the same model configuration as Phase A (proven to work well)
-        const searchModel = genAI.getGenerativeModel({
-            model: 'gemini-2.0-flash-exp',
-            generationConfig: {
-                temperature: 0.8,
-                topP: 0.95,
-                topK: 64,
-                maxOutputTokens: 16384,
-            },
-            tools: [{
-                googleSearch: {}
-            }]
-        });
-
-        logger.info('Using Gemini 3 Pro with Google Search for SEO analysis');
-
+        if (!genAI) genAI = initGemini();
         await SeoScanRepository.update(scanId, { status: 'SCANNING' });
 
         // =========================================================================
-        // STEP 1: Comprehensive Domain Research via Google Search
+        // STEP 1: Fetch page content with Puppeteer (handles JS-rendered sites)
         // =========================================================================
-        await SeoScanRepository.updateProgress(scanId, 10, 'Deep research via Google Search');
-        logger.info(`Step 1: Deep research for ${domain}`);
-
-        const researchPrompt = `You are an EXPERT SEO Analyst conducting a comprehensive domain analysis for "${domain}".
-
-YOUR MISSION:
-Use Google Search EXTENSIVELY to gather real, current data about this website. Search for:
-1. "site:${domain}" - to find indexed pages
-2. "${domain}" - to see how the site appears in search results
-3. Related industry terms to understand their market position
-
-RESEARCH TASKS (USE GOOGLE SEARCH FOR EACH):
-
-1. INDEXED PAGES ANALYSIS:
-   - Search: site:${domain}
-   - List the actual page titles and URLs you find (up to 10)
-   - Note what types of content they publish (blog posts, product pages, documentation, etc.)
-
-2. KEYWORD EXTRACTION:
-   - From the indexed pages, identify keywords/topics the site targets
-   - Search for the site name to see what keywords are associated with it
-   - Find at least 10 relevant keywords this domain appears to focus on
-
-3. BRAND PRESENCE:
-   - Search for "${domain}" directly
-   - Note if they appear for branded searches
-   - Check if they have featured snippets or knowledge panels
-
-4. CONTENT ANALYSIS:
-   - What is the main product/service offered?
-   - What content topics do they cover?
-   - Who is their target audience?
-
-REQUIRED JSON OUTPUT:
-{
-  "domain": "${domain}",
-  "business_summary": "2-3 sentences describing what this business does based on your research",
-  "indexed_pages": [
-    {"title": "Actual page title from search", "url": "https://full-url-from-search", "page_type": "blog/product/docs/etc"}
-  ],
-  "observed_keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5", "keyword6", "keyword7", "keyword8", "keyword9", "keyword10"],
-  "main_topics": ["Primary topic 1", "Primary topic 2", "Primary topic 3"],
-  "target_audience": "Description of who this site serves",
-  "content_types": ["blog posts", "documentation", "etc"],
-  "brand_visibility": "Good/Moderate/Limited - brief explanation"
-}
-
-IMPORTANT:
-- Return ONLY valid JSON
-- Include at least 5-10 indexed pages if they exist
-- Include at least 10 keywords based on actual page content you find
-- Base everything on real Google Search results, not assumptions`;
-
-        let researchData = {
-            indexed_pages: [],
-            observed_keywords: [],
-            main_topics: [],
-            business_summary: '',
-        };
-
-        try {
-            const researchResult = await searchModel.generateContent(researchPrompt);
-            const researchResponse = researchResult.response.text();
-            logger.info('Research response length:', researchResponse.length);
-            researchData = extractJSON(researchResponse);
-            logger.info(`Research found: ${researchData.indexed_pages?.length || 0} pages, ${researchData.observed_keywords?.length || 0} keywords`);
-        } catch (error) {
-            logger.error('Research step failed:', error.message);
+        await SeoScanRepository.updateProgress(scanId, 5, 'Fetching page content');
+        logger.info(`Step 1: Fetching page content with Puppeteer`);
+        
+        const pageContent = await fetchPageContent(url.startsWith('http') ? url : `https://${url}`);
+        
+        if (pageContent && pageContent.text) {
+            logger.info(`✓ Page content fetched: ${pageContent.text.length} characters`);
+        } else {
+            logger.warn('⚠ Failed to fetch page content');
         }
 
-        logger.info(`Step 1 Complete: ${researchData.indexed_pages?.length || 0} indexed pages, ${researchData.observed_keywords?.length || 0} keywords`);
-
         // =========================================================================
-        // STEP 2: Competitor Discovery via Google Search
+        // STEP 2: Discover niche and keywords using SERP API
         // =========================================================================
-        await SeoScanRepository.updateProgress(scanId, 35, 'Competitor analysis via Google Search');
-        logger.info('Step 2: Competitor discovery');
-
-        // Build search query from discovered topics
-        const searchTopics = researchData.main_topics?.slice(0, 3) || [];
-        const searchKeywords = researchData.observed_keywords?.slice(0, 5) || [];
-        const competitorQuery = [...searchTopics, ...searchKeywords].slice(0, 5).join(' ') || domain;
-
-        const competitorPrompt = `You are an EXPERT Competitive Intelligence Analyst.
-
-TASK: Find competitors and similar websites to "${domain}" using Google Search.
-
-SEARCH STRATEGY:
-1. Search for: "${competitorQuery}"
-2. Search for: "alternatives to ${domain}"
-3. Search for: "sites like ${domain}"
-4. Search for the main keywords: ${searchKeywords.slice(0, 3).join(', ') || 'related to ' + domain}
-
-For each search, note which DOMAINS (not ${domain} itself) appear in the results.
-
-CLASSIFICATION:
-- Direct Competitors: Same product/service category, targeting same customers
-- Content Competitors: Similar content topics but different business model (blogs, media sites, etc.)
-
-EXCLUDE from results:
-- ${domain} itself
-- Generic platforms: wikipedia.org, youtube.com, facebook.com, twitter.com, linkedin.com, reddit.com, quora.com, amazon.com, google.com
-
-REQUIRED JSON OUTPUT:
-{
-  "search_queries_used": ["query1", "query2", "query3"],
-  "direct_competitors": [
-    {"domain": "competitor1.com", "reason": "Brief explanation why they compete"}
-  ],
-  "content_competitors": [
-    {"domain": "blog1.com", "reason": "Brief explanation of content overlap"}
-  ],
-  "market_position": "Brief assessment of ${domain}'s competitive position"
-}
-
-Return at least 5 direct competitors and 5 content competitors if they exist.`;
-
-        let competitorData = {
-            direct_competitors: [],
-            content_competitors: [],
-            market_position: '',
-        };
-
-        try {
-            const competitorResult = await searchModel.generateContent(competitorPrompt);
-            const competitorResponse = competitorResult.response.text();
-            competitorData = extractJSON(competitorResponse);
-            logger.info(`Competitors found: ${competitorData.direct_competitors?.length || 0} direct, ${competitorData.content_competitors?.length || 0} content`);
-        } catch (error) {
-            logger.error('Competitor discovery failed:', error.message);
+        await SeoScanRepository.updateProgress(scanId, 15, 'Discovering keywords via SERP API');
+        logger.info(`Step 2: SERP API keyword discovery for ${domain}`);
+        
+        const domainSerpResult = await searchSerpApi(domain, 'United States');
+        
+        let discoveredKeywords = [];
+        let businessSummary = '';
+        
+        if (domainSerpResult && domainSerpResult.top_competitors.length > 0) {
+            const topResult = domainSerpResult.top_competitors[0];
+            businessSummary = `${topResult.title} - ${topResult.snippet}`;
+            
+            // Extract keywords from SERP results
+            const keywordSet = new Set();
+            domainSerpResult.top_competitors.slice(0, 5).forEach(comp => {
+                const text = `${comp.title} ${comp.snippet}`.toLowerCase();
+                const words = text.match(/\b[a-z]{4,15}\b/g) || [];
+                words.forEach(w => {
+                    if (!['this', 'that', 'with', 'from', 'have', 'been', 'will', 'your', 'their', 'about', 'more', 'shop', 'online', 'india', 'best'].includes(w)) {
+                        keywordSet.add(w);
+                    }
+                });
+            });
+            discoveredKeywords = Array.from(keywordSet).slice(0, 20);
+            logger.info(`✓ SERP API discovered ${discoveredKeywords.length} keywords:`, discoveredKeywords.slice(0, 10));
         }
-
-        logger.info(`Step 2 Complete`);
+        
+        // Extract keywords from HTML
+        const realWebsiteKeywords = extractRealKeywords(pageContent);
+        logger.info(`✓ Extracted ${realWebsiteKeywords.length} keywords from HTML`);
+        
+        // Combine all keywords
+        const allKeywords = [...new Set([...discoveredKeywords, ...realWebsiteKeywords])];
+        const observedKeywords = allKeywords.slice(0, 20);
+        
+        logger.info(`Step 2 Complete: ${observedKeywords.length} total keywords discovered`);
 
         // =========================================================================
-        // STEP 3: Ranking Position Check (Hybrid: Google CSE + Gemini Fallback)
+        // STEP 3: Intelligent Competitor Discovery using Gemini + SERP API
         // =========================================================================
-        await SeoScanRepository.updateProgress(scanId, 55, 'Checking SERP positions');
-        logger.info('Step 3: SERP position checking (hybrid approach)');
+        await SeoScanRepository.updateProgress(scanId, 30, 'Finding competitors via SERP API');
+        logger.info(`Step 3: Intelligent competitor discovery (Gemini + SERP)`);
+        
+        // First, use Gemini to understand the business and generate search terms
+        let industrySearchTerms = [];
+        let businessType = '';
+        
+        try {
+            const businessAnalysisPrompt = `Analyze this website content and identify the business:
 
-        // Select keywords for position checking
-        // Less aggressive filtering - include more keywords
-        const domainName = domain.split('.')[0].toLowerCase();
-        const discoveredKeywords = (researchData.observed_keywords || [])
-            .filter(k => {
-                const kLower = k.toLowerCase();
-                // Only filter garbage, keep brand-adjacent keywords
-                return kLower.length > 2 &&
-                    !kLower.includes('also') &&
-                    !kLower.includes('identified') &&
-                    !kLower.includes('following') &&
-                    k.split(' ').length <= 6;
-            })
-            .slice(0, 8); // Check more keywords
+DOMAIN: ${domain}
+TITLE: ${pageContent?.html?.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || ''}
+META DESCRIPTION: ${pageContent?.html?.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i)?.[1] || ''}
+H1 HEADINGS: ${Array.from(pageContent?.html?.matchAll(/<h1[^>]*>([^<]+)<\/h1>/gi) || []).map(m => m[1]).slice(0, 3).join(', ')}
 
-        let sampledPositions = [];
-        let positionSource = 'none';
+Based on this, provide:
+1. Business type (e.g., "real estate developer", "maternity clothing e-commerce", "restaurant")
+2. 5 industry-specific search terms that would find direct competitors
 
-        // ATTEMPT 1: Use Google Custom Search API (accurate)
-        if (discoveredKeywords.length > 0) {
-            logger.info('Attempting Google Custom Search API for position data...');
-            const cseResults = await batchCheckPositions(discoveredKeywords, domain);
+Return ONLY valid JSON:
+{
+  "business_type": "specific business type",
+  "search_terms": ["term 1", "term 2", "term 3", "term 4", "term 5"]
+}`;
 
-            if (cseResults.available && cseResults.rankings.length > 0) {
-                sampledPositions = cseResults.rankings.map(r => ({
-                    keyword: r.keyword,
-                    position: r.position,
-                    url: r.url,
-                    source: 'verified'
-                }));
-                positionSource = 'google_cse';
-                logger.info(`✓ Google CSE found ${sampledPositions.length} rankings`);
-            } else if (!cseResults.available) {
-                logger.warn('Google CSE not configured, falling back to Gemini');
-            } else {
-                logger.info('Google CSE found no rankings, trying Gemini fallback');
+            const businessModel = genAI.getGenerativeModel({
+                model: 'gemini-2.0-flash',
+                generationConfig: { temperature: 0.3, maxOutputTokens: 1024 }
+            });
+            
+            const businessResult = await businessModel.generateContent(businessAnalysisPrompt);
+            const businessData = extractJSON(businessResult.response.text());
+            
+            businessType = businessData.business_type || '';
+            industrySearchTerms = businessData.search_terms || [];
+            
+            logger.info(`✓ Business identified: ${businessType}`);
+            logger.info(`✓ Industry search terms:`, industrySearchTerms);
+        } catch (error) {
+            logger.error('Gemini business analysis failed:', error.message);
+            // Fallback to phrase-based search
+            const phraseKeywords = realWebsiteKeywords.filter(kw => kw.includes(' ') && kw.length > 8);
+            industrySearchTerms = phraseKeywords.slice(0, 5);
+        }
+        
+        // Search SERP API with industry-specific terms
+        const allSerpResults = [];
+        const competitorDomains = new Map();
+        
+        for (const searchTerm of industrySearchTerms.slice(0, 5)) {
+            const serpResult = await searchSerpApi(searchTerm, 'United States', domain);
+            if (serpResult && serpResult.top_competitors) {
+                allSerpResults.push({
+                    search_term: searchTerm,
+                    competitors: serpResult.top_competitors.slice(0, 15)
+                });
+                
+                // Collect all domains
+                serpResult.top_competitors.slice(0, 15).forEach(comp => {
+                    const compDomain = extractDomain(comp.link);
+                    if (compDomain !== domain) {
+                        if (!competitorDomains.has(compDomain)) {
+                            competitorDomains.set(compDomain, {
+                                domain: compDomain,
+                                appearances: 0,
+                                titles: [],
+                                snippets: []
+                            });
+                        }
+                        const data = competitorDomains.get(compDomain);
+                        data.appearances++;
+                        data.titles.push(comp.title);
+                        data.snippets.push(comp.snippet);
+                    }
+                });
             }
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Rate limit
         }
-
-        // ATTEMPT 2: Gemini fallback (if CSE unavailable or found nothing)
-        if (sampledPositions.length === 0 && discoveredKeywords.length > 0) {
-            const positionPrompt = `You are an SEO Analyst checking SERP rankings for "${domain}".
-
-TASK: Search Google for each keyword and check if "${domain}" (or its parent company domain) appears in the TOP 10 organic results.
-
-KEYWORDS TO CHECK:
-${discoveredKeywords.map((k, i) => `${i + 1}. "${k}"`).join('\n')}
-
-INSTRUCTIONS:
-1. Search each keyword on Google
-2. Check positions 1-10 (ignore ads)
-3. For "${domain}", also accept parent/related domains (e.g., openai.com for chatgpt.com)
-4. Note the EXACT position if found
-
-OUTPUT FORMAT (JSON only):
-{
-  "rankings": [
-    {"keyword": "exact keyword", "position": 3, "found": true},
-    {"keyword": "not ranking", "position": null, "found": false}
-  ],
-  "overall_visibility": "Strong/Moderate/Weak"
-}
-
-ACCURACY IS KEY. If they are #1, say #1.`;
-
+        
+        logger.info(`✓ Collected ${competitorDomains.size} potential competitor domains`);
+        
+        // Now use Gemini to intelligently filter competitors
+        let competitorList = [];
+        
+        if (competitorDomains.size > 0) {
             try {
-                const positionResult = await searchModel.generateContent(positionPrompt);
-                const positionResponse = positionResult.response.text();
-                const positionData = extractJSON(positionResponse);
-
-                sampledPositions = (positionData.rankings || [])
-                    .filter(r => r.found && r.position && r.position <= 10)
-                    .map(r => ({
-                        keyword: r.keyword,
-                        position: r.position,
-                        source: 'ai-estimated'
+                const competitorData = Array.from(competitorDomains.entries())
+                    .sort((a, b) => b[1].appearances - a[1].appearances)
+                    .slice(0, 20)
+                    .map(([domain, data]) => ({
+                        domain,
+                        appearances: data.appearances,
+                        sample_title: data.titles[0],
+                        sample_snippet: data.snippets[0]
                     }));
-                positionSource = 'gemini';
-                logger.info(`Gemini fallback found ${sampledPositions.length} rankings`);
+                
+                const competitorFilterPrompt = `You are analyzing competitors for a ${businessType} business (${domain}) targeting ${domain.endsWith('.in') ? 'India' : 'international'} market.
+
+Here are domains that appeared in search results for industry terms:
+
+${competitorData.map(c => `- ${c.domain} (appeared ${c.appearances}x)
+  Title: ${c.sample_title}
+  Snippet: ${c.sample_snippet}`).join('\n\n')}
+
+Filter this list to include RELEVANT competitors:
+${domain.endsWith('.in') ? '- PRIORITIZE Indian/regional competitors (domains ending in .in, or India-focused businesses)' : ''}
+- EXCLUDE: Large marketplaces (amazon, flipkart, myntra, ebay), social media, news sites, job sites, generic platforms
+- INCLUDE: Direct competitors in the same industry and target market
+- For ${domain.endsWith('.in') ? 'Indian' : 'international'} business, prefer ${domain.endsWith('.in') ? 'regional/local' : 'similar-sized'} competitors
+
+Return ONLY valid JSON array of competitor domains (max 10):
+{
+  "competitors": ["domain1.com", "domain2.com", "domain3.com"]
+}`;
+
+                const filterModel = genAI.getGenerativeModel({
+                    model: 'gemini-2.0-flash',
+                    generationConfig: { temperature: 0.2, maxOutputTokens: 1024 }
+                });
+                
+                const filterResult = await filterModel.generateContent(competitorFilterPrompt);
+                const filterData = extractJSON(filterResult.response.text());
+                
+                const validCompetitors = filterData.competitors || [];
+                
+                // Map back to full data
+                competitorList = validCompetitors
+                    .map(domain => {
+                        const data = competitorDomains.get(domain);
+                        return data ? {
+                            domain,
+                            appearances: data.appearances,
+                            avg_position: 5, // Approximate
+                            keywords: industrySearchTerms.slice(0, data.appearances)
+                        } : null;
+                    })
+                    .filter(c => c !== null)
+                    .slice(0, 10);
+                
+                logger.info(`✓ Gemini filtered to ${competitorList.length} real competitors:`, competitorList.map(c => c.domain));
             } catch (error) {
-                logger.error('Gemini position check failed:', error.message);
+                logger.error('Gemini competitor filtering failed:', error.message);
+                // Fallback: use frequency-based filtering
+                competitorList = Array.from(competitorDomains.entries())
+                    .filter(([domain, data]) => data.appearances >= 2)
+                    .sort((a, b) => b[1].appearances - a[1].appearances)
+                    .slice(0, 10)
+                    .map(([domain, data]) => ({
+                        domain,
+                        appearances: data.appearances,
+                        avg_position: 5,
+                        keywords: industrySearchTerms.slice(0, data.appearances)
+                    }));
             }
         }
-
-        logger.info(`Step 3 Complete: ${sampledPositions.length} rankings found (source: ${positionSource})`);
+        
+        logger.info(`✓ Final competitor list: ${competitorList.length} competitors`);
 
         // =========================================================================
-        // STEP 4: Technical + UX Checks (Real Data)
+        // STEP 4: Check SERP rankings + comprehensive SERP intelligence
+        // =========================================================================
+        await SeoScanRepository.updateProgress(scanId, 50, 'Analyzing SERP data');
+        logger.info(`Step 4: Comprehensive SERP analysis`);
+        
+        // Use INDUSTRY SEARCH TERMS (from Gemini) for analysis, not observed keywords
+        // This ensures we analyze relevant product keywords, not brand names
+        const keywordsToAnalyze = industrySearchTerms.length > 0 
+            ? industrySearchTerms.slice(0, 10)
+            : observedKeywords.slice(0, 10);
+        
+        logger.info(`Analyzing ${keywordsToAnalyze.length} keywords:`, keywordsToAnalyze);
+        
+        const serpResults = await batchCheckKeywords(keywordsToAnalyze, domain);
+        
+        const sampledPositions = serpResults
+            .filter(r => r.my_position)
+            .map(r => ({
+                keyword: r.keyword,
+                position: r.my_position,
+                url: r.my_result?.link,
+                source: 'verified-serpapi',
+                total_results: r.total_results
+            }));
+        
+        // Comprehensive SERP analysis with all new features
+        const serpAnalysis = serpResults.map(r => {
+            const difficulty = calculateKeywordDifficulty(r);
+            const intent = classifySearchIntent(r);
+            const quickWin = calculateQuickWinScore(r, r.my_position);
+            const opportunity = calculateOpportunityScore(r);
+            const ctrAnalysis = r.my_position ? analyzeCTRPotential(r, domain) : null;
+            
+            return {
+                keyword: r.keyword,
+                my_position: r.my_position,
+                total_results: r.total_results,
+                
+                // Difficulty analysis
+                difficulty: {
+                    score: difficulty.score,
+                    level: difficulty.difficulty,
+                    factors: difficulty.factors,
+                    recommendation: difficulty.recommendation
+                },
+                
+                // Search intent
+                search_intent: {
+                    intent: intent.intent,
+                    confidence: intent.confidence,
+                    signals: intent.signals,
+                    serp_type: intent.serp_type
+                },
+                
+                // Quick win score
+                quick_win: {
+                    score: quickWin.score,
+                    priority: quickWin.priority,
+                    factors: quickWin.factors,
+                    recommendation: quickWin.recommendation
+                },
+                
+                // Opportunity score
+                opportunity: {
+                    score: opportunity.score,
+                    total_opportunities: opportunity.total_opportunities,
+                    opportunities: opportunity.opportunities,
+                    priority: opportunity.priority
+                },
+                
+                // CTR analysis (if ranking)
+                ctr_analysis: ctrAnalysis,
+                
+                // SERP features
+                serp_features: {
+                    featured_snippet: r.serp_features.featured_snippet,
+                    knowledge_graph: r.serp_features.knowledge_graph,
+                    people_also_ask: r.serp_features.people_also_ask,
+                    related_searches: r.serp_features.related_searches,
+                    local_pack: r.serp_features.local_pack,
+                    shopping_results: r.serp_features.shopping_results,
+                    images: r.serp_features.images,
+                    videos: r.serp_features.videos,
+                    top_stories: r.serp_features.top_stories,
+                    rich_results_summary: r.serp_features.rich_results_summary
+                },
+                
+                // Top competitors
+                top_3_competitors: r.top_competitors.slice(0, 3).map(c => ({
+                    position: c.position,
+                    domain: c.domain,
+                    title: c.title,
+                    snippet: c.snippet
+                }))
+            };
+        });
+        
+        logger.info(`✓ SERP analysis complete: ${sampledPositions.length} rankings, ${serpAnalysis.length} keywords analyzed`);
+        
+        // Filter Quick wins & opportunities - differentiate them properly
+        const observedKeywordSet = new Set(observedKeywords.map(k => k.toLowerCase()));
+        
+        // QUICK WINS = Keywords you're CLOSE to ranking for OR very low difficulty
+        // Focus: Easy wins, low-hanging fruit
+        const quickWins = serpAnalysis
+            .filter(s => 
+                !observedKeywordSet.has(s.keyword.toLowerCase()) && // Not in observed keywords
+                s.keyword.length > 8 && // Meaningful phrases only
+                s.keyword.includes(' ') && // Must be a phrase
+                (
+                    (s.my_position && s.my_position >= 11 && s.my_position <= 50) || // Close to ranking
+                    (s.difficulty.score < 40 && !s.my_position) || // Low difficulty, not ranking yet
+                    s.quick_win.score >= 50 // High quick win score
+                )
+            )
+            .sort((a, b) => {
+                // Prioritize: already ranking > low difficulty > high quick win score
+                if (a.my_position && !b.my_position) return -1;
+                if (!a.my_position && b.my_position) return 1;
+                if (a.my_position && b.my_position) return a.my_position - b.my_position;
+                return b.quick_win.score - a.quick_win.score;
+            })
+            .slice(0, 5);
+        
+        logger.info(`✓ Found ${quickWins.length} quick win opportunities`);
+        
+        // HIGH OPPORTUNITIES = Keywords with RICH SERP FEATURES to target
+        // Focus: Featured snippets, PAA, Related searches - content opportunities
+        const highOpportunities = serpAnalysis
+            .filter(s => 
+                !observedKeywordSet.has(s.keyword.toLowerCase()) && // Not in observed keywords
+                s.keyword.length > 8 && // Meaningful phrases only
+                s.keyword.includes(' ') && // Must be a phrase
+                !quickWins.find(qw => qw.keyword === s.keyword) && // Not already in quick wins
+                (
+                    s.opportunity.total_opportunities >= 3 || // Multiple SERP features
+                    s.serp_features.people_also_ask.length >= 3 || // Has PAA questions
+                    !s.serp_features.featured_snippet || // No featured snippet (opportunity)
+                    s.serp_features.related_searches.length >= 5 // Many related searches
+                )
+            )
+            .sort((a, b) => b.opportunity.score - a.opportunity.score)
+            .slice(0, 5);
+        
+        logger.info(`✓ Found ${highOpportunities.length} high opportunity keywords`);
+
+        // Competitor gap analysis
+        const competitorGapAnalysis = serpResults.length > 0 ? analyzeCompetitorGap(serpResults, domain) : null;
+
+        // =========================================================================
+        // STEP 4.5: Regional & Device Analysis (using industry keywords)
+        // =========================================================================
+        await SeoScanRepository.updateProgress(scanId, 55, 'Checking regional & device rankings');
+        logger.info('Step 4.5: Regional & device analysis');
+        
+        let regionalAnalysis = null;
+        let deviceComparison = null;
+        
+        // Use industry search terms (from Gemini) for regional analysis
+        const keywordsForRegionalAnalysis = industrySearchTerms.length > 0 
+            ? industrySearchTerms.slice(0, 2)
+            : observedKeywords.filter(kw => 
+                kw.length > 8 && 
+                kw.includes(' ') &&
+                !kw.toLowerCase().includes(domain.split('.')[0].toLowerCase())
+              ).slice(0, 2);
+        
+        logger.info(`Keywords for regional analysis:`, keywordsForRegionalAnalysis);
+        
+        if (keywordsForRegionalAnalysis.length > 0) {
+            // Regional analysis - prioritize target market
+            try {
+                const targetLocations = domain.endsWith('.in') 
+                    ? ['India', 'United States', 'United Kingdom']
+                    : domain.endsWith('.uk')
+                    ? ['United Kingdom', 'United States', 'India']
+                    : domain.endsWith('.au')
+                    ? ['Australia', 'United States', 'United Kingdom']
+                    : ['United States', 'India', 'United Kingdom'];
+                
+                regionalAnalysis = await checkRegionalRankings(
+                    keywordsForRegionalAnalysis[0], 
+                    domain, 
+                    targetLocations
+                );
+                logger.info(`✓ Regional analysis: ${regionalAnalysis.analysis.ranking_in}/${regionalAnalysis.locations.length} locations`);
+            } catch (error) {
+                logger.warn('Regional analysis failed:', error.message);
+            }
+            
+            // Device comparison
+            try {
+                const primaryLocation = domain.endsWith('.in') ? 'India' 
+                    : domain.endsWith('.uk') ? 'United Kingdom'
+                    : domain.endsWith('.au') ? 'Australia'
+                    : 'United States';
+                    
+                deviceComparison = await compareMobileVsDesktop(
+                    keywordsForRegionalAnalysis[0],
+                    domain,
+                    primaryLocation
+                );
+                logger.info(`✓ Device comparison: ${deviceComparison.analysis}`);
+            } catch (error) {
+                logger.warn('Device comparison failed:', error.message);
+            }
+        } else {
+            logger.warn('No suitable keywords found for regional/device analysis');
+        }
+
+        // =========================================================================
+        // STEP 5: Technical + Performance checks
         // =========================================================================
         await SeoScanRepository.updateProgress(scanId, 65, 'Checking technical SEO');
-        logger.info('Step 4: Technical & UX checks');
-
-        // Run technical checks (HTTPS, robots.txt, sitemap)
+        logger.info('Step 5: Technical & Performance checks');
+        
         const technicalResults = await checkTechnical(domain);
-
-        // Run PageSpeed Insights (real performance data)
-        await SeoScanRepository.updateProgress(scanId, 70, 'Analyzing page performance');
         const pageSpeedData = await getPageSpeedInsights(`https://${domain}`);
-
-        // Calculate separate scores from Lighthouse
         const performanceScore = calculatePerformanceScore(pageSpeedData);
         const onPageSeoScore = calculateOnPageSeoScore(pageSpeedData);
         const lighthouseMetrics = getLighthouseMetrics(pageSpeedData);
-
-        logger.info(`Technical score: ${technicalResults.score}/${technicalResults.maxScore}`);
-        logger.info(`Performance score: ${performanceScore.score}/${performanceScore.maxScore}`);
-        logger.info(`On-Page SEO score: ${onPageSeoScore.score}/${onPageSeoScore.maxScore}`);
+        const technicalIssues = extractTechnicalIssues(pageSpeedData);
+        
+        logger.info(`Technical: ${technicalResults.score}/${technicalResults.maxScore}, Performance: ${performanceScore.score}/${performanceScore.maxScore}`);
 
         // =========================================================================
-        // STEP 5: Domain Authority (WHOIS + SERP Performance)
+        // STEP 6: Domain authority signals
         // =========================================================================
-        await SeoScanRepository.updateProgress(scanId, 75, 'Fetching domain authority signals');
-        logger.info('Step 5: WHOIS lookup');
-
+        await SeoScanRepository.updateProgress(scanId, 75, 'Analyzing domain authority');
+        logger.info('Step 6: Domain authority');
+        
         const whoisData = await fetchWhoisData(domain);
         const domainAge = {
             years: whoisData.ageYears,
             created: whoisData.creationDate,
             expires: whoisData.expiryDate,
             registrar: whoisData.registrar,
-            label: 'verified',
+            label: 'verified'
         };
-
-        // Calculate Authority Score from real data
+        
         const domainAgePoints = Math.min(10, (domainAge.years || 0) * 2);
         const firstPlaceCount = sampledPositions.filter(p => p.position === 1).length;
         const rankingBonus = Math.min(8, firstPlaceCount * 2);
         const coverageBonus = Math.min(7, sampledPositions.length);
         const authorityScore = Math.min(25, domainAgePoints + rankingBonus + coverageBonus);
 
-        // Content score now uses On-Page SEO from Lighthouse
-        const indexedPagesCount = researchData.indexed_pages?.length || 0;
-        const contentPoints = Math.min(15, indexedPagesCount * 1.5);
-        const keywordCoverage = Math.min(5, (researchData.observed_keywords?.length || 0) / 2);
-        const contentFreshness = domainAge.years && domainAge.years < 5 ? 5 : 3;
-        const contentScore = Math.min(25, contentPoints + keywordCoverage + contentFreshness);
-
-        logger.info(`Step 5 Complete: Domain age ${domainAge.years || 'unknown'} years, Authority: ${authorityScore}/25`);
+        // =========================================================================
+        // STEP 7: Entity & Content analysis
+        // =========================================================================
+        await SeoScanRepository.updateProgress(scanId, 80, 'Analyzing content entities');
+        logger.info('Step 7: Entity & Content analysis');
+        
+        const brandName = domain.split('.')[0];
+        const kgData = await searchKnowledgeGraph(brandName);
+        
+        let nlData = null;
+        if (pageContent && pageContent.text && pageContent.text.length > 500) {
+            nlData = await analyzeContentEntities(pageContent.text);
+            logger.info(`✓ Natural Language API found ${nlData?.length || 0} entities`);
+        } else {
+            logger.warn('⚠ Content too short for NL API analysis');
+        }
 
         // =========================================================================
-        // STEP 6: AI Strategic Analysis (Using ALL Real Data)
+        // STEP 8: Gemini strategic keywords (based on SERP gaps & regional context)
         // =========================================================================
-        await SeoScanRepository.updateProgress(scanId, 85, 'Generating strategic recommendations');
-        logger.info('Step 6: AI strategic analysis with verified data');
-
-        // NEW: Calculate total health score with 4 real components
-        // Technical (25) + On-Page SEO (25) + Authority (25) + Performance (25)
+        await SeoScanRepository.updateProgress(scanId, 85, 'Generating strategic keywords');
+        logger.info('Step 8: Gemini strategic keyword generation with SERP intelligence');
+        
         const calculatedHealthScore = Math.round(
             (technicalResults.score / technicalResults.maxScore) * 25 +
             (onPageSeoScore.score / onPageSeoScore.maxScore) * 25 +
             (authorityScore / 25) * 25 +
             (performanceScore.score / performanceScore.maxScore) * 25
         );
-
-        const scoreBreakdown = {
-            technical: technicalResults.score,
-            on_page_seo: onPageSeoScore.score,
-            authority: authorityScore,
-            performance: performanceScore.score
+        
+        // Detect target market
+        const targetMarket = domain.endsWith('.in') ? 'India' : 'United States';
+        const isIndianBusiness = domain.endsWith('.in');
+        
+        // Prepare SERP intelligence for Gemini
+        const serpIntelligence = {
+            business_type: businessType || 'e-commerce',
+            target_market: targetMarket,
+            current_keywords: observedKeywords.slice(0, 10),
+            competitors: competitorList.slice(0, 5).map(c => c.domain),
+            serp_gaps: serpAnalysis
+                .filter(s => !s.my_position && s.difficulty.score < 50)
+                .slice(0, 5)
+                .map(s => ({
+                    keyword: s.keyword,
+                    difficulty: s.difficulty.level,
+                    opportunities: s.opportunity.opportunities.slice(0, 2).map(o => o.type)
+                })),
+            paa_questions: serpAnalysis
+                .flatMap(s => s.serp_features.people_also_ask.slice(0, 2).map(q => q.question))
+                .slice(0, 10),
+            related_searches: serpAnalysis
+                .flatMap(s => s.serp_features.related_searches.slice(0, 2).map(r => r.query))
+                .slice(0, 10)
         };
-
-        // Build comprehensive data package for Gemini
-        const analysisPrompt = `You are a Senior SEO Strategist analyzing VERIFIED data for "${domain}".
-
-=== VERIFIED DATA (Use this to inform your analysis) ===
+        
+        const analysisPrompt = `You are an SEO expert analyzing a ${businessType} business targeting ${targetMarket}.
 
 BUSINESS CONTEXT:
-${researchData.business_summary || 'Not determined'}
+- Domain: ${domain}
+- Target Market: ${targetMarket}
+- Current Keywords: ${serpIntelligence.current_keywords.join(', ')}
+- Competitors: ${serpIntelligence.competitors.join(', ')}
 
-TECHNICAL SEO (Score: ${technicalResults.score}/${technicalResults.maxScore}):
-- HTTPS: ${technicalResults.checks.https.passed ? '✓ Enabled' : '✗ Missing'}
-- robots.txt: ${technicalResults.checks.robotsTxt.passed ? '✓ Present' : '✗ Missing'}
-- Sitemap: ${technicalResults.checks.sitemap.passed ? '✓ Available' : '✗ Missing'}
+SERP INTELLIGENCE:
+- People Also Ask Questions: ${serpIntelligence.paa_questions.slice(0, 5).join('; ')}
+- Related Searches: ${serpIntelligence.related_searches.slice(0, 5).join('; ')}
+- SERP Gaps (low competition): ${serpIntelligence.serp_gaps.map(g => g.keyword).join(', ')}
 
-PAGE PERFORMANCE (From Google PageSpeed):
-${pageSpeedData ? `- Performance Score: ${pageSpeedData.performance}/100
-- Accessibility: ${pageSpeedData.accessibility}/100
-- SEO Score: ${pageSpeedData.seo}/100
-- Mobile Optimized: ${pageSpeedData.mobileOptimized ? 'Yes' : 'No'}
-- LCP: ${pageSpeedData.lcpSeconds}` : '- Data unavailable'}
+Generate 30 ACTIONABLE long-tail keywords (3-5 words each) that:
+1. Are NOT in the current keywords list
+2. Are specific to ${targetMarket} market ${isIndianBusiness ? '(include city names, regional terms)' : ''}
+3. Have clear search intent (transactional, informational, or navigational)
+4. Are based on actual SERP data (PAA questions, related searches)
+5. Include location modifiers if relevant
 
-VERIFIED SERP RANKINGS (From Google Custom Search):
-${sampledPositions.map(p => `- "${p.keyword}": Position #${p.position}`).join('\n') || 'No rankings found'}
+Categories:
+1. High Intent / Transactional (10 keywords) - buying intent, "buy X", "X online", "X price"
+2. Informational / Educational (10 keywords) - "how to", "best", "guide", "tips"
+3. Niche / Long-Tail (10 keywords) - specific, low competition, 4-5 words
 
-DOMAIN AUTHORITY:
-- Age: ${domainAge.years || 'Unknown'} years (Created: ${domainAge.created || 'Unknown'})
-- Registrar: ${domainAge.registrar || 'Unknown'}
-
-CONTENT SIGNALS:
-- Indexed Pages Found: ${indexedPagesCount}
-- Observed Keywords: ${researchData.observed_keywords?.join(', ') || 'None found'}
-
-COMPETITORS (AI-Discovered):
-- Direct: ${(competitorData.direct_competitors || []).slice(0, 5).map(c => typeof c === 'string' ? c : c.domain).join(', ')}
-- Content: ${(competitorData.content_competitors || []).slice(0, 5).map(c => typeof c === 'string' ? c : c.domain).join(', ')}
-
-=== YOUR TASK ===
-
-Based on the VERIFIED data above, provide:
-
-1. STRATEGIC KEYWORDS: Generate 30 high-value keyword opportunities in 3 categories:
-   - "High Intent / Transactional" (10 keywords)
-   - "Informational / Educational" (10 keywords)  
-   - "Niche / Long-Tail" (10 keywords)
-
-2. STRATEGIC RECOMMENDATIONS: 3-5 specific, actionable recommendations based on the real data.
-   Reference specific findings (e.g., "Your PageSpeed score of ${pageSpeedData?.performance || 'N/A'} indicates...")
-
-REQUIRED JSON OUTPUT:
+Return ONLY valid JSON:
 {
   "suggested_keywords": [
-    {"category": "High Intent / Transactional", "keywords": ["kw1", "kw2", ...]},
-    {"category": "Informational / Educational", "keywords": ["kw1", "kw2", ...]},
-    {"category": "Niche / Long-Tail", "keywords": ["kw1", "kw2", ...]}
+    {"category": "High Intent / Transactional", "keywords": [{"word": "buy maternity dresses online india", "intent": "transactional"}, ...]},
+    {"category": "Informational / Educational", "keywords": [{"word": "how to choose maternity clothes", "intent": "informational"}, ...]},
+    {"category": "Niche / Long-Tail", "keywords": [{"word": "cotton maternity kurtis for summer india", "intent": "navigational"}, ...]}
   ],
   "recommendations": [
-    "Specific recommendation referencing data...",
-    "Another recommendation..."
+    {"title": "Target Regional Keywords", "text": "Focus on city-specific terms like 'maternity wear bangalore' to capture local traffic", "impact": "High"},
+    {"title": "Answer PAA Questions", "text": "Create content answering: ${serpIntelligence.paa_questions[0] || 'common questions'}", "impact": "Medium"}
   ]
 }`;
 
-        let analysis = {
-            recommendations: [],
-            suggested_keywords: []
-        };
-
+        let analysis = { recommendations: [], suggested_keywords: [] };
+        
         try {
             const analysisModel = genAI.getGenerativeModel({
                 model: 'gemini-2.0-flash',
-                generationConfig: {
-                    temperature: 0.7,
-                    topP: 0.9,
-                    maxOutputTokens: 8192,
-                },
+                generationConfig: { temperature: 0.7, topP: 0.95, maxOutputTokens: 8192 }
             });
-
             const analysisResult = await analysisModel.generateContent(analysisPrompt);
-            const analysisResponse = analysisResult.response.text();
-            analysis = extractJSON(analysisResponse);
+            analysis = extractJSON(analysisResult.response.text());
+            logger.info(`✓ Generated ${analysis.suggested_keywords?.reduce((acc, g) => acc + g.keywords.length, 0) || 0} strategic keywords`);
         } catch (error) {
-            logger.error('Analysis generation failed:', error.message);
+            logger.error('Gemini analysis failed:', error.message);
         }
 
-        logger.info(`Step 6 Complete: Generated ${analysis.suggested_keywords?.reduce((acc, g) => acc + g.keywords.length, 0) || 0} keywords`);
+        // Filter out duplicates with observed keywords (double-check)
+        const filteredSuggestedKeywords = (analysis.suggested_keywords || []).map(category => ({
+            ...category,
+            keywords: category.keywords.filter(kw => !observedKeywordSet.has(kw.word.toLowerCase()))
+        })).filter(category => category.keywords.length > 0);
 
         // =========================================================================
-        // Compile Final Results (All Verified Data)
+        // Compile final results with comprehensive SERP data
         // =========================================================================
         const results = {
             domain,
             scanned_at: new Date().toISOString(),
-            data_source: 'hybrid_verified',
-            business_summary: researchData.business_summary || '',
-            observed_keywords: (researchData.observed_keywords || []).map(k => ({ keyword: k, label: 'observed' })),
-            sampled_positions: sampledPositions.map(p => ({ ...p, label: 'verified' })),
+            data_source: 'serpapi_primary',
+            business_summary: businessSummary,
+            real_website_keywords: realWebsiteKeywords.map(k => ({ keyword: k, label: 'extracted-from-site' })),
+            observed_keywords: observedKeywords.map(k => ({ keyword: k, label: 'verified-serpapi' })),
+            sampled_positions: sampledPositions,
+            
+            // Comprehensive SERP analysis
+            serp_analysis: serpAnalysis,
+            
+            // Quick wins & opportunities
+            quick_wins: quickWins.map(qw => ({
+                keyword: qw.keyword,
+                score: qw.quick_win.score,
+                priority: qw.quick_win.priority,
+                current_position: qw.my_position,
+                difficulty: qw.difficulty.level,
+                recommendation: qw.quick_win.recommendation,
+                label: 'verified-serpapi'
+            })),
+            
+            high_opportunity_keywords: highOpportunities.map(ho => ({
+                keyword: ho.keyword,
+                opportunity_score: ho.opportunity.score,
+                total_opportunities: ho.opportunity.total_opportunities,
+                opportunities: ho.opportunity.opportunities,
+                current_position: ho.my_position,
+                label: 'verified-serpapi'
+            })),
+            
+            // Regional & device data
+            regional_analysis: regionalAnalysis,
+            device_comparison: deviceComparison,
+            
+            // Competitor data
+            competitor_gap: competitorGapAnalysis,
+            keyword_competition: serpAnalysis.map(s => ({
+                keyword: s.keyword,
+                my_position: s.my_position,
+                difficulty: s.difficulty.level,
+                difficulty_score: s.difficulty.score,
+                search_intent: s.search_intent.intent,
+                intent_confidence: s.search_intent.confidence,
+                total_results: s.total_results,
+                label: 'verified-serpapi'
+            })),
             serp_competitors: {
-                direct: (competitorData.direct_competitors || []).map(c => ({
-                    domain: typeof c === 'string' ? c : c.domain,
-                    label: 'ai-inferred',
+                direct: competitorList.map(c => ({ 
+                    domain: c.domain, 
+                    appearances: c.appearances,
+                    avg_position: c.avg_position,
+                    keywords: c.keywords,
+                    label: 'verified-serpapi' 
                 })),
-                content: (competitorData.content_competitors || []).map(c => ({
-                    domain: typeof c === 'string' ? c : c.domain,
-                    label: 'ai-inferred',
-                })),
+                content: []
             },
+            
+            // Domain authority
             domain_age: domainAge,
-            // Real calculated scores
             health_score: calculatedHealthScore,
-            score_breakdown: scoreBreakdown,
-            // Real technical data
+            score_breakdown: {
+                technical: technicalResults.score,
+                on_page_seo: onPageSeoScore.score,
+                authority: authorityScore,
+                performance: performanceScore.score
+            },
+            
+            // Technical data
             technical_details: {
                 https: technicalResults.checks.https.passed,
                 robots_txt: technicalResults.checks.robotsTxt.passed,
@@ -558,7 +742,7 @@ REQUIRED JSON OUTPUT:
                 score: technicalResults.score,
                 max_score: technicalResults.maxScore
             },
-            // Real PageSpeed data
+            technical_issues: technicalIssues,
             pagespeed: pageSpeedData ? {
                 performance: pageSpeedData.performance,
                 accessibility: pageSpeedData.accessibility,
@@ -567,17 +751,41 @@ REQUIRED JSON OUTPUT:
                 lcp: pageSpeedData.lcpSeconds,
                 label: 'verified'
             } : null,
-            // Full Lighthouse Metrics for UI
             lighthouse_metrics: lighthouseMetrics,
-            // AI-generated strategic content (informed by real data)
-            recommendations: (analysis.recommendations || []).map(r => ({ text: r, label: 'ai-strategic' })),
-            suggested_keywords: analysis.suggested_keywords || [],
-            market_position: competitorData.market_position || '',
-            visibility: positionSource !== 'none' ? (sampledPositions.length > 3 ? 'Strong' : sampledPositions.length > 0 ? 'Moderate' : 'Weak') : 'Unknown',
+            
+            // Strategic recommendations (Gemini interpretation of SERP data)
+            recommendations: (analysis.recommendations || []).map(r => ({
+                title: typeof r === 'string' ? 'Recommendation' : r.title,
+                text: typeof r === 'string' ? r : r.text,
+                impact: typeof r === 'string' ? 'Medium' : r.impact,
+                label: 'ai-strategic'
+            })),
+            suggested_keywords: filteredSuggestedKeywords,
+            
+            // Visibility metrics
+            visibility_label: sampledPositions.length > 3 ? 'Strong' : sampledPositions.length > 0 ? 'Moderate' : 'Weak',
+            visibility_percentage: calculateVisibility(sampledPositions),
+            keyword_distribution: calculateKeywordDistribution(sampledPositions),
+            
+            // Entity & content
+            entity_verification: kgData ? {
+                recognized: true,
+                name: kgData.name,
+                types: kgData.type,
+                score: kgData.score,
+                description: kgData.description,
+                source: 'google_knowledge_graph'
+            } : { recognized: false },
+            content_salience: nlData ? nlData.map(e => ({
+                entity: e.name,
+                type: e.type,
+                weight: e.salience,
+                label: 'scientific-extraction'
+            })) : []
         };
 
         await SeoScanRepository.markAsComplete(scanId, results);
-        logger.info(`SEO Scan Complete: ${scanId} - Score: ${results.health_score}`);
+        logger.info(`✓ SEO Scan Complete: ${scanId} - Score: ${results.health_score}`);
 
         return results;
 

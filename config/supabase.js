@@ -9,10 +9,11 @@ let supabase = null;
 export const initSupabase = () => {
   try {
     const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_ANON_KEY;
+    // Use Service Role Key if available (permits bypassing RLS in backend repos)
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY are required in environment variables');
+      throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY/ANON_KEY are required');
     }
 
     supabase = createClient(supabaseUrl, supabaseKey, {
@@ -51,7 +52,7 @@ export const testConnection = async () => {
   try {
     const client = getSupabase();
     const { data, error } = await client.from('jobs').select('count').limit(1);
-    
+
     if (error) {
       if (error.code === 'PGRST116') {
         logger.info('Supabase connection test successful');
@@ -67,7 +68,7 @@ export const testConnection = async () => {
         throw error;
       }
     }
-    
+
     logger.info('Supabase connection test successful');
     return true;
   } catch (error) {

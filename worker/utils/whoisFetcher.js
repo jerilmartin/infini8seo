@@ -1,5 +1,6 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import https from 'https';
 import logger from '../../utils/logger.js';
 
 const execAsync = promisify(exec);
@@ -7,7 +8,62 @@ const execAsync = promisify(exec);
 /**
  * WHOIS Fetcher
  * Runs OS-level whois command to get domain registration data.
+ * Falls back to HTTP API if whois command is unavailable (e.g., on Windows).
  */
+
+/**
+ * Fetch WHOIS data via HTTP API (fallback for Windows)
+ */
+async function fetchWhoisViaApi(domain) {
+    return new Promise((resolve, reject) => {
+        // Use a free WHOIS lookup service
+        const options = {
+            hostname: 'www.whoisxmlapi.com',
+            path: `/whoisserver/WhoisService?apiKey=at_free&domainName=${encodeURIComponent(domain)}&outputFormat=JSON`,
+            method: 'GET',
+            timeout: 15000
+        };
+
+        logger.info(`Attempting WHOIS API lookup for ${domain}...`);
+
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const json = JSON.parse(data);
+                    if (json.WhoisRecord) {
+                        const record = json.WhoisRecord;
+                        logger.info(`WHOIS API returned data for ${domain}`);
+                        resolve({
+                            creationDate: record.createdDate || record.registryData?.createdDate || null,
+                            expiryDate: record.expiresDate || record.registryData?.expiresDate || null,
+                            registrar: record.registrarName || record.registrarIANAID || null,
+                            ageYears: null // Will be calculated
+                        });
+                    } else {
+                        logger.warn(`WHOIS API returned no record for ${domain}`);
+                        resolve(null);
+                    }
+                } catch (e) {
+                    logger.error(`WHOIS API parse error: ${e.message}`);
+                    resolve(null);
+                }
+            });
+        });
+
+        req.on('error', (err) => {
+            logger.error(`WHOIS API request error: ${err.message}`);
+            resolve(null);
+        });
+        req.on('timeout', () => {
+            logger.warn('WHOIS API request timeout');
+            req.destroy();
+            resolve(null);
+        });
+        req.end();
+    });
+}
 
 /**
  * Fetch WHOIS data for a domain
@@ -24,20 +80,53 @@ export async function fetchWhoisData(domain) {
 
         logger.info(`Fetching WHOIS for domain: ${cleanDomain}`);
 
-        // Try whois command
-        const { stdout, stderr } = await execAsync(`whois ${cleanDomain}`, {
-            timeout: 30000,
-            maxBuffer: 1024 * 1024,
-        });
+        let whoisData = null;
 
-        if (stderr && !stdout) {
-            logger.warn(`WHOIS stderr: ${stderr}`);
+        // Try OS-level whois command first
+        try {
+            const { stdout, stderr } = await execAsync(`whois ${cleanDomain}`, {
+                timeout: 30000,
+                maxBuffer: 1024 * 1024,
+            });
+
+            if (stderr && !stdout) {
+                logger.warn(`WHOIS stderr: ${stderr}`);
+            }
+
+            if (stdout) {
+                whoisData = parseWhoisOutput(stdout);
+                logger.info(`WHOIS parsed for ${cleanDomain} via command:`, whoisData);
+            }
+        } catch (cmdError) {
+            logger.warn(`WHOIS command failed (${cmdError.message}), trying API fallback...`);
+            
+            // Fallback to API (useful for Windows or when whois is not installed)
+            const apiData = await fetchWhoisViaApi(cleanDomain);
+            if (apiData) {
+                whoisData = apiData;
+                logger.info(`WHOIS parsed for ${cleanDomain} via API:`, whoisData);
+            }
         }
 
-        const whoisData = parseWhoisOutput(stdout);
-        logger.info(`WHOIS parsed for ${cleanDomain}:`, whoisData);
+        // If we got data, calculate age
+        if (whoisData && whoisData.creationDate) {
+            try {
+                const created = new Date(whoisData.creationDate);
+                const now = new Date();
+                const ageMs = now - created;
+                whoisData.ageYears = Math.floor(ageMs / (365.25 * 24 * 60 * 60 * 1000));
+            } catch {
+                whoisData.ageYears = null;
+            }
+        }
 
-        return whoisData;
+        return whoisData || {
+            creationDate: null,
+            expiryDate: null,
+            registrar: null,
+            ageYears: null,
+        };
+
     } catch (error) {
         logger.error(`WHOIS fetch failed for "${domain}":`, error.message);
         return {
@@ -112,18 +201,6 @@ function parseWhoisOutput(output) {
         if (match) {
             result.registrar = match[1].trim();
             break;
-        }
-    }
-
-    // Calculate age in years
-    if (result.creationDate) {
-        try {
-            const created = new Date(result.creationDate);
-            const now = new Date();
-            const ageMs = now - created;
-            result.ageYears = Math.floor(ageMs / (365.25 * 24 * 60 * 60 * 1000));
-        } catch {
-            result.ageYears = null;
         }
     }
 
