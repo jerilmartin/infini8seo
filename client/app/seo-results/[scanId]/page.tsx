@@ -6,6 +6,7 @@ import { ArrowLeft, Sun, Moon, ExternalLink, Copy, Plus, Star, ChevronDown, Chev
 import { api } from '@/utils/api';
 import { QuickWinsSection, HighOpportunitiesSection, RegionalRankingsSection, DeviceComparisonSection } from '@/components/SerpFeatures';
 import { KeywordClustersSection, ContentGapsSection, FeaturedSnippetSection, LocalSEOSection, CompetitorStrategySection, ContentQualitySection } from '@/components/AdvancedSerpFeatures';
+import { CompetitorTrackingSection, ActionItemsSection, ContentRecommendationsSection, RankingHistorySection } from '@/components/AdvancedSeoFeatures';
 
 interface SeoResults {
     domain: string;
@@ -124,6 +125,49 @@ interface SeoResults {
         score: number;
         improvements: string[];
     } | null;
+    // Advanced Features
+    tracked_competitors?: Array<{
+        domain: string;
+        appearances: number;
+        avg_position: number;
+        keywords_ranking_for: string[];
+        serp_features_owned: {
+            featured_snippets?: number;
+            paa?: number;
+            local_pack?: number;
+            shopping?: number;
+        };
+    }>;
+    action_items?: Array<{
+        id: string;
+        title: string;
+        description: string;
+        priority: number;
+        impact: 'High' | 'Medium' | 'Low';
+        effort: 'High' | 'Medium' | 'Low';
+        timeline: string;
+        category: string;
+        status: 'pending' | 'in_progress' | 'completed' | 'skipped';
+    }>;
+    content_recommendations?: Array<{
+        id: string;
+        topic: string;
+        keyword: string;
+        search_intent: string;
+        difficulty: string;
+        opportunity_score: number;
+        estimated_traffic: number;
+        competitors_ranking: string[];
+        reason: string;
+    }>;
+    ranking_history?: Array<{
+        keyword: string;
+        history: Array<{
+            date: string;
+            position: number | null;
+            has_featured_snippet: boolean;
+        }>;
+    }>;
 }
 
 interface ScanData {
@@ -1004,6 +1048,28 @@ export default function SeoResultsPage() {
 
                 {results.content_quality_score && (
                     <ContentQualitySection quality={results.content_quality_score} />
+                )}
+
+                {/* ADVANCED SEO FEATURES - NEW */}
+                
+                {/* Competitor Tracking */}
+                {results.tracked_competitors && results.tracked_competitors.length > 0 && (
+                    <CompetitorTrackingSection competitors={results.tracked_competitors} />
+                )}
+
+                {/* Action Items */}
+                {results.action_items && results.action_items.length > 0 && (
+                    <ActionItemsSection items={results.action_items} />
+                )}
+
+                {/* Content Recommendations */}
+                {results.content_recommendations && results.content_recommendations.length > 0 && (
+                    <ContentRecommendationsSection recommendations={results.content_recommendations} />
+                )}
+
+                {/* Ranking History */}
+                {results.ranking_history && results.ranking_history.length > 0 && (
+                    <RankingHistorySection history={results.ranking_history} />
                 )}
 
                 {/* Strategic Keyword Opportunities - Enhanced */}

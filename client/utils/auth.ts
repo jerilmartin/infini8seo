@@ -91,15 +91,20 @@ export async function exchangeSupabaseSession(supabaseAccessToken: string): Prom
             body: JSON.stringify({ supabaseAccessToken }),
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-            throw new Error('Failed to exchange token');
+            throw new Error(data.message || 'Failed to exchange token');
         }
 
-        const data = await response.json();
+        if (!data.token) {
+            throw new Error('No token received from server');
+        }
+
         return data.token;
-    } catch (error) {
+    } catch (error: any) {
         console.error('Token exchange error:', error);
-        throw error;
+        throw new Error(error.message || 'Failed to complete authentication');
     }
 }
 

@@ -69,7 +69,7 @@ const processContentGenerationJob = async (job) => {
       logger.info(`Progress: ${completed}/${total} blog posts generated (${progressPercent}%)`);
     };
 
-    await executePhaseB({
+    const results = await executePhaseB({
       jobId,
       scenarios,
       niche,
@@ -81,19 +81,64 @@ const processContentGenerationJob = async (job) => {
       progressCallback
     });
 
-    logger.info(`Phase B Complete: Generated ${totalBlogs} blog posts`);
+    const successCount = results.filter(r => r.success).length;
+    const failureCount = results.filter(r => !r.success).length;
 
-    // Finalization
-    await JobRepository.markAsComplete(jobId);
+    logger.info(`Phase B Complete: ${successCount} successful, ${failureCount} failed`);
+
+    // Calculate credits to refund for failed blogs
+    let creditsToRefund = 0;
+    if (failureCount > 0) {
+      // Calculate per-blog credit cost
+      const totalCreditsCost = jobDoc.credits_cost || 0;
+      const perBlogCost = totalBlogs > 0 ? totalCreditsCost / totalBlogs : 0;
+      creditsToRefund = Math.floor(perBlogCost * failureCount);
+      
+      logger.info(`Refunding ${creditsToRefund} credits for ${failureCount} failed blogs`);
+      
+      // Refund credits if there were failures
+      if (creditsToRefund > 0 && jobDoc.user_id) {
+        try {
+          const UserRepository = (await import('../models/UserRepository.js')).default;
+          await UserRepository.addCredits(
+            jobDoc.user_id,
+            creditsToRefund,
+            'job',
+            jobId,
+            `Auto-refund for ${failureCount} failed blog(s) in job ${jobId}`
+          );
+          logger.info(`Successfully refunded ${creditsToRefund} credits to user ${jobDoc.user_id}`);
+        } catch (refundError) {
+          logger.error('Failed to refund credits:', refundError);
+        }
+      }
+    }
+
+    // Mark job as complete even with partial failures
+    const finalStatus = failureCount === totalBlogs ? 'FAILED' : 
+                       failureCount > 0 ? 'PARTIAL_COMPLETE' : 'COMPLETE';
+    
+    await JobRepository.update(jobId, {
+      status: finalStatus,
+      progress: 100,
+      completed_at: new Date().toISOString(),
+      total_content_generated: successCount,
+      failed_content_count: failureCount,
+      credits_refunded: creditsToRefund
+    });
+    
     await job.updateProgress(100);
 
-    logger.info(`Job ${jobId} completed successfully`);
+    logger.info(`Job ${jobId} completed with status: ${finalStatus}`);
 
     return {
-      success: true,
+      success: successCount > 0,
       jobId,
       scenariosGenerated: scenarios.length,
-      contentGenerated: totalBlogs
+      contentGenerated: successCount,
+      contentFailed: failureCount,
+      creditsRefunded: creditsToRefund,
+      status: finalStatus
     };
 
   } catch (error) {

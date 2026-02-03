@@ -176,7 +176,7 @@ export async function executePhaseA({ niche, valuePropositions, tone, totalBlogs
     }
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       generationConfig: {
         temperature: 1.0,
         topP: 0.95,
@@ -188,7 +188,11 @@ export async function executePhaseA({ niche, valuePropositions, tone, totalBlogs
       }]
     });
 
-    logger.info('Using Gemini 3 Pro with Google Search for deep research');
+    logger.info('Using Gemini 2.5 Flash WITH Google Search grounding (fresh Tier 1 API key)');
+
+    // Add small delay to avoid burst detection
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    logger.info('Starting request after 2s delay...');
 
     const prompt = `You are an EXPERT Market Research Analyst and Strategic Content Architect with deep expertise in the ${niche} industry.
 
@@ -290,6 +294,14 @@ BEGIN YOUR RESEARCH NOW.`;
           error.message.includes('quota') ||
           error.message.includes('Too Many Requests')
         );
+
+        // Log full error details for debugging
+        logger.error(`Phase A attempt ${attempts} error details:`, {
+          message: error.message,
+          status: error.status,
+          statusText: error.statusText,
+          errorInfo: error.errorInfo || error.error || 'No additional info'
+        });
 
         if (attempts >= maxAttempts) {
           if (isRateLimit) {

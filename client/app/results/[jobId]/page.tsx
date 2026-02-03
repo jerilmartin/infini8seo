@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Download, Copy, Check, ArrowLeft, FileText, Sun, Moon } from 'lucide-react';
+import { Download, Copy, Check, ArrowLeft, FileText, Sun, Moon, Bookmark, BookmarkCheck, AlertCircle, FileArchive } from 'lucide-react';
 import { api } from '@/utils/api';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
@@ -18,6 +18,7 @@ interface BlogPost {
   slug: string;
   metaDescription: string;
   blogType?: string;
+  contentId?: string;
 }
 
 interface ContentData {
@@ -25,6 +26,9 @@ interface ContentData {
   niche: string;
   tone: string;
   completedAt: string;
+  status: string;
+  failedCount: number;
+  creditsRefunded: number;
   stats: { totalPosts: number; avgWordCount: number; totalWords: number };
   content: BlogPost[];
 }
@@ -39,6 +43,10 @@ export default function ResultsPage() {
   const [selectedPost, setSelectedPost] = useState<number | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [savedBlogs, setSavedBlogs] = useState<Set<string>>(new Set());
+  const [savingBlog, setSavingBlog] = useState<string | null>(null);
+  const [exportingBulk, setExportingBulk] = useState(false);
+  const [exportingSingle, setExportingSingle] = useState<string | null>(null);
 
   // Theme persistence and initialization
   useEffect(() => {
@@ -65,6 +73,20 @@ export default function ResultsPage() {
         setContentData(res.data);
         if (res.data.content?.length > 0) {
           setSelectedPost(res.data.content[0].scenarioId);
+          
+          // Check which blogs are already saved
+          const contentIds = res.data.content.map((post: any) => post.contentId).filter(Boolean);
+          if (contentIds.length > 0) {
+            api.post('/api/library/check-multiple', { contentIds })
+              .then(checkRes => {
+                const saved = new Set<string>();
+                Object.entries(checkRes.data.savedStatus).forEach(([id, isSaved]) => {
+                  if (isSaved) saved.add(id);
+                });
+                setSavedBlogs(saved);
+              })
+              .catch(err => console.error('Failed to check saved status:', err));
+          }
         }
       })
       .catch(err => setError(err.response?.data?.message || 'Failed to load'))
@@ -85,6 +107,51 @@ export default function ResultsPage() {
     a.click();
   };
 
+  const downloadSingle = async (contentId: string, format: 'md' | 'docx') => {
+    setExportingSingle(contentId);
+    try {
+      const response = await api.get(`/api/content/${contentId}/export?format=${format}`, {
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `blog.${format}`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Export failed:', err);
+      alert('Export failed. Please try again.');
+    } finally {
+      setExportingSingle(null);
+    }
+  };
+
+  const downloadBulk = async (format: 'md' | 'docx') => {
+    if (!contentData) return;
+    setExportingBulk(true);
+    try {
+      const response = await api.get(`/api/content/${jobId}/export/bulk?format=${format}`, {
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${contentData.niche.replace(/\s+/g, '-').toLowerCase()}-content.zip`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Bulk export failed:', err);
+      alert('Bulk export failed. Please try again.');
+    } finally {
+      setExportingBulk(false);
+    }
+  };
+
   const downloadAll = () => {
     if (!contentData) return;
     const all = contentData.content.map(p => `# ${p.title}\n\n${p.content}`).join('\n\n---\n\n');
@@ -93,6 +160,32 @@ export default function ResultsPage() {
     a.href = URL.createObjectURL(blob);
     a.download = `${contentData.niche.replace(/\s+/g, '-').toLowerCase()}-content.md`;
     a.click();
+  };
+
+  const toggleSaveBlog = async (contentId: string) => {
+    if (!contentId) return;
+    
+    setSavingBlog(contentId);
+    try {
+      const isSaved = savedBlogs.has(contentId);
+      
+      if (isSaved) {
+        await api.delete(`/api/library/unsave/${contentId}`);
+        setSavedBlogs(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(contentId);
+          return newSet;
+        });
+      } else {
+        await api.post('/api/library/save', { contentId });
+        setSavedBlogs(prev => new Set(prev).add(contentId));
+      }
+    } catch (err: any) {
+      console.error('Failed to toggle save:', err);
+      alert(err.response?.data?.message || 'Failed to save blog');
+    } finally {
+      setSavingBlog(null);
+    }
   };
 
   const selectedPostData = contentData?.content.find(p => p.scenarioId === selectedPost);
@@ -120,6 +213,8 @@ export default function ResultsPage() {
       </div>
     );
   }
+
+  const isPartialComplete = contentData.status === 'PARTIAL_COMPLETE';
 
   return (
     <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
@@ -150,15 +245,54 @@ export default function ResultsPage() {
             >
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
-            <button
-              onClick={downloadAll}
-              className="flex items-center gap-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              Export All
-            </button>
+            
+            <div className="relative group">
+              <button
+                disabled={exportingBulk}
+                className="flex items-center gap-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {exportingBulk ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <FileArchive className="w-4 h-4" />
+                    Export All
+                  </>
+                )}
+              </button>
+              
+              {!exportingBulk && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                  <button
+                    onClick={() => downloadBulk('md')}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-secondary/50 rounded-t-lg transition-colors"
+                  >
+                    Download as ZIP (MD)
+                  </button>
+                  <button
+                    onClick={() => downloadBulk('docx')}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-secondary/50 rounded-b-lg transition-colors"
+                  >
+                    Download as ZIP (DOCX)
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
+        
+        {/* Partial completion warning */}
+        {isPartialComplete && (
+          <div className="px-5 py-2 bg-yellow-500/10 border-t border-yellow-500/20 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-yellow-500" />
+            <p className="text-xs text-yellow-600 dark:text-yellow-400">
+              {contentData.failedCount} blog(s) failed to generate. {contentData.creditsRefunded > 0 && `${contentData.creditsRefunded} credits refunded.`}
+            </p>
+          </div>
+        )}
       </header>
 
       {/* Main Content Area */}
@@ -211,7 +345,7 @@ export default function ResultsPage() {
                   <p className="text-sm text-secondary-foreground leading-relaxed mb-4">
                     {selectedPostData.metaDescription}
                   </p>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 flex-wrap">
                     <button
                       onClick={() => copyToClipboard(selectedPostData)}
                       className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-secondary-foreground transition-colors"
@@ -222,13 +356,61 @@ export default function ResultsPage() {
                         <><Copy className="w-3.5 h-3.5" /> Copy</>
                       )}
                     </button>
+                    
                     <span className="text-border">·</span>
-                    <button
-                      onClick={() => downloadMarkdown(selectedPostData)}
-                      className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-secondary-foreground transition-colors"
-                    >
-                      <Download className="w-3.5 h-3.5" /> Download
-                    </button>
+                    
+                    <div className="relative group">
+                      <button
+                        disabled={exportingSingle === selectedPostData.contentId}
+                        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-secondary-foreground transition-colors disabled:opacity-50"
+                      >
+                        {exportingSingle === selectedPostData.contentId ? (
+                          <><div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Exporting...</>
+                        ) : (
+                          <><Download className="w-3.5 h-3.5" /> Download</>
+                        )}
+                      </button>
+                      
+                      {exportingSingle !== selectedPostData.contentId && (
+                        <div className="absolute left-0 top-full mt-2 w-32 bg-card border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                          <button
+                            onClick={() => downloadSingle(selectedPostData.contentId!, 'md')}
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-secondary/50 rounded-t-lg transition-colors"
+                          >
+                            As Markdown
+                          </button>
+                          <button
+                            onClick={() => downloadSingle(selectedPostData.contentId!, 'docx')}
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-secondary/50 rounded-b-lg transition-colors"
+                          >
+                            As DOCX
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {selectedPostData.contentId && (
+                      <>
+                        <span className="text-border">·</span>
+                        <button
+                          onClick={() => toggleSaveBlog(selectedPostData.contentId!)}
+                          disabled={savingBlog === selectedPostData.contentId}
+                          className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${
+                            savedBlogs.has(selectedPostData.contentId)
+                              ? 'text-primary hover:text-primary/80'
+                              : 'text-muted-foreground hover:text-secondary-foreground'
+                          } disabled:opacity-50`}
+                        >
+                          {savingBlog === selectedPostData.contentId ? (
+                            <><div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Saving...</>
+                          ) : savedBlogs.has(selectedPostData.contentId) ? (
+                            <><BookmarkCheck className="w-3.5 h-3.5" /> Saved</>
+                          ) : (
+                            <><Bookmark className="w-3.5 h-3.5" /> Save to Library</>
+                          )}
+                        </button>
+                      </>
+                    )}
                     {selectedPostData.keywords.length > 0 && (
                       <>
                         <span className="text-border">·</span>

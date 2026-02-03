@@ -47,7 +47,8 @@ class JobRepository {
         target_word_count: jobData.targetWordCount || 1200,
         status: 'ENQUEUED',
         progress: 0,
-        started_at: new Date().toISOString()
+        started_at: new Date().toISOString(),
+        credits_cost: jobData.creditsCost || 0
       };
 
       // Add user_id if provided (for authenticated requests)

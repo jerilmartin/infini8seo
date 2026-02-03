@@ -9,6 +9,7 @@ interface User {
     name: string;
     avatar?: string;
     provider?: string;
+    role?: string;
 }
 
 interface AuthContextType {

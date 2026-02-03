@@ -6,6 +6,8 @@ import { ArrowRight, Loader2, Sun, Moon, Search, FileText, Facebook, Instagram, 
 import { api } from '@/utils/api';
 import { UserMenu } from '@/components/UserMenu';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { CreditWidget } from '@/components/CreditWidget';
+import { CostPreview } from '@/components/CostPreview';
 
 const MIN_WORD_COUNT = 500;
 const MAX_WORD_COUNT = 2500;
@@ -23,7 +25,7 @@ type ContentTypeKey = typeof CONTENT_TYPES[number]['key'];
 type Allocations = Record<ContentTypeKey, number>;
 
 const DEFAULT_ALLOCATIONS: Allocations = {
-  informational: 10, functional: 8, commercial: 6, transactional: 6
+  informational: 1, functional: 1, commercial: 1, transactional: 1
 };
 
 const TONES = [
@@ -45,7 +47,7 @@ const generatePreviewTitles = (wordCount: number) => {
 
 type Tab = 'content' | 'seo';
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('content');
 
@@ -185,18 +187,18 @@ export default function Home() {
                   }`}
               >
                 <Search className="w-3.5 h-3.5" />
-                SEO Scanner
+                Site Insight
               </button>
             </div>
 
             <h1 className="text-[20px] font-semibold text-foreground leading-tight">
-              {activeTab === 'content' ? 'Content Factory' : 'SEO Scanner'}
+              {activeTab === 'content' ? 'Content Factory' : 'Site Insight'}
             </h1>
           </header>
 
           {/* Content Factory Tab */}
           {activeTab === 'content' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
               {/* Form Column */}
               <div className="animate-fade-in" style={{ animationDelay: '50ms' }}>
                 <div className="card-elevated p-6">
@@ -257,7 +259,7 @@ export default function Home() {
                                 <span className="text-[14px] font-medium text-foreground">{type.label}</span>
                                 <span className="text-[11px] text-muted-foreground">{type.desc}</span>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-3">
                                 <button
                                   type="button"
                                   onClick={() => handleAllocationChange(type.key, value - 1)}
@@ -266,7 +268,7 @@ export default function Home() {
                                 >
                                   −
                                 </button>
-                                <span className="w-6 text-center text-[14px] tabular-nums font-medium text-foreground">{value}</span>
+                                <span className="w-12 text-center text-[14px] tabular-nums font-medium text-foreground">{value}/{MAX_PER_TYPE}</span>
                                 <button
                                   type="button"
                                   onClick={() => handleAllocationChange(type.key, value + 1)}
@@ -308,6 +310,14 @@ export default function Home() {
                       </div>
                     </section>
 
+                    {/* Cost Preview */}
+                    {totalPosts > 0 && (
+                      <CostPreview 
+                        actionType="blog_generation" 
+                        params={{ totalBlogs: totalPosts }} 
+                      />
+                    )}
+
                     {error && (
                       <div className="p-2 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-[12px]">{error}</div>
                     )}
@@ -325,8 +335,12 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Preview Column */}
-              <aside className="animate-fade-in" style={{ animationDelay: '100ms' }}>
+              {/* Sidebar Column */}
+              <aside className="space-y-4 animate-fade-in" style={{ animationDelay: '100ms' }}>
+                {/* Credit Widget */}
+                <CreditWidget />
+
+                {/* Preview */}
                 <div className="card-elevated p-6">
                   <p className="text-[10px] font-medium text-foreground/80 uppercase tracking-wide mb-4">What you'll get</p>
 
@@ -364,7 +378,7 @@ export default function Home() {
                 </div>
 
                 {/* Stats Row */}
-                <div className="mt-3 flex items-center justify-center gap-8 text-center">
+                <div className="flex items-center justify-center gap-8 text-center">
                   <div>
                     <div className="text-[14px] font-semibold text-foreground/80">{totalPosts}</div>
                     <div className="text-[9px] text-secondary-foreground uppercase tracking-wide">Posts</div>
@@ -386,7 +400,7 @@ export default function Home() {
 
           {/* SEO Scanner Tab */}
           {activeTab === 'seo' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-12 items-start">
               {/* Form Column */}
               <div className="animate-fade-in" style={{ animationDelay: '50ms' }}>
                 <div className="card-elevated p-6">
@@ -407,15 +421,20 @@ export default function Home() {
                       </p>
                     </section>
 
+                    {/* Cost Preview */}
+                    {scanUrl.trim() && (
+                      <CostPreview actionType="seo_scan" />
+                    )}
+
                     {scanError && (
                       <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-[13px]">{scanError}</div>
                     )}
 
                     <button type="submit" disabled={scanLoading || !scanUrl.trim()} className="btn-primary w-full justify-center text-[14px] h-10 mt-1">
                       {scanLoading ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Scanning...</>
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Analyzing...</>
                       ) : (
-                        <><Search className="w-4 h-4 mr-2" />Scan for SEO</>
+                        <><Search className="w-4 h-4 mr-2" />Analyze Site</>
                       )}
                     </button>
 
@@ -424,8 +443,12 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Preview Column */}
-              <aside className="animate-fade-in" style={{ animationDelay: '100ms' }}>
+              {/* Sidebar Column */}
+              <aside className="space-y-4 animate-fade-in" style={{ animationDelay: '100ms' }}>
+                {/* Credit Widget */}
+                <CreditWidget />
+
+                {/* Preview */}
                 <div className="card-elevated p-7">
                   <p className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-6">What you'll get</p>
 
@@ -488,7 +511,7 @@ export default function Home() {
                 </div>
 
                 {/* Stats Row - matching Content Factory style */}
-                <div className="mt-4 flex items-center justify-center gap-10 text-center">
+                <div className="flex items-center justify-center gap-10 text-center">
                   <div>
                     <div className="text-[16px] font-semibold text-foreground/80">5</div>
                     <div className="text-[10px] text-secondary-foreground uppercase tracking-wide">Steps</div>
@@ -649,5 +672,13 @@ export default function Home() {
           </div>
         </footer>
       </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <ProtectedRoute>
+      <HomeContent />
+    </ProtectedRoute>
   );
 }

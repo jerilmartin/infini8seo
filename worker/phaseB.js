@@ -176,7 +176,7 @@ export async function executePhaseB({
           blogContent: contentWithImages,
           wordCount: countWords(contentWithImages),
           generationTimeMs: generationTime,
-          modelUsed: 'gemini-3-flash-preview',
+          modelUsed: 'gemini-2.5-flash',
           blogType: scenario.blog_type,
           sourceScenarioId: scenario.source_scenario_id,
           imageUrls: images
@@ -254,7 +254,7 @@ async function generateSingleBlogPost({ scenario, niche, valuePropositions, tone
   }
 
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash', // Using 2.5 Flash - better rate limits
     generationConfig: {
       temperature: 0.9,
       topP: 0.95,

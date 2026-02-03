@@ -11,6 +11,7 @@ RUN npm ci --only=production
 # Copy application code
 COPY server ./server
 COPY services ./services
+COPY middleware ./middleware
 COPY config ./config
 COPY models ./models
 COPY utils ./utils

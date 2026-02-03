@@ -22,12 +22,14 @@ function LoginContent() {
         const errorParam = searchParams.get('error');
         if (errorParam) {
             const errorMessages: Record<string, string> = {
-                'auth_failed': 'Authentication failed. Please try again.',
-                'no_code': 'Authorization code not received.',
-                'no_user': 'Could not retrieve user information.',
-                'callback_failed': 'Login callback failed. Please try again.',
+                'auth_failed': 'Login failed. Please try again or check your internet connection.',
+                'no_code': 'Authorization failed. Please try again.',
+                'no_user': 'Could not retrieve your account. Please try again.',
+                'callback_failed': 'Login process interrupted. Please try again.',
+                'session_failed': 'Session could not be established. Please try again.',
+                'no_session': 'Login session expired. Please try again.',
             };
-            setError(errorMessages[errorParam] || 'An error occurred. Please try again.');
+            setError(errorMessages[errorParam] || 'An error occurred during login. Please try again.');
         }
     }, [searchParams]);
 
@@ -38,7 +40,8 @@ function LoginContent() {
         try {
             await loginWithGoogle();
         } catch (err: any) {
-            setError(err.message || 'Failed to initiate login');
+            console.error('Login error:', err);
+            setError(err.message || err.error_description || 'Failed to initiate login. Please check your internet connection and try again.');
             setLoading(false);
         }
     };
@@ -71,7 +74,7 @@ function LoginContent() {
                     <div className="text-center mb-6">
                         <h1 className="text-xl font-semibold text-foreground mb-2">Welcome back</h1>
                         <p className="text-sm text-muted-foreground">
-                            Sign in to access your content factory
+                            Sign in to access your content factory and credits
                         </p>
                     </div>
 
@@ -125,6 +128,60 @@ function LoginContent() {
                         {' '}and{' '}
                         <a href="#" className="text-foreground hover:underline">Privacy Policy</a>
                     </p>
+                </div>
+
+                {/* What You Get */}
+                <div className="mt-6 p-5 rounded-xl bg-secondary/30 border border-border/50">
+                    <div className="text-center mb-4">
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                            <span className="text-[11px] font-medium text-primary uppercase tracking-wide">
+                                Free to Start
+                            </span>
+                        </div>
+                        <h3 className="text-[15px] font-semibold text-foreground mb-1">
+                            Get 10 Free Credits
+                        </h3>
+                        <p className="text-[12px] text-muted-foreground">
+                            Start creating content immediately after signup
+                        </p>
+                    </div>
+
+                    <div className="space-y-2.5">
+                        <div className="flex items-start gap-2.5">
+                            <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg className="w-3 h-3 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-[13px] font-medium text-foreground">Generate 2 AI Blogs</p>
+                                <p className="text-[11px] text-muted-foreground">SEO-optimized, ready to publish</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-2.5">
+                            <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg className="w-3 h-3 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-[13px] font-medium text-foreground">Site Insight Analysis</p>
+                                <p className="text-[11px] text-muted-foreground">Deep SEO & competitor insights</p>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-2.5">
+                            <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <svg className="w-3 h-3 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-[13px] font-medium text-foreground">Upgrade Anytime</p>
+                                <p className="text-[11px] text-muted-foreground">From $9/month for 120 credits</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Footer */}

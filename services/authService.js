@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
 import logger from '../utils/logger.js';
+import { initializeNewUser } from './subscriptionService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'infini8seo-super-secret-key-change-in-production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -104,6 +105,20 @@ export const exchangeCodeForSession = async (code) => {
         if (error) {
             logger.error('Error exchanging code for session:', error);
             throw error;
+        }
+
+        // Initialize user profile if new user
+        if (data.user) {
+            try {
+                await initializeNewUser(
+                    data.user.id,
+                    data.user.email,
+                    data.user.user_metadata?.full_name,
+                    data.user.user_metadata?.avatar_url
+                );
+            } catch (initError) {
+                logger.warn('User profile initialization failed (may already exist):', initError.message);
+            }
         }
 
         return data;

@@ -7,6 +7,7 @@ import logger from '../utils/logger.js';
 import JobRepository from '../models/JobRepository.js';
 import ContentRepository from '../models/ContentRepository.js';
 import SeoScanRepository from '../models/SeoScanRepository.js';
+import UserRepository from '../models/UserRepository.js';
 import {
   initAuthClient,
   authMiddleware,
@@ -16,6 +17,10 @@ import {
   getUserFromSupabaseToken,
   verifyToken
 } from '../services/authService.js';
+import subscriptionService from '../services/subscriptionService.js';
+import adminService from '../services/adminService.js';
+import contentLibraryService from '../services/contentLibraryService.js';
+import requireAdmin from '../middleware/adminAuth.js';
 
 dotenv.config();
 
@@ -81,6 +86,14 @@ app.post('/api/auth/exchange-token', async (req, res) => {
         message: 'Invalid Supabase token'
       });
     }
+
+    // Initialize user in our database (creates user record with 10 free credits if new)
+    await subscriptionService.initializeNewUser(
+      user.id,
+      user.email,
+      user.user_metadata?.full_name || user.email?.split('@')[0],
+      user.user_metadata?.avatar_url
+    );
 
     // Generate our own JWT token
     const token = generateToken(user);
@@ -162,6 +175,14 @@ app.get('/api/auth/callback', async (req, res) => {
       return res.redirect(`${FRONTEND_URL}/login?error=no_user`);
     }
 
+    // Initialize user in our database (creates user record with 10 free credits if new)
+    await subscriptionService.initializeNewUser(
+      user.id,
+      user.email,
+      user.user_metadata?.full_name || user.email?.split('@')[0],
+      user.user_metadata?.avatar_url
+    );
+
     // Generate our own JWT token
     const token = generateToken(user);
 
@@ -179,12 +200,36 @@ app.get('/api/auth/callback', async (req, res) => {
  * GET /api/auth/me
  * Get current authenticated user
  */
-app.get('/api/auth/me', (req, res) => {
+app.get('/api/auth/me', async (req, res) => {
   if (!req.user) {
     return res.status(401).json({
       error: 'Unauthorized',
       message: 'Not authenticated'
     });
+  }
+
+  // Try to initialize user if they don't exist (for existing sessions)
+  try {
+    await subscriptionService.initializeNewUser(
+      req.user.userId,
+      req.user.email,
+      req.user.name,
+      req.user.avatar
+    );
+  } catch (error) {
+    // Ignore if user already exists
+    logger.debug('User initialization skipped (may already exist)');
+  }
+
+  // Get user role from database
+  let userRole = 'user';
+  try {
+    const dbUser = await UserRepository.findById(req.user.userId);
+    if (dbUser) {
+      userRole = dbUser.role || 'user';
+    }
+  } catch (error) {
+    logger.warn('Could not fetch user role:', error);
   }
 
   res.json({
@@ -194,7 +239,8 @@ app.get('/api/auth/me', (req, res) => {
       email: req.user.email,
       name: req.user.name,
       avatar: req.user.avatar,
-      provider: req.user.provider
+      provider: req.user.provider,
+      role: userRole
     }
   });
 });
@@ -247,6 +293,204 @@ app.post('/api/auth/verify', (req, res) => {
 });
 
 // ============================================================================
+// SUBSCRIPTION & CREDITS ROUTES
+// ============================================================================
+
+/**
+ * GET /api/subscription/status
+ * Get current user's subscription status and credits
+ */
+app.get('/api/subscription/status', async (req, res) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentication required'
+      });
+    }
+
+    const status = await subscriptionService.getSubscriptionStatus(req.userId);
+
+    res.json({
+      success: true,
+      ...status
+    });
+  } catch (error) {
+    logger.error('Error in /api/subscription/status:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to retrieve subscription status'
+    });
+  }
+});
+
+/**
+ * GET /api/subscription/pricing
+ * Get available pricing plans
+ */
+app.get('/api/subscription/pricing', (req, res) => {
+  try {
+    const plans = subscriptionService.getPricingPlans();
+
+    res.json({
+      success: true,
+      plans
+    });
+  } catch (error) {
+    logger.error('Error in /api/subscription/pricing:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to retrieve pricing plans'
+    });
+  }
+});
+
+/**
+ * POST /api/subscription/calculate-cost
+ * Calculate credit cost for an action
+ */
+app.post('/api/subscription/calculate-cost', (req, res) => {
+  try {
+    const { actionType, params } = req.body;
+
+    if (!actionType) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'actionType is required'
+      });
+    }
+
+    const cost = subscriptionService.calculateCreditCost(actionType, params);
+
+    if (!cost) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Invalid action type'
+      });
+    }
+
+    res.json({
+      success: true,
+      ...cost
+    });
+  } catch (error) {
+    logger.error('Error in /api/subscription/calculate-cost:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to calculate cost'
+    });
+  }
+});
+
+/**
+ * GET /api/subscription/transactions
+ * Get user's credit transaction history
+ */
+app.get('/api/subscription/transactions', async (req, res) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentication required'
+      });
+    }
+
+    const { limit = 50, offset = 0 } = req.query;
+
+    const { data: transactions, count } = await UserRepository.getCreditTransactions(
+      req.userId,
+      parseInt(limit),
+      parseInt(offset)
+    );
+
+    res.json({
+      success: true,
+      transactions,
+      total: count,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+  } catch (error) {
+    logger.error('Error in /api/subscription/transactions:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to retrieve transactions'
+    });
+  }
+});
+
+/**
+ * POST /api/subscription/upgrade
+ * Upgrade user subscription (placeholder for payment integration)
+ */
+app.post('/api/subscription/upgrade', async (req, res) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentication required'
+      });
+    }
+
+    const { tier, paymentData } = req.body;
+
+    if (!tier || !['starter', 'pro'].includes(tier)) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Valid tier is required (starter or pro)'
+      });
+    }
+
+    // TODO: Integrate with Stripe/Razorpay payment processing here
+    // For now, this is a placeholder that assumes payment is successful
+
+    const result = await subscriptionService.upgradeSubscription(
+      req.userId,
+      tier,
+      paymentData || {}
+    );
+
+    res.json({
+      success: true,
+      message: `Successfully upgraded to ${tier} tier`,
+      ...result
+    });
+  } catch (error) {
+    logger.error('Error in /api/subscription/upgrade:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to upgrade subscription',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * POST /api/subscription/cancel
+ * Cancel user subscription
+ */
+app.post('/api/subscription/cancel', async (req, res) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentication required'
+      });
+    }
+
+    const result = await subscriptionService.cancelSubscription(req.userId);
+
+    res.json(result);
+  } catch (error) {
+    logger.error('Error in /api/subscription/cancel:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error.message || 'Failed to cancel subscription'
+    });
+  }
+});
+
+// ============================================================================
 // CONTENT GENERATION ROUTES
 // ============================================================================
 
@@ -264,6 +508,14 @@ app.post('/api/generate-content', async (req, res) => {
       blogTypeAllocations,
       targetWordCount
     } = req.body;
+
+    // Authentication check
+    if (!req.userId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentication required to generate content'
+      });
+    }
 
     if (!niche || !niche.trim()) {
       return res.status(400).json({
@@ -295,6 +547,21 @@ app.post('/api/generate-content', async (req, res) => {
       return res.status(400).json({
         error: 'Validation Error',
         message: `totalBlogs must be a number between 1 and ${MAX_TOTAL_BLOGS}`
+      });
+    }
+
+    // Check if user can perform this action (credits + tier limits)
+    const canPerform = await subscriptionService.canPerformAction(req.userId, 'blog_generation', {
+      totalBlogs: sanitizedTotalBlogs
+    });
+
+    if (!canPerform.allowed) {
+      return res.status(403).json({
+        error: 'Insufficient Credits',
+        message: canPerform.reason,
+        requiredCredits: canPerform.requiredCredits,
+        availableCredits: canPerform.availableCredits,
+        subscriptionTier: canPerform.subscriptionTier
       });
     }
 
@@ -355,7 +622,10 @@ app.post('/api/generate-content', async (req, res) => {
       });
     }
 
-    logger.info(`Creating new content generation job for niche: ${niche}${req.userId ? ' for user ' + req.userId : ''}`);
+    logger.info(`Creating new content generation job for niche: ${niche} for user ${req.userId}`);
+
+    // Calculate credit cost
+    const creditCost = UserRepository.calculateBlogCredits(sanitizedTotalBlogs);
 
     const job = await JobRepository.create({
       niche: niche.trim(),
@@ -364,10 +634,23 @@ app.post('/api/generate-content', async (req, res) => {
       totalBlogs: sanitizedTotalBlogs,
       blogTypeAllocations: sanitizedAllocations,
       targetWordCount: sanitizedWordCount,
-      userId: req.userId // Associate job with authenticated user
+      userId: req.userId,
+      creditsCost: creditCost
     });
 
-    logger.info(`Job created with ID: ${job.id}`);
+    logger.info(`Job created with ID: ${job.id}, cost: ${creditCost} credits`);
+
+    // Deduct credits
+    try {
+      await subscriptionService.deductCreditsForAction(req.userId, 'blog_generation', {
+        totalBlogs: sanitizedTotalBlogs,
+        entityId: job.id
+      });
+    } catch (creditError) {
+      // Rollback job creation if credit deduction fails
+      await JobRepository.delete(job.id);
+      throw creditError;
+    }
 
     await contentQueue.add(
       'generate-content',
@@ -396,6 +679,7 @@ app.post('/api/generate-content', async (req, res) => {
       status: job.status,
       totalBlogs: job.total_blogs || sanitizedTotalBlogs,
       blogTypeAllocations: job.blog_type_allocations || sanitizedAllocations,
+      creditsDeducted: creditCost,
       estimatedTimeMinutes: 15
     });
 
@@ -477,9 +761,25 @@ app.get('/api/status/:jobId', async (req, res) => {
           title: c.blog_title,
           type: c.persona_archetype || 'Article'
         }));
+        
+        // If no content yet but we have scenarios, show scenario titles as preview
+        if (response.generatedTitles.length === 0 && job.scenarios && job.scenarios.length > 0) {
+          response.generatedTitles = job.scenarios.slice(0, 15).map(s => ({
+            title: s.blog_topic_headline,
+            type: s.persona_archetype || 'Article'
+          }));
+        }
       } catch (err) {
         logger.warn('Could not fetch generated titles:', err.message);
         response.generatedTitles = [];
+        
+        // Fallback to scenarios if available
+        if (job.scenarios && job.scenarios.length > 0) {
+          response.generatedTitles = job.scenarios.slice(0, 15).map(s => ({
+            title: s.blog_topic_headline,
+            type: s.persona_archetype || 'Article'
+          }));
+        }
       }
     }
 
@@ -520,10 +820,10 @@ app.get('/api/content/:jobId', async (req, res) => {
       });
     }
 
-    if (job.status !== 'COMPLETE') {
+    if (job.status !== 'COMPLETE' && job.status !== 'PARTIAL_COMPLETE') {
       return res.status(400).json({
         error: 'Job Not Complete',
-        message: `Job is currently in ${job.status} status. Content is only available when status is COMPLETE.`,
+        message: `Job is currently in ${job.status} status. Content is only available when status is COMPLETE or PARTIAL_COMPLETE.`,
         currentStatus: job.status
       });
     }
@@ -563,8 +863,12 @@ app.get('/api/content/:jobId', async (req, res) => {
       totalBlogs: job.total_blogs || content.length,
       blogTypeAllocations: job.blog_type_allocations || null,
       completedAt: job.completed_at,
+      status: job.status,
+      failedCount: job.failed_content_count || 0,
+      creditsRefunded: job.credits_refunded || 0,
       stats,
       content: content.map(post => ({
+        contentId: post.id,
         scenarioId: post.scenario_id,
         title: post.blog_title,
         personaArchetype: post.persona_archetype,
@@ -585,6 +889,99 @@ app.get('/api/content/:jobId', async (req, res) => {
       message: 'Failed to retrieve content',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
+  }
+});
+
+/**
+ * GET /api/content/:jobId/export/bulk
+ * Export all content as ZIP (with MD or DOCX format)
+ */
+app.get('/api/content/:jobId/export/bulk', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const { format = 'md' } = req.query; // 'md' or 'docx'
+
+    const exportService = (await import('../services/exportService.js')).default;
+
+    const job = await JobRepository.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    const content = await ContentRepository.getByJobId(jobId);
+    if (!content || content.length === 0) {
+      return res.status(404).json({ error: 'No content found' });
+    }
+
+    const archive = exportService.createZipArchive();
+    
+    // Set response headers
+    const filename = `${job.niche.replace(/\s+/g, '-').toLowerCase()}-content.zip`;
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Pipe archive to response
+    archive.pipe(res);
+
+    // Add each blog post to archive
+    for (const post of content) {
+      const safeFilename = exportService.generateSafeFilename(post.blog_title, format);
+      
+      if (format === 'docx') {
+        const docxBuffer = await exportService.markdownToDocx(post.blog_title, post.blog_content);
+        exportService.addFileToArchive(archive, docxBuffer, safeFilename);
+      } else {
+        const mdContent = `# ${post.blog_title}\n\n${post.blog_content}`;
+        exportService.addFileToArchive(archive, mdContent, safeFilename);
+      }
+    }
+
+    // Finalize archive
+    await archive.finalize();
+
+  } catch (error) {
+    logger.error('Error in bulk export:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Export failed', message: error.message });
+    }
+  }
+});
+
+/**
+ * GET /api/content/:contentId/export
+ * Export single content as MD or DOCX
+ */
+app.get('/api/content/:contentId/export', async (req, res) => {
+  try {
+    const { contentId } = req.params;
+    const { format = 'md' } = req.query; // 'md' or 'docx'
+
+    const exportService = (await import('../services/exportService.js')).default;
+
+    const content = await ContentRepository.findById(contentId);
+    if (!content) {
+      return res.status(404).json({ error: 'Content not found' });
+    }
+
+    const safeFilename = exportService.generateSafeFilename(content.blog_title, format);
+
+    if (format === 'docx') {
+      const docxBuffer = await exportService.markdownToDocx(content.blog_title, content.blog_content);
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
+      res.send(docxBuffer);
+    } else {
+      const mdContent = `# ${content.blog_title}\n\n${content.blog_content}`;
+      
+      res.setHeader('Content-Type', 'text/markdown');
+      res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
+      res.send(mdContent);
+    }
+
+  } catch (error) {
+    logger.error('Error in single export:', error);
+    res.status(500).json({ error: 'Export failed', message: error.message });
   }
 });
 
@@ -678,10 +1075,31 @@ app.post('/api/scan-seo', async (req, res) => {
   try {
     const { url } = req.body;
 
+    // Authentication check
+    if (!req.userId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentication required to perform SEO scans'
+      });
+    }
+
     if (!url || !url.trim()) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'URL is required and cannot be empty'
+      });
+    }
+
+    // Check if user can perform this action (credits + tier limits)
+    const canPerform = await subscriptionService.canPerformAction(req.userId, 'seo_scan');
+
+    if (!canPerform.allowed) {
+      return res.status(403).json({
+        error: 'Insufficient Credits',
+        message: canPerform.reason,
+        requiredCredits: canPerform.requiredCredits,
+        availableCredits: canPerform.availableCredits,
+        subscriptionTier: canPerform.subscriptionTier
       });
     }
 
@@ -698,15 +1116,28 @@ app.post('/api/scan-seo', async (req, res) => {
 
     const domain = parsedUrl.hostname.replace(/^www\./, '');
 
-    logger.info(`Creating new SEO scan for: ${domain}${req.userId ? ' for user ' + req.userId : ''}`);
+    logger.info(`Creating new SEO scan for: ${domain} for user ${req.userId}`);
 
     const scan = await SeoScanRepository.create({
       url: parsedUrl.href,
       domain,
-      userId: req.userId // Associate scan with authenticated user
+      userId: req.userId,
+      creditsCost: 20
     });
 
     logger.info(`SEO scan created with ID: ${scan.id}`);
+
+    // Deduct credits
+    try {
+      await subscriptionService.deductCreditsForAction(req.userId, 'seo_scan', {
+        url: parsedUrl.href,
+        entityId: scan.id
+      });
+    } catch (creditError) {
+      // Rollback scan creation if credit deduction fails
+      await SeoScanRepository.delete(scan.id);
+      throw creditError;
+    }
 
     await contentQueue.add(
       'scan-seo',
@@ -729,6 +1160,7 @@ app.post('/api/scan-seo', async (req, res) => {
       scanId: scan.id,
       domain,
       status: scan.status,
+      creditsDeducted: 20,
       estimatedTimeSeconds: 60
     });
 
@@ -876,6 +1308,411 @@ app.delete('/api/seo-scan/:scanId', async (req, res) => {
     });
   }
 });
+
+// ============================================================================
+// CONTENT LIBRARY ROUTES
+// ============================================================================
+
+/**
+ * POST /api/library/save
+ * Save a blog to user's library
+ */
+app.post('/api/library/save', async (req, res) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentication required'
+      });
+    }
+
+    const { contentId, tags, notes, isFavorite } = req.body;
+
+    if (!contentId) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'contentId is required'
+      });
+    }
+
+    const result = await contentLibraryService.saveBlog(req.userId, contentId, {
+      tags: tags || [],
+      notes: notes || '',
+      isFavorite: isFavorite || false
+    });
+
+    res.json(result);
+  } catch (error) {
+    logger.error('Error in /api/library/save:', error);
+    
+    if (error.message.includes('already saved')) {
+      return res.status(409).json({
+        error: 'Conflict',
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to save blog to library'
+    });
+  }
+});
+
+/**
+ * DELETE /api/library/unsave/:contentId
+ * Remove a blog from user's library
+ */
+app.delete('/api/library/unsave/:contentId', async (req, res) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentication required'
+      });
+    }
+
+    const { contentId } = req.params;
+
+    const result = await contentLibraryService.unsaveBlog(req.userId, contentId);
+
+    res.json(result);
+  } catch (error) {
+    logger.error('Error in /api/library/unsave:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to remove blog from library'
+    });
+  }
+});
+
+/**
+ * GET /api/library
+ * Get all saved blogs for the authenticated user
+ */
+app.get('/api/library', async (req, res) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentication required'
+      });
+    }
+
+    const {
+      limit = 50,
+      offset = 0,
+      tags,
+      isFavorite,
+      search,
+      sortBy = 'saved_at',
+      sortOrder = 'desc'
+    } = req.query;
+
+    const result = await contentLibraryService.getSavedBlogs(req.userId, {
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      tags: tags ? tags.split(',') : null,
+      isFavorite: isFavorite === 'true' ? true : isFavorite === 'false' ? false : null,
+      search,
+      sortBy,
+      sortOrder
+    });
+
+    res.json(result);
+  } catch (error) {
+    logger.error('Error in /api/library:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to retrieve saved blogs'
+    });
+  }
+});
+
+/**
+ * GET /api/library/check/:contentId
+ * Check if a specific blog is saved
+ */
+app.get('/api/library/check/:contentId', async (req, res) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentication required'
+      });
+    }
+
+    const { contentId } = req.params;
+
+    const result = await contentLibraryService.isBlogSaved(req.userId, contentId);
+
+    res.json(result);
+  } catch (error) {
+    logger.error('Error in /api/library/check:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to check saved status'
+    });
+  }
+});
+
+/**
+ * POST /api/library/check-multiple
+ * Check if multiple blogs are saved (bulk check)
+ */
+app.post('/api/library/check-multiple', async (req, res) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentication required'
+      });
+    }
+
+    const { contentIds } = req.body;
+
+    if (!contentIds || !Array.isArray(contentIds)) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'contentIds array is required'
+      });
+    }
+
+    const result = await contentLibraryService.checkMultipleSaved(req.userId, contentIds);
+
+    res.json(result);
+  } catch (error) {
+    logger.error('Error in /api/library/check-multiple:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to check saved status'
+    });
+  }
+});
+
+/**
+ * PATCH /api/library/update/:contentId
+ * Update saved blog metadata (tags, notes, favorite)
+ */
+app.patch('/api/library/update/:contentId', async (req, res) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentication required'
+      });
+    }
+
+    const { contentId } = req.params;
+    const { tags, notes, isFavorite } = req.body;
+
+    const result = await contentLibraryService.updateSavedBlog(req.userId, contentId, {
+      tags,
+      notes,
+      isFavorite
+    });
+
+    res.json(result);
+  } catch (error) {
+    logger.error('Error in /api/library/update:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to update saved blog'
+    });
+  }
+});
+
+/**
+ * GET /api/library/stats
+ * Get library statistics for the user
+ */
+app.get('/api/library/stats', async (req, res) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Authentication required'
+      });
+    }
+
+    const result = await contentLibraryService.getLibraryStats(req.userId);
+
+    res.json(result);
+  } catch (error) {
+    logger.error('Error in /api/library/stats:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to retrieve library statistics'
+    });
+  }
+});
+
+// ============================================================================
+// ADMIN ROUTES (Protected)
+// ============================================================================
+
+/**
+ * GET /api/admin/stats
+ * Get platform statistics (admin only)
+ */
+app.get('/api/admin/stats', requireAdmin, async (req, res) => {
+  try {
+    const stats = await adminService.getPlatformStats();
+    
+    res.json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    logger.error('Error in /api/admin/stats:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to retrieve platform statistics'
+    });
+  }
+});
+
+/**
+ * GET /api/admin/users
+ * Get all users with filters (admin only)
+ */
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+  try {
+    const { tier, status, search, limit, offset } = req.query;
+    
+    const result = await adminService.getAllUsers({
+      tier,
+      status,
+      search,
+      limit: limit ? parseInt(limit) : undefined,
+      offset: offset ? parseInt(offset) : undefined
+    });
+    
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    logger.error('Error in /api/admin/users:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to retrieve users'
+    });
+  }
+});
+
+/**
+ * GET /api/admin/users/:userId
+ * Get detailed user information (admin only)
+ */
+app.get('/api/admin/users/:userId', requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const details = await adminService.getUserDetails(userId);
+    
+    res.json({
+      success: true,
+      ...details
+    });
+  } catch (error) {
+    logger.error('Error in /api/admin/users/:userId:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error.message || 'Failed to retrieve user details'
+    });
+  }
+});
+
+/**
+ * POST /api/admin/users/:userId/grant-credits
+ * Grant bonus credits to a user (admin only)
+ */
+app.post('/api/admin/users/:userId/grant-credits', requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { amount, reason } = req.body;
+    
+    if (!amount || amount <= 0) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Amount must be a positive number'
+      });
+    }
+    
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Reason is required'
+      });
+    }
+    
+    const result = await adminService.grantBonusCredits(
+      userId,
+      amount,
+      reason,
+      req.adminUser.email
+    );
+    
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    logger.error('Error in /api/admin/users/:userId/grant-credits:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error.message || 'Failed to grant credits'
+    });
+  }
+});
+
+/**
+ * POST /api/admin/users/:userId/adjust-credits
+ * Manually adjust user credits (admin only)
+ */
+app.post('/api/admin/users/:userId/adjust-credits', requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { amount, reason } = req.body;
+    
+    if (!amount || amount === 0) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Amount must be a non-zero number'
+      });
+    }
+    
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Reason is required'
+      });
+    }
+    
+    const result = await adminService.adjustUserCredits(
+      userId,
+      amount,
+      reason,
+      req.adminUser.email
+    );
+    
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    logger.error('Error in /api/admin/users/:userId/adjust-credits:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error.message || 'Failed to adjust credits'
+    });
+  }
+});
+
+// ============================================================================
+// ERROR HANDLERS
+// ============================================================================
 
 // 404 handler
 app.use((req, res) => {

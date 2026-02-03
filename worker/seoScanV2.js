@@ -225,7 +225,7 @@ Return JSON:
 
     try {
         const model = genAI.getGenerativeModel({
-            model: 'gemini-2.0-flash',
+            model: 'gemini-2.5-flash',
             generationConfig: { temperature: 0.3, maxOutputTokens: 1024 }
         });
         const result = await model.generateContent(prompt);
@@ -364,7 +364,7 @@ Include at least 5 competitors. Exclude: Wikipedia, YouTube, social media, dicti
 
     try {
         const model = genAI.getGenerativeModel({
-            model: 'gemini-2.0-flash',
+            model: 'gemini-2.5-flash',
             generationConfig: { temperature: 0.2, maxOutputTokens: 1024 }
         });
         const result = await model.generateContent(prompt);
@@ -463,7 +463,7 @@ Provide comprehensive analysis in JSON:
 
     try {
         const model = genAI.getGenerativeModel({
-            model: 'gemini-2.0-flash',
+            model: 'gemini-2.5-flash',
             generationConfig: { temperature: 0.7, maxOutputTokens: 16384 }
         });
         
@@ -633,6 +633,9 @@ function compileResults(domain, collectedData, analysis) {
         ? Math.round((rankedKeywords.length / analysis.serpData.keywords.length) * 100)
         : 0;
     
+    // Generate advanced features data
+    const advancedFeatures = generateAdvancedFeatures(domain, analysis, collectedData);
+    
     return {
         domain,
         scanned_at: new Date().toISOString(),
@@ -726,8 +729,136 @@ function compileResults(domain, collectedData, analysis) {
         
         // Visibility
         visibility_percentage: visibilityPercentage,
-        visibility_label: visibilityPercentage >= 70 ? 'Strong' : visibilityPercentage >= 40 ? 'Moderate' : 'Weak'
+        visibility_label: visibilityPercentage >= 70 ? 'Strong' : visibilityPercentage >= 40 ? 'Moderate' : 'Weak',
+        
+        // ADVANCED FEATURES
+        ...advancedFeatures
     };
+}
+
+/**
+ * Generate advanced SEO features data
+ */
+function generateAdvancedFeatures(domain, analysis, collectedData) {
+    const { serpData } = analysis;
+    
+    // 1. Competitor Tracking (top 5)
+    const trackedCompetitors = serpData.competitors.slice(0, 5).map(comp => {
+        // Count SERP features owned by this competitor
+        const serpFeaturesOwned = {
+            featured_snippets: 0,
+            paa: 0,
+            local_pack: 0,
+            shopping: 0
+        };
+        
+        serpData.rawSerpData.forEach(serp => {
+            if (serp.serp_features?.featured_snippet?.source_domain === comp.domain) {
+                serpFeaturesOwned.featured_snippets++;
+            }
+            if (serp.serp_features?.people_also_ask?.some(p => p.source_domain === comp.domain)) {
+                serpFeaturesOwned.paa++;
+            }
+            if (serp.serp_features?.local_pack?.places?.some(p => p.title?.includes(comp.domain))) {
+                serpFeaturesOwned.local_pack++;
+            }
+        });
+        
+        return {
+            domain: comp.domain,
+            appearances: comp.appearances,
+            avg_position: comp.avg_position || 0,
+            keywords_ranking_for: comp.keywords || [],
+            serp_features_owned: serpFeaturesOwned
+        };
+    });
+    
+    // 2. Action Items (from action plan + quick wins)
+    const actionItems = (analysis.action_plan || []).map((action, idx) => ({
+        id: `action-${idx}`,
+        title: action.task,
+        description: `${action.impact} impact task that requires ${action.effort.toLowerCase()} effort. Expected timeline: ${action.timeline}.`,
+        priority: action.priority,
+        impact: action.impact,
+        effort: action.effort,
+        timeline: action.timeline,
+        category: determineCategoryFromTask(action.task),
+        status: 'pending'
+    }));
+    
+    // 3. Content Recommendations (from content gaps + suggested keywords)
+    const contentRecommendations = [];
+    
+    // From content gaps
+    (analysis.content_gaps || []).forEach((gap, idx) => {
+        contentRecommendations.push({
+            id: `gap-${idx}`,
+            topic: gap.topic,
+            keyword: gap.topic.toLowerCase(),
+            search_intent: 'informational',
+            difficulty: 'Medium',
+            opportunity_score: 75,
+            estimated_traffic: 1000,
+            competitors_ranking: gap.competitors || [],
+            reason: gap.opportunity
+        });
+    });
+    
+    // From suggested keywords (top 10)
+    (analysis.suggested_keywords || []).forEach(category => {
+        category.keywords.slice(0, 3).forEach((kw, idx) => {
+            contentRecommendations.push({
+                id: `kw-${category.category}-${idx}`,
+                topic: `Complete guide to ${kw.word}`,
+                keyword: kw.word,
+                search_intent: kw.intent,
+                difficulty: category.category.includes('Long-Tail') ? 'Easy' : 'Medium',
+                opportunity_score: category.category.includes('Transactional') ? 85 : 70,
+                estimated_traffic: category.category.includes('Transactional') ? 2000 : 1500,
+                competitors_ranking: [],
+                reason: `Target this ${kw.intent} keyword to capture ${category.category.toLowerCase()} traffic`
+            });
+        });
+    });
+    
+    // 4. Ranking History (placeholder - will be populated over time)
+    const rankingHistory = serpData.keywords.slice(0, 5).map(kw => ({
+        keyword: kw.keyword,
+        history: [
+            {
+                date: new Date().toISOString(),
+                position: kw.my_position || null,
+                has_featured_snippet: kw.serp_features?.featured_snippet?.source_domain === domain
+            }
+        ]
+    }));
+    
+    return {
+        tracked_competitors: trackedCompetitors,
+        action_items: actionItems,
+        content_recommendations: contentRecommendations.slice(0, 10),
+        ranking_history: rankingHistory
+    };
+}
+
+/**
+ * Determine category from task name
+ */
+function determineCategoryFromTask(task) {
+    const taskLower = task.toLowerCase();
+    if (taskLower.includes('technical') || taskLower.includes('https') || taskLower.includes('speed')) {
+        return 'technical';
+    }
+    if (taskLower.includes('content') || taskLower.includes('blog') || taskLower.includes('write')) {
+        return 'content';
+    }
+    if (taskLower.includes('keyword') || taskLower.includes('seo') || taskLower.includes('optimize')) {
+        return 'keywords';
+    }
+    if (taskLower.includes('competitor') || taskLower.includes('backlink')) {
+        return 'competitors';
+    }
+    return 'general';
 }
 
 export default executeSeoScanV2;

@@ -4,13 +4,14 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
-import { LogOut, ChevronDown, LogIn } from 'lucide-react';
+import { LogOut, ChevronDown, LogIn, Zap, BookmarkCheck } from 'lucide-react';
 
 export function UserMenu() {
     const router = useRouter();
     const { user, signOut, isAuthenticated } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [imageError, setImageError] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
     const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
@@ -77,6 +78,40 @@ export function UserMenu() {
 
             {/* Menu Items */}
             <div className="py-1">
+                {user.role === 'admin' && (
+                    <button
+                        onClick={() => {
+                            setIsOpen(false);
+                            router.push('/admin');
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        Admin Panel
+                    </button>
+                )}
+                <button
+                    onClick={() => {
+                        setIsOpen(false);
+                        router.push('/library');
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                >
+                    <BookmarkCheck className="w-4 h-4" />
+                    Content Library
+                </button>
+                <button
+                    onClick={() => {
+                        setIsOpen(false);
+                        router.push('/pricing');
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                >
+                    <Zap className="w-4 h-4" />
+                    Upgrade Plan
+                </button>
                 <button
                     onClick={() => {
                         setIsOpen(false);
@@ -98,11 +133,12 @@ export function UserMenu() {
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-secondary/50 transition-colors"
             >
-                {avatarUrl ? (
+                {avatarUrl && !imageError ? (
                     <img
                         src={avatarUrl}
                         alt={displayName}
-                        className="w-7 h-7 rounded-full border border-border"
+                        onError={() => setImageError(true)}
+                        className="w-7 h-7 rounded-full border border-border object-cover"
                     />
                 ) : (
                     <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
