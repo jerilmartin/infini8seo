@@ -31,6 +31,14 @@ export const api = {
         });
     },
 
+    async patch<T = any>(endpoint: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+        const headers = getAuthHeaders();
+        return axios.patch<T>(`${API_URL}${endpoint}`, data, {
+            ...config,
+            headers: { ...headers, ...config?.headers },
+        });
+    },
+
     async delete<T = any>(endpoint: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
         const headers = getAuthHeaders();
         return axios.delete<T>(`${API_URL}${endpoint}`, {

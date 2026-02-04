@@ -1,18 +1,11 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Loader2, Sun, Moon, Search, FileText, Facebook, Instagram, Twitter, Mail } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api } from '@/utils/api';
 import { UserMenu } from '@/components/UserMenu';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { CreditWidget } from '@/components/CreditWidget';
-import { CostPreview } from '@/components/CostPreview';
-
-const MIN_WORD_COUNT = 500;
-const MAX_WORD_COUNT = 2500;
-const DEFAULT_WORD_COUNT = 1200;
-const MAX_PER_TYPE = 15;
 
 const CONTENT_TYPES = [
   { key: 'informational', label: 'Educational', desc: 'In-depth guides' },
@@ -25,102 +18,99 @@ type ContentTypeKey = typeof CONTENT_TYPES[number]['key'];
 type Allocations = Record<ContentTypeKey, number>;
 
 const DEFAULT_ALLOCATIONS: Allocations = {
-  informational: 1, functional: 1, commercial: 1, transactional: 1
+  informational: 10,
+  functional: 8,
+  commercial: 6,
+  transactional: 6,
 };
 
 const TONES = [
   { value: 'professional', label: 'Professional' },
   { value: 'conversational', label: 'Conversational' },
   { value: 'authoritative', label: 'Authoritative' },
-  { value: 'friendly', label: 'Friendly' },
 ];
 
-const generatePreviewTitles = (wordCount: number) => {
-  const readTime = Math.round(wordCount / 200);
-  return [
-    { title: 'The Ultimate Guide to Ranking Higher in 2025', type: 'Educational', time: readTime },
-    { title: 'How to Create Content That Actually Converts', type: 'How-to', time: readTime + 2 },
-    { title: 'Top 10 Strategies Your Competitors Are Using', type: 'Comparison', time: readTime + 1 },
-    { title: 'Why Most Businesses Fail at Content Marketing', type: 'Product-led', time: readTime - 1 },
-  ];
-};
+const MIN_WORD_COUNT = 500;
+const MAX_WORD_COUNT = 2500;
+const DEFAULT_WORD_COUNT = 1200;
+const MAX_PER_TYPE = 15;
 
-type Tab = 'content' | 'seo';
+const SHOWCASE_ITEMS = [
+  {
+    title: 'The Ultimate Guide to Ranking Higher in 2025',
+    description:
+      'A comprehensive guide covering modern SEO fundamentals, ranking factors, and AI-driven search behavior.',
+    type: 'Educational',
+    readTime: 6,
+    image: '/assets/1.png',
+  },
+  {
+    title: 'How to Create Content That Actually Converts',
+    description:
+      'Step-by-step guidance on structuring content, aligning with user intent, and improving conversion rates.',
+    type: 'How-to',
+    readTime: 8,
+    image: '/assets/2.png',
+  },
+  {
+    title: 'Top 10 Strategies Your Competitors Are Using',
+    description:
+      'A competitive analysis highlighting effective strategies used by top-performing brands.',
+    type: 'Comparison',
+    readTime: 7,
+    image: '/assets/3.png',
+  },
+  {
+    title: 'Why Most Businesses Fail at Content Marketing',
+    description:
+      'An insight-driven breakdown of common mistakes, paired with solution-focused recommendations.',
+    type: 'Product-led',
+    readTime: 5,
+    image: '/assets/4.png',
+  },
+];
 
 function HomeContent() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<Tab>('content');
-
-  // Content Factory state
   const [niche, setNiche] = useState('');
-  const [valuePropositions, setValuePropositions] = useState(['']);
+  const [valueProposition, setValueProposition] = useState('');
   const [tone, setTone] = useState('professional');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [allocations, setAllocations] = useState<Allocations>(DEFAULT_ALLOCATIONS);
   const [targetWordCount, setTargetWordCount] = useState(DEFAULT_WORD_COUNT);
-
-  // SEO Scanner state
-  const [scanUrl, setScanUrl] = useState('');
-  const [scanLoading, setScanLoading] = useState(false);
-  const [scanError, setScanError] = useState('');
-
-  // Theme
+  const [currentSlide, setCurrentSlide] = useState(0);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('results-theme') as 'dark' | 'light' | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.setAttribute('data-theme', savedTheme);
-    } else {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    }
-  }, []);
+  const totalPosts = CONTENT_TYPES.reduce((acc, t) => acc + allocations[t.key], 0);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
-    localStorage.setItem('results-theme', newTheme);
     document.documentElement.setAttribute('data-theme', newTheme);
   };
 
-  const totalPosts = CONTENT_TYPES.reduce((acc, t) => acc + allocations[t.key], 0);
-
   const handleAllocationChange = (key: ContentTypeKey, value: number) => {
-    setAllocations(prev => ({ ...prev, [key]: Math.max(0, Math.min(MAX_PER_TYPE, value)) }));
+    setAllocations((prev: Allocations) => ({ ...prev, [key]: Math.max(0, Math.min(MAX_PER_TYPE, value)) }));
   };
 
-  const handleValuePropChange = (index: number, value: string) => {
-    const updated = [...valuePropositions];
-    updated[index] = value;
-    setValuePropositions(updated);
-  };
-
-  const addValueProp = () => valuePropositions.length < 5 && setValuePropositions([...valuePropositions, '']);
-  const removeValueProp = (index: number) => valuePropositions.length > 1 && setValuePropositions(valuePropositions.filter((_, i) => i !== index));
-
-  const previewTitles = useMemo(() => generatePreviewTitles(targetWordCount), [targetWordCount]);
-
-  // Content Factory Submit
-  const handleContentSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
 
     if (!niche.trim()) return setError('Enter a niche to continue');
-    const validProps = valuePropositions.filter(vp => vp.trim());
-    if (validProps.length === 0) return setError('Add at least one specialty');
+    if (!valueProposition.trim()) return setError('Enter what you offer');
     if (totalPosts === 0) return setError('Select at least one post type');
 
     setLoading(true);
     try {
       const response = await api.post('/api/generate-content', {
         niche: niche.trim(),
-        valuePropositions: validProps,
+        valuePropositions: [valueProposition.trim()],
         tone,
         totalBlogs: totalPosts,
         blogTypeAllocations: allocations,
-        targetWordCount
+        targetWordCount,
       });
       router.push(`/progress/${response.data.jobId}`);
     } catch (err: any) {
@@ -129,549 +119,453 @@ function HomeContent() {
     }
   };
 
-  // SEO Scanner Submit
-  const handleSeoSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setScanError('');
-
-    if (!scanUrl.trim()) return setScanError('Enter a URL to scan');
-
-    setScanLoading(true);
-    try {
-      const response = await api.post('/api/scan-seo', {
-        url: scanUrl.trim()
-      });
-      router.push(`/seo-results/${response.data.scanId}`);
-    } catch (err: any) {
-      setScanError(err.response?.data?.message || 'Something went wrong');
-      setScanLoading(false);
-    }
-  };
+  const nextSlide = () => setCurrentSlide((prev: number) => (prev + 1) % SHOWCASE_ITEMS.length);
+  const prevSlide = () =>
+    setCurrentSlide((prev: number) => (prev - 1 + SHOWCASE_ITEMS.length) % SHOWCASE_ITEMS.length);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-6 py-4 pb-16">
-          {/* Brand + Header */}
-          <header className="mb-1 animate-fade-in">
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-[21px] font-medium text-foreground tracking-tight">infini8seo</div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={toggleTheme}
-                  className="flex items-center justify-center w-9 h-9 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                >
-                  {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                </button>
-                <UserMenu />
-              </div>
-            </div>
-
-            {/* Tab Switcher */}
-            <div className="flex gap-1 p-0.5 bg-secondary/50 rounded-lg w-fit mb-3">
-              <button
-                onClick={() => setActiveTab('content')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all ${activeTab === 'content'
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-                  }`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                Content Factory
-              </button>
-              <button
-                onClick={() => setActiveTab('seo')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-all ${activeTab === 'seo'
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-                  }`}
-              >
-                <Search className="w-3.5 h-3.5" />
-                Site Insight
-              </button>
-            </div>
-
-            <h1 className="text-[20px] font-semibold text-foreground leading-tight">
-              {activeTab === 'content' ? 'Content Factory' : 'Site Insight'}
-            </h1>
-          </header>
-
-          {/* Content Factory Tab */}
-          {activeTab === 'content' && (
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
-              {/* Form Column */}
-              <div className="animate-fade-in" style={{ animationDelay: '50ms' }}>
-                <div className="card-elevated p-6">
-                  <form onSubmit={handleContentSubmit} className="space-y-3">
-                    {/* Niche */}
-                    <section>
-                      <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-1.5 block">Your Niche</label>
-                      <input
-                        type="text"
-                        value={niche}
-                        onChange={(e) => setNiche(e.target.value)}
-                        placeholder="e.g., B2B SaaS, Personal Finance"
-                        className="input text-[14px] h-10"
-                        disabled={loading}
-                      />
-                    </section>
-
-                    {/* Specialties */}
-                    <section>
-                      <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-1.5 block">What You Offer</label>
-                      <div className="space-y-2">
-                        {valuePropositions.map((vp, i) => (
-                          <div key={i} className="flex gap-2">
-                            <input
-                              type="text"
-                              value={vp}
-                              onChange={(e) => handleValuePropChange(i, e.target.value)}
-                              placeholder="A key service or angle"
-                              className="input flex-1 text-[14px] h-10"
-                              disabled={loading}
-                            />
-                            {valuePropositions.length > 1 && (
-                              <button type="button" onClick={() => removeValueProp(i)} className="px-2 text-secondary-foreground hover:text-foreground text-lg transition-colors" disabled={loading}>×</button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      {valuePropositions.length < 5 && (
-                        <button type="button" onClick={addValueProp} className="mt-1.5 text-[11px] text-secondary-foreground hover:text-foreground transition-colors" disabled={loading}>
-                          + Add another
-                        </button>
-                      )}
-                    </section>
-
-                    {/* Content Mix - Discrete +/- Controls */}
-                    <section>
-                      <div className="flex items-baseline justify-between mb-2">
-                        <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide">Content Mix</label>
-                        <span className="text-[12px] tabular-nums text-secondary-foreground">{totalPosts} posts</span>
-                      </div>
-
-                      <div className="space-y-2">
-                        {CONTENT_TYPES.map((type) => {
-                          const value = allocations[type.key];
-                          return (
-                            <div key={type.key} className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/30 border border-border/30">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[14px] font-medium text-foreground">{type.label}</span>
-                                <span className="text-[11px] text-muted-foreground">{type.desc}</span>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <button
-                                  type="button"
-                                  onClick={() => handleAllocationChange(type.key, value - 1)}
-                                  disabled={loading || value <= 0}
-                                  className="w-7 h-7 rounded flex items-center justify-center bg-secondary hover:bg-muted text-foreground/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-                                >
-                                  −
-                                </button>
-                                <span className="w-12 text-center text-[14px] tabular-nums font-medium text-foreground">{value}/{MAX_PER_TYPE}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleAllocationChange(type.key, value + 1)}
-                                  disabled={loading || value >= MAX_PER_TYPE}
-                                  className="w-7 h-7 rounded flex items-center justify-center bg-secondary hover:bg-muted text-foreground/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </section>
-
-                    {/* Settings Row */}
-                    <section className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-1.5 block">Tone</label>
-                        <select value={tone} onChange={(e) => setTone(e.target.value)} className="select text-[14px] h-10" disabled={loading}>
-                          {TONES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-1.5 block">Length</label>
-                        <div className="flex items-center gap-3 h-10">
-                          <input
-                            type="range"
-                            min={MIN_WORD_COUNT}
-                            max={MAX_WORD_COUNT}
-                            step={100}
-                            value={targetWordCount}
-                            onChange={(e) => setTargetWordCount(Number(e.target.value))}
-                            className="flex-1"
-                            disabled={loading}
-                          />
-                          <span className="text-[12px] tabular-nums text-secondary-foreground w-12 text-right">{targetWordCount}w</span>
-                        </div>
-                      </div>
-                    </section>
-
-                    {/* Cost Preview */}
-                    {totalPosts > 0 && (
-                      <CostPreview 
-                        actionType="blog_generation" 
-                        params={{ totalBlogs: totalPosts }} 
-                      />
-                    )}
-
-                    {error && (
-                      <div className="p-2 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-[12px]">{error}</div>
-                    )}
-
-                    <button type="submit" disabled={loading || totalPosts === 0} className="btn-primary w-full justify-center text-[14px] h-10 mt-1">
-                      {loading ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting...</>
-                      ) : (
-                        <>Create {totalPosts} posts<ArrowRight className="w-4 h-4 ml-2" /></>
-                      )}
-                    </button>
-
-                    <p className="text-[11px] text-secondary-foreground text-center mb-18">Takes about 10-15 minutes</p>
-                  </form>
-                </div>
-              </div>
-
-              {/* Sidebar Column */}
-              <aside className="space-y-4 animate-fade-in" style={{ animationDelay: '100ms' }}>
-                {/* Credit Widget */}
-                <CreditWidget />
-
-                {/* Preview */}
-                <div className="card-elevated p-6">
-                  <p className="text-[10px] font-medium text-foreground/80 uppercase tracking-wide mb-4">What you'll get</p>
-
-                  {/* Preview Titles */}
-                  <div className="space-y-3">
-                    {previewTitles.map((item, i) => (
-                      <article key={i} className="pb-3 border-b border-border/30 last:border-0 last:pb-0">
-                        <h3 className="text-[15px] font-medium text-foreground leading-snug mb-0.5">
-                          {item.title}
-                        </h3>
-                        <p className="text-[11px] text-secondary-foreground">
-                          {item.type} · {item.time} min read
-                        </p>
-                      </article>
-                    ))}
-                  </div>
-
-                  {/* Meta Row */}
-                  <div className="mt-4 pt-3 border-t border-border/30">
-                    <div className="flex justify-between text-center">
-                      <div className="flex-1">
-                        <div className="text-[9px] text-secondary-foreground uppercase tracking-wide mb-0.5">Structure</div>
-                        <div className="text-[11px] text-foreground/80">Intro → Body → FAQ</div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-[9px] text-secondary-foreground uppercase tracking-wide mb-0.5">SEO</div>
-                        <div className="text-[11px] text-foreground/80">Keywords + Meta</div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-[9px] text-secondary-foreground uppercase tracking-wide mb-0.5">AIO</div>
-                        <div className="text-[11px] text-foreground/80">AI-optimized</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Stats Row */}
-                <div className="flex items-center justify-center gap-8 text-center">
-                  <div>
-                    <div className="text-[14px] font-semibold text-foreground/80">{totalPosts}</div>
-                    <div className="text-[9px] text-secondary-foreground uppercase tracking-wide">Posts</div>
-                  </div>
-                  <div className="w-px h-4 bg-border/40" />
-                  <div>
-                    <div className="text-[14px] font-semibold text-foreground/80">{Math.round(totalPosts * targetWordCount / 1000)}k</div>
-                    <div className="text-[9px] text-secondary-foreground uppercase tracking-wide">Words</div>
-                  </div>
-                  <div className="w-px h-4 bg-border/40" />
-                  <div>
-                    <div className="text-[14px] font-semibold text-foreground/80">~{Math.round(totalPosts * targetWordCount / 200)}</div>
-                    <div className="text-[9px] text-secondary-foreground uppercase tracking-wide">Min read</div>
-                  </div>
-                </div>
-              </aside>
-            </div>
-          )}
-
-          {/* SEO Scanner Tab */}
-          {activeTab === 'seo' && (
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-12 items-start">
-              {/* Form Column */}
-              <div className="animate-fade-in" style={{ animationDelay: '50ms' }}>
-                <div className="card-elevated p-6">
-                  <form onSubmit={handleSeoSubmit} className="space-y-5">
-                    {/* URL Input */}
-                    <section>
-                      <label className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-2 block">Website URL</label>
-                      <input
-                        type="text"
-                        value={scanUrl}
-                        onChange={(e) => setScanUrl(e.target.value)}
-                        placeholder="e.g., example.com or https://example.com"
-                        className="input text-[14px] h-10"
-                        disabled={scanLoading}
-                      />
-                      <p className="text-[11px] text-secondary-foreground mt-1.5">
-                        Enter any website URL to analyze its SEO performance
-                      </p>
-                    </section>
-
-                    {/* Cost Preview */}
-                    {scanUrl.trim() && (
-                      <CostPreview actionType="seo_scan" />
-                    )}
-
-                    {scanError && (
-                      <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-[13px]">{scanError}</div>
-                    )}
-
-                    <button type="submit" disabled={scanLoading || !scanUrl.trim()} className="btn-primary w-full justify-center text-[14px] h-10 mt-1">
-                      {scanLoading ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Analyzing...</>
-                      ) : (
-                        <><Search className="w-4 h-4 mr-2" />Analyze Site</>
-                      )}
-                    </button>
-
-                    <p className="text-[11px] text-secondary-foreground text-center">Takes about 1-2 minutes</p>
-                  </form>
-                </div>
-              </div>
-
-              {/* Sidebar Column */}
-              <aside className="space-y-4 animate-fade-in" style={{ animationDelay: '100ms' }}>
-                {/* Credit Widget */}
-                <CreditWidget />
-
-                {/* Preview */}
-                <div className="card-elevated p-7">
-                  <p className="text-[11px] font-medium text-foreground/80 uppercase tracking-wide mb-6">What you'll get</p>
-
-                  {/* Preview Items - matching Content Factory style */}
-                  <div className="space-y-5">
-                    <article className="pb-5 border-b border-border/30">
-                      <h3 className="text-[17px] font-medium text-foreground leading-snug mb-1.5">
-                        Domain Health Score
-                      </h3>
-                      <p className="text-[13px] text-secondary-foreground">
-                        Overall SEO health rating from 0-100
-                      </p>
-                    </article>
-
-                    <article className="pb-5 border-b border-border/30">
-                      <h3 className="text-[17px] font-medium text-foreground leading-snug mb-1.5">
-                        Keyword & Ranking Analysis
-                      </h3>
-                      <p className="text-[13px] text-secondary-foreground">
-                        Keywords observed + sampled SERP positions
-                      </p>
-                    </article>
-
-                    <article className="pb-5 border-b border-border/30">
-                      <h3 className="text-[17px] font-medium text-foreground leading-snug mb-1.5">
-                        Competitor Mapping
-                      </h3>
-                      <p className="text-[13px] text-secondary-foreground">
-                        Direct and content competitors identified
-                      </p>
-                    </article>
-
-                    <article className="pb-0">
-                      <h3 className="text-[17px] font-medium text-foreground leading-snug mb-1.5">
-                        Strategic Recommendations
-                      </h3>
-                      <p className="text-[13px] text-secondary-foreground">
-                        Actionable insights to improve rankings
-                      </p>
-                    </article>
-                  </div>
-
-                  {/* Meta Row - matching Content Factory style */}
-                  <div className="mt-7 pt-5 border-t border-border/30">
-                    <div className="flex justify-between text-center">
-                      <div className="flex-1">
-                        <div className="text-[10px] text-secondary-foreground uppercase tracking-wide mb-1">Source</div>
-                        <div className="text-[13px] text-foreground/80">Live SERP</div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-[10px] text-secondary-foreground uppercase tracking-wide mb-1">Method</div>
-                        <div className="text-[13px] text-foreground/80">Agentic Audit</div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-[10px] text-secondary-foreground uppercase tracking-wide mb-1">Speed</div>
-                        <div className="text-[13px] text-foreground/80">~60 seconds</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Stats Row - matching Content Factory style */}
-                <div className="flex items-center justify-center gap-10 text-center">
-                  <div>
-                    <div className="text-[16px] font-semibold text-foreground/80">5</div>
-                    <div className="text-[10px] text-secondary-foreground uppercase tracking-wide">Steps</div>
-                  </div>
-                  <div className="w-px h-5 bg-border/40" />
-                  <div>
-                    <div className="text-[16px] font-semibold text-foreground/80">10+</div>
-                    <div className="text-[10px] text-secondary-foreground uppercase tracking-wide">Keywords</div>
-                  </div>
-                  <div className="w-px h-5 bg-border/40" />
-                  <div>
-                    <div className="text-[16px] font-semibold text-foreground/80">~60s</div>
-                    <div className="text-[10px] text-secondary-foreground uppercase tracking-wide">Time</div>
-                  </div>
-                </div>
-              </aside>
-            </div>
-          )}
+    <div 
+      className="min-h-screen font-sans"
+      style={{
+        background: theme === 'dark' ? '#131313' : 'linear-gradient(180deg, #F5EFE7 0%, #E8DCC8 100%)',
+        color: theme === 'dark' ? '#ffffff' : '#000000'
+      }}
+    >
+      {/* Header */}
+      <header className="max-w-7xl mx-auto px-8 py-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="text-xl font-bold">
+            infini8 <span className="text-[#C8A05F]">SEO</span>
+          </span>
+          <button 
+            onClick={toggleTheme}
+            className="hover:opacity-80 transition-opacity"
+          >
+            <img 
+              src={theme === 'dark' ? '/assets/button.svg' : '/assets/button1.svg'} 
+              alt="Theme Toggle" 
+              className="w-auto h-8"
+            />
+          </button>
         </div>
+        <div className="flex items-center gap-8">
+          <button 
+            className="text-sm font-medium transition-colors"
+            style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.9)' : '#000000' }}
+          >
+            Content Factory
+          </button>
+          <button 
+            className="text-sm font-medium transition-colors"
+            style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.9)' : '#000000' }}
+          >
+            Seo Scanner
+          </button>
+          <UserMenu />
+        </div>
+      </header>
 
-        {/* Footer */}
-        <footer
-          className="mt-auto relative overflow-hidden"
+      {/* Hero Section */}
+      <section className="max-w-7xl mx-auto px-8 py-12 text-center">
+        <p 
+          className="text-sm mb-3 tracking-wide font-medium"
+          style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : '#000000' }}
+        >
+          AI-Powered SEO Content Engine
+        </p>
+        <h1 
+          className="text-[88px] font-bold mb-12 leading-[0.9] tracking-tight"
           style={{
-            background: 'linear-gradient(to top, #070b10 0%, #0b0f14 100%)',
-            borderTop: '1px solid rgba(255,255,255,0.06)'
+            background: theme === 'dark' 
+              ? '#FFC004' 
+              : 'linear-gradient(135deg, #B8860B 0%, #DAA520 50%, #B8860B 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
           }}
         >
-          {/* Subtle noise texture */}
-          <div
-            className="absolute inset-0 opacity-[0.02] pointer-events-none"
+          CONTENT FACTORY
+        </h1>
+
+        {/* Content Form */}
+        <div className="max-w-[580px] mx-auto">
+          <form
+            onSubmit={handleSubmit}
+            className="relative rounded-[32px] p-8"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-              backgroundRepeat: 'repeat'
+              background: theme === 'dark'
+                ? 'linear-gradient(135deg, rgba(42, 42, 42, 0.35) 0%, rgba(26, 26, 26, 0.55) 100%)'
+                : 'rgba(255, 255, 255, 0.6)',
+              border: theme === 'dark' 
+                ? '1px solid rgba(255, 192, 4, 0.15)'
+                : '2px solid rgba(184, 134, 11, 0.3)',
+              boxShadow: theme === 'dark' 
+                ? '0 8px 32px rgba(0, 0, 0, 0.4)'
+                : '0 8px 24px rgba(184, 134, 11, 0.15)',
+              backdropFilter: theme === 'light' ? 'blur(10px)' : 'none'
             }}
-          />
+          >
+            {/* Your Niche */}
+            <div className="mb-5 text-left">
+              <label 
+                className="text-xs mb-2 block font-semibold"
+                style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.7)' : '#000000' }}
+              >
+                Your Niche
+              </label>
+              <input
+                type="text"
+                value={niche}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNiche(e.target.value)}
+                placeholder="e.g., B2B SaaS, Personal Finance"
+                className={`w-full px-4 py-3.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC004]/50 placeholder:text-gray-400 ${
+                  theme === 'dark' ? 'bg-white text-black' : 'bg-white text-black border border-gray-300'
+                }`}
+                disabled={loading}
+              />
+            </div>
 
-          <div className="max-w-5xl mx-auto px-10 py-10 relative">
-            {/* Row 1: Brand + Links */}
-            <div className="flex flex-col md:flex-row items-center md:items-center justify-between gap-8">
-              {/* Brand Block */}
-              <div className="flex flex-col items-center md:items-start gap-2">
-                {/* Logo Row */}
-                <div className="flex items-center gap-3 group relative">
-                  <div className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500/80"></span>
-                    <span className="text-xl font-semibold text-white tracking-tight">Infini8</span>
-                  </div>
-                  <span className="text-white/30 text-lg">×</span>
-                  <img
-                    src="/logo-88gb.png"
-                    alt="88gb"
-                    className="h-10 w-auto object-contain transition-all duration-300 group-hover:drop-shadow-[0_0_12px_rgba(255,255,255,0.3)]"
+            {/* What You Offer */}
+            <div className="mb-6 text-left">
+              <label 
+                className="text-xs mb-2 block font-semibold"
+                style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.7)' : '#000000' }}
+              >
+                What You Offer
+              </label>
+              <input
+                type="text"
+                value={valueProposition}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValueProposition(e.target.value)}
+                placeholder="A key service or unique angle"
+                className={`w-full px-4 py-3.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC004]/50 placeholder:text-gray-400 ${
+                  theme === 'dark' ? 'bg-white text-black' : 'bg-white text-black border border-gray-300'
+                }`}
+                disabled={loading}
+              />
+            </div>
+
+            {/* Content Mix */}
+            <div className="mb-6 text-left">
+              <div className="flex items-center justify-between mb-4">
+                <label 
+                  className="text-[11px] font-bold tracking-widest"
+                  style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : '#000000' }}
+                >
+                  CONTENT MIX
+                </label>
+                <span 
+                  className="text-sm font-semibold"
+                  style={{ color: theme === 'dark' ? '#FFC004' : '#B8860B' }}
+                >
+                  {totalPosts} posts
+                </span>
+              </div>
+
+              <div className="space-y-2.5">
+                {CONTENT_TYPES.map((type) => {
+                  const value = allocations[type.key];
+                  return (
+                    <div key={type.key} className="flex items-center justify-between py-1">
+                      <div className="flex items-center gap-2.5">
+                        <span 
+                          className="text-sm font-semibold"
+                          style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
+                        >
+                          {type.label}
+                        </span>
+                        <span 
+                          className="px-2.5 py-0.5 rounded-md text-xs font-semibold"
+                          style={{
+                            color: '#1E90FF',
+                            backgroundColor: 'rgba(30, 144, 255, 0.15)'
+                          }}
+                        >
+                          {type.desc}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-white rounded-full px-1.5 py-1">
+                        <button
+                          type="button"
+                          onClick={() => handleAllocationChange(type.key, value - 1)}
+                          disabled={loading || value <= 0}
+                          className="w-6 h-6 rounded-full bg-gray-100 text-black hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base font-bold flex items-center justify-center"
+                        >
+                          −
+                        </button>
+                        <span className="w-7 text-center text-black font-bold text-sm tabular-nums">
+                          {value}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleAllocationChange(type.key, value + 1)}
+                          disabled={loading || value >= MAX_PER_TYPE}
+                          className="w-6 h-6 rounded-full bg-gray-100 text-black hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-base font-bold flex items-center justify-center"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Tone & Length */}
+            <div className="grid grid-cols-2 gap-4 mb-7 text-left">
+              <div>
+                <label 
+                  className="text-[11px] mb-2 block font-bold tracking-widest"
+                  style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : '#000000' }}
+                >
+                  TONE
+                </label>
+                <select
+                  value={tone}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setTone(e.target.value)}
+                  className="w-full bg-white text-black px-4 py-3.5 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#FFC004]/50 appearance-none cursor-pointer"
+                  style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23000' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 12px center',
+                  }}
+                  disabled={loading}
+                >
+                  {TONES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label 
+                  className="text-[11px] mb-2 block font-bold tracking-widest"
+                  style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : '#000000' }}
+                >
+                  LENGTH
+                </label>
+                <div className="flex items-center gap-3 bg-transparent">
+                  <input
+                    type="range"
+                    min={MIN_WORD_COUNT}
+                    max={MAX_WORD_COUNT}
+                    step={100}
+                    value={targetWordCount}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTargetWordCount(Number(e.target.value))}
+                    className="flex-1 h-1 bg-white/20 rounded-full appearance-none cursor-pointer slider-thumb"
+                    disabled={loading}
+                    style={{
+                      background: `linear-gradient(to right, #FFC004 0%, #FFC004 ${
+                        ((targetWordCount - MIN_WORD_COUNT) / (MAX_WORD_COUNT - MIN_WORD_COUNT)) *
+                        100
+                      }%, rgba(255,255,255,0.2) ${
+                        ((targetWordCount - MIN_WORD_COUNT) / (MAX_WORD_COUNT - MIN_WORD_COUNT)) *
+                        100
+                      }%, rgba(255,255,255,0.2) 100%)`,
+                    }}
                   />
-                  {/* Gradient underline - always visible, enhanced on hover */}
-                  <div className="absolute -bottom-1.5 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500/40 via-purple-500/20 to-transparent rounded-full group-hover:from-blue-500/60 group-hover:via-purple-500/40 transition-all duration-300"></div>
-                </div>
-                {/* Tagline */}
-                <p className="text-[12px] text-white/50 tracking-wide max-w-[220px] text-center md:text-left mt-1">
-                  AI-powered SEO & Content Intelligence
-                </p>
-              </div>
-
-              {/* Links Columns */}
-              <div className="grid grid-cols-2 gap-12 text-left">
-                {/* Our Products */}
-                <div>
-                  <h3 className="text-[14px] font-semibold text-white/75 mb-3 tracking-wider">Our Products</h3>
-                  <div className="space-y-3">
-                    <a
-                      href="#"
-                      className="block text-[14px] text-white/45 hover:text-white/90 hover:-translate-y-px transition-all duration-150 ease-out"
-                    >
-                      Infini8seo
-                    </a>
-                    <a
-                      href="#"
-                      className="block text-[14px] text-white/45 hover:text-white/90 hover:-translate-y-px transition-all duration-150 ease-out"
-                    >
-                      Performance Marketing
-                    </a>
-                    <a
-                      href="#"
-                      className="block text-[14px] text-white/45 hover:text-white/90 hover:-translate-y-px transition-all duration-150 ease-out"
-                    >
-                      88 XP
-                    </a>
-                  </div>
-                </div>
-
-                {/* Quick Links */}
-                <div>
-                  <h3 className="text-[14px] font-semibold text-white/75 mb-3 tracking-wider">Quick Links</h3>
-                  <div className="space-y-3">
-                    <a
-                      href="#"
-                      className="block text-[14px] text-white/45 hover:text-white/90 hover:-translate-y-px transition-all duration-150 ease-out"
-                    >
-                      Terms & Conditions
-                    </a>
-                    <a
-                      href="#"
-                      className="block text-[14px] text-white/45 hover:text-white/90 hover:-translate-y-px transition-all duration-150 ease-out"
-                    >
-                      Privacy Policy
-                    </a>
-                  </div>
+                  <span 
+                    className="text-sm font-bold w-14 text-right tabular-nums"
+                    style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
+                  >
+                    {targetWordCount}w
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Row 2: Copyright + Socials */}
-            <div className="mt-10 pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-4" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-              <p className="text-[10px] text-white/20 tracking-wide">
-                © 2025 Infini8. All rights reserved.
-              </p>
+            {error && (
+              <div className="mb-6 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                {error}
+              </div>
+            )}
 
-              {/* Social Icons */}
-              <div className="flex items-center gap-4">
-                <a
-                  href="https://www.facebook.com/88gb.in/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-white/30 hover:text-white hover:-translate-y-0.5 transition-all duration-150"
-                  aria-label="Facebook"
-                >
-                  <Facebook className="w-4 h-4" />
-                </a>
-                <a
-                  href="https://www.instagram.com/the88gb/?hl=en"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-white/30 hover:text-white hover:-translate-y-0.5 transition-all duration-150"
-                  aria-label="Instagram"
-                >
-                  <Instagram className="w-4 h-4" />
-                </a>
-                <a
-                  href="https://x.com/the88gb"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-white/30 hover:text-white hover:-translate-y-0.5 transition-all duration-150"
-                  aria-label="X (Twitter)"
-                >
-                  <Twitter className="w-4 h-4" />
-                </a>
-                <a
-                  href="https://mail.google.com/mail/?view=cm&fs=1&to=connect@88gb.in"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-white/30 hover:text-white hover:-translate-y-0.5 transition-all duration-150"
-                  aria-label="Email us"
-                >
-                  <Mail className="w-4 h-4" />
-                </a>
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading || totalPosts === 0}
+              className="w-full py-4 rounded-xl font-bold text-black text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+              style={{
+                background: 'linear-gradient(135deg, #FFC004 0%, #FFD04A 50%, #FFA500 100%)',
+              }}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Starting...
+                </>
+              ) : (
+                <>Create {totalPosts} post{totalPosts !== 1 ? 's' : ''}</>
+              )}
+            </button>
+          </form>
+        </div>
+      </section>
+
+      {/* Showcase Section */}
+      <section className="max-w-7xl mx-auto px-8 py-16">
+        <div className="mb-10">
+          <h2 
+            className="text-4xl font-bold mb-3 leading-tight"
+            style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
+          >
+            Built for <span style={{ color: theme === 'dark' ? '#FFC004' : '#B8860B' }}>Search Visibility</span> Across
+            <br />
+            AI and Traditional Search
+          </h2>
+          <p 
+            className="text-base font-medium"
+            style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : '#000000' }}
+          >
+            Create AI-optimized SEO-ready content that
+            <br />
+            ranks across search engines and AI answers.
+          </p>
+        </div>
+
+        {/* Carousel */}
+        <div className="relative">
+          <div className="flex items-center gap-4">
+            {/* Navigation Buttons */}
+            <button
+              onClick={prevSlide}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0"
+              style={{
+                background: theme === 'dark' ? '#1a1a1a' : 'rgba(255,255,255,0.8)',
+                border: theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(184,134,11,0.3)',
+                color: theme === 'dark' ? '#ffffff' : '#000000'
+              }}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+
+            {/* Cards Container */}
+            <div className="flex-1 overflow-hidden">
+              <div
+                className="flex transition-transform duration-500 ease-out"
+                style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+              >
+                {SHOWCASE_ITEMS.map((item, idx) => (
+                  <div key={idx} className="w-full flex-shrink-0 px-3">
+                    <div
+                      className="rounded-3xl p-10 flex gap-10 relative"
+                      style={{
+                        background: theme === 'dark'
+                          ? 'linear-gradient(135deg, rgba(50, 50, 50, 0.4) 0%, rgba(30, 30, 30, 0.6) 100%)'
+                          : 'rgba(255, 255, 255, 0.7)',
+                        border: theme === 'dark' 
+                          ? '1px solid rgba(255, 255, 255, 0.1)'
+                          : '2px solid rgba(184, 134, 11, 0.2)',
+                        backdropFilter: theme === 'light' ? 'blur(10px)' : 'none'
+                      }}
+                    >
+                      {/* Sparkle decorations */}
+                      <div className="absolute top-6 right-20 w-2 h-2 bg-[#FFC004] rounded-full opacity-60 animate-pulse"></div>
+                      <div
+                        className="absolute top-12 right-32 w-1.5 h-1.5 bg-[#FFC004] rounded-full opacity-40 animate-pulse"
+                        style={{ animationDelay: '0.5s' }}
+                      ></div>
+                      <div
+                        className="absolute bottom-10 right-24 w-1.5 h-1.5 bg-[#FFC004] rounded-full opacity-50 animate-pulse"
+                        style={{ animationDelay: '1s' }}
+                      ></div>
+                      <div
+                        className="absolute bottom-16 right-16 w-2 h-2 bg-[#FFC004] rounded-full opacity-30 animate-pulse"
+                        style={{ animationDelay: '1.5s' }}
+                      ></div>
+
+                      <div className="flex-1 flex flex-col justify-center">
+                        <h3 
+                          className="text-4xl font-bold mb-6 leading-tight"
+                          style={{ color: theme === 'dark' ? '#FFC004' : '#B8860B' }}
+                        >
+                          {item.title}
+                        </h3>
+                        <p 
+                          className="text-lg mb-6 leading-relaxed"
+                          style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.7)' : '#000000' }}
+                        >
+                          {item.description}
+                        </p>
+                        <div className="flex items-center gap-2 mb-8">
+                          <span 
+                            className="text-sm font-medium"
+                            style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : '#000000' }}
+                          >
+                            {item.type}
+                          </span>
+                          <span style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.3)' : '#000000' }}>·</span>
+                          <span 
+                            className="text-sm"
+                            style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : '#000000' }}
+                          >
+                            {item.readTime} min read
+                          </span>
+                        </div>
+                        <button
+                          className="px-8 py-3.5 rounded-xl font-bold text-black text-sm transition-all shadow-lg hover:shadow-xl w-fit"
+                          style={{
+                            background:
+                              'linear-gradient(135deg, #FFC004 0%, #FFD04A 50%, #FFA500 100%)',
+                          }}
+                        >
+                          Book a demo
+                        </button>
+                      </div>
+                      <div
+                        className="w-[380px] h-[300px] rounded-2xl flex items-center justify-center relative overflow-hidden flex-shrink-0"
+                        style={{
+                          background: 'linear-gradient(135deg, #FFC004 0%, #FFD04A 100%)',
+                          padding: '3px',
+                        }}
+                      >
+                        <div className="w-full h-full bg-white rounded-2xl overflow-hidden">
+                          <img
+                            src={item.image}
+                            alt={item.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
+
+            <button
+              onClick={nextSlide}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0"
+              style={{
+                background: theme === 'dark' ? '#1a1a1a' : 'rgba(255,255,255,0.8)',
+                border: theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(184,134,11,0.3)',
+                color: theme === 'dark' ? '#ffffff' : '#000000'
+              }}
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
-        </footer>
-      </div>
+
+          {/* Dots Indicator */}
+          <div className="flex justify-center gap-2 mt-6">
+            {SHOWCASE_ITEMS.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentSlide(idx)}
+                className="h-2 rounded-full transition-all"
+                style={{
+                  background: idx === currentSlide 
+                    ? (theme === 'dark' ? '#FFC004' : '#B8860B')
+                    : (theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(26,26,26,0.2)'),
+                  width: idx === currentSlide ? '24px' : '8px'
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }
 
