@@ -45,8 +45,6 @@ services:
     dns:
       - 8.8.8.8
       - 8.8.4.4
-    volumes:
-      - ./logs:/app/logs
 
   # Worker Process (BullMQ Consumer)
   worker:
@@ -75,8 +73,6 @@ services:
     dns:
       - 8.8.8.8
       - 8.8.4.4
-    volumes:
-      - ./logs:/app/logs
 
   # Next.js Frontend
   client:

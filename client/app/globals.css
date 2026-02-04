@@ -745,3 +745,69 @@ mark[style],
   margin: 1.75rem 0;
   max-width: 100%;
 }
+/* Cus
+tom Range Slider Styling */
+.slider-thumb::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #C9A05F;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.slider-thumb::-webkit-slider-thumb:hover {
+  background: #D4AF6E;
+  transform: scale(1.1);
+}
+
+.slider-thumb::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #C9A05F;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.slider-thumb::-moz-range-thumb:hover {
+  background: #D4AF6E;
+  transform: scale(1.1);
+}
+
+/* Custom Range Slider Styling - Exact Figma Colors */
+.slider-thumb::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #FFC004;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.slider-thumb::-webkit-slider-thumb:hover {
+  background: #FFD04A;
+  transform: scale(1.1);
+}
+
+.slider-thumb::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #FFC004;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.slider-thumb::-moz-range-thumb:hover {
+  background: #FFD04A;
+  transform: scale(1.1);
+}
