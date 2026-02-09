@@ -127,7 +127,9 @@ function HomeContent() {
     <div 
       className="min-h-screen font-sans"
       style={{
-        background: theme === 'dark' ? '#131313' : 'linear-gradient(180deg, #F5EFE7 0%, #E8DCC8 100%)',
+        background: theme === 'dark' 
+          ? 'radial-gradient(ellipse 120% 80% at 50% 20%, #3d2f1a 0%, #2a2015 20%, #1a1510 40%, #0f0d0a 60%, #000000 100%)' 
+          : 'radial-gradient(ellipse 130% 80% at 48% 28%, #c9b895 0%, #d8cdb8 20%, #e3dac8 40%, #ede7dc 60%, #f5f1ea 80%, #faf8f5 100%)',
         color: theme === 'dark' ? '#ffffff' : '#000000'
       }}
     >
@@ -156,10 +158,11 @@ function HomeContent() {
             Content Factory
           </button>
           <button 
+            onClick={() => router.push('/seo-scan')}
             className="text-sm font-medium transition-colors"
             style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.9)' : '#000000' }}
           >
-            Seo Scanner
+            Site Insights
           </button>
           <UserMenu />
         </div>
@@ -174,10 +177,11 @@ function HomeContent() {
           AI-Powered SEO Content Engine
         </p>
         <h1 
+          key={theme}
           className="text-[88px] font-bold mb-12 leading-[0.9] tracking-tight"
           style={{
             background: theme === 'dark' 
-              ? '#FFC004' 
+              ? 'linear-gradient(135deg, #FFC004 0%, #FFD04A 50%, #FFA500 100%)' 
               : 'linear-gradient(135deg, #B8860B 0%, #DAA520 50%, #B8860B 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
