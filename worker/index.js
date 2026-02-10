@@ -103,8 +103,7 @@ const processContentGenerationJob = async (job) => {
           await UserRepository.addCredits(
             jobDoc.user_id,
             creditsToRefund,
-            'job',
-            jobId,
+            'refund',
             `Auto-refund for ${failureCount} failed blog(s) in job ${jobId}`
           );
           logger.info(`Successfully refunded ${creditsToRefund} credits to user ${jobDoc.user_id}`);

@@ -64,16 +64,19 @@ export function UserMenu() {
     const dropdownContent = isOpen && mounted ? (
         <div
             ref={menuRef}
-            className="fixed w-56 bg-card border border-border rounded-xl shadow-2xl py-1 z-[9999] animate-in fade-in slide-in-from-top-2 duration-200"
+            className="fixed w-56 rounded-xl shadow-2xl py-1 z-[9999] animate-in fade-in slide-in-from-top-2 duration-200"
             style={{
                 top: `${dropdownPosition.top}px`,
-                right: `${dropdownPosition.right}px`
+                right: `${dropdownPosition.right}px`,
+                background: '#241A06',
+                border: '1px solid #FFC004',
+                color: '#ffffff'
             }}
         >
             {/* User Info */}
-            <div className="px-4 py-3 border-b border-border">
-                <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+            <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(255, 192, 4, 0.2)' }}>
+                <p className="text-sm font-medium text-white truncate">{displayName}</p>
+                <p className="text-xs truncate" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>{user.email}</p>
             </div>
 
             {/* Menu Items */}
@@ -84,7 +87,7 @@ export function UserMenu() {
                             setIsOpen(false);
                             router.push('/admin');
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-[#FFC004]/10 transition-colors"
                     >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -97,7 +100,7 @@ export function UserMenu() {
                         setIsOpen(false);
                         router.push('/library');
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-[#FFC004]/10 transition-colors"
                 >
                     <BookmarkCheck className="w-4 h-4" />
                     Content Library
@@ -107,7 +110,7 @@ export function UserMenu() {
                         setIsOpen(false);
                         router.push('/pricing');
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-[#FFC004]/10 transition-colors"
                 >
                     <Zap className="w-4 h-4" />
                     Upgrade Plan
@@ -117,7 +120,7 @@ export function UserMenu() {
                         setIsOpen(false);
                         signOut();
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white hover:bg-[#FFC004]/10 transition-colors"
                 >
                     <LogOut className="w-4 h-4" />
                     Sign out

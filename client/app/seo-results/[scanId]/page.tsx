@@ -7,6 +7,8 @@ import { api } from '@/utils/api';
 import { QuickWinsSection, HighOpportunitiesSection, RegionalRankingsSection, DeviceComparisonSection } from '@/components/SerpFeatures';
 import { KeywordClustersSection, ContentGapsSection, FeaturedSnippetSection, LocalSEOSection, CompetitorStrategySection, ContentQualitySection } from '@/components/AdvancedSerpFeatures';
 import { CompetitorTrackingSection, ActionItemsSection, ContentRecommendationsSection, RankingHistorySection } from '@/components/AdvancedSeoFeatures';
+import Navbar from '@/components/Navbar';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface SeoResults {
     domain: string;
@@ -261,6 +263,7 @@ const KeywordCategoryCard = ({
     onToggleExpand: () => void;
 }) => {
     const [copied, setCopied] = useState<string | null>(null);
+    const { theme } = useTheme();
 
     const LIMIT = 5;
     const showExpand = keywords.length > LIMIT;
@@ -287,7 +290,10 @@ const KeywordCategoryCard = ({
     const style = getStyle();
 
     return (
-        <div className="bg-card rounded-xl border border-border/40 overflow-hidden h-full flex flex-col">
+        <div className="rounded-xl border overflow-hidden h-full flex flex-col" style={{
+            background: 'transparent',
+            borderColor: '#FFC004'
+        }}>
             {/* Header */}
             <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between">
                 <div>
@@ -307,7 +313,20 @@ const KeywordCategoryCard = ({
                 {displayedKeywords.map((kwObj, idx) => (
                     <div
                         key={`${category}-${idx}`}
-                        className="group flex flex-col px-5 py-3 border-b border-border/30 last:border-0 hover:bg-secondary/50 transition-colors"
+                        className="group flex flex-col px-5 py-3 border-b border-border/30 last:border-0 transition-all cursor-pointer"
+                        style={{
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                            if (theme === 'light') {
+                                e.currentTarget.style.background = 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)';
+                            } else {
+                                e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                        }}
                     >
                         <div className="flex items-center justify-between">
                             <span className="text-[13px] font-medium text-foreground truncate max-w-[80%]">
@@ -351,11 +370,11 @@ const KeywordCategoryCard = ({
 export default function SeoResultsPage() {
     const router = useRouter();
     const params = useParams();
+    const { theme } = useTheme();
     const scanId = params?.scanId as string;
     const [scanData, setScanData] = useState<ScanData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [theme, setTheme] = useState<'dark' | 'light'>('dark');
     const [copiedKeyword, setCopiedKeyword] = useState<string | null>(null);
     const [displayProgress, setDisplayProgress] = useState(5);
     const [currentMessage, setCurrentMessage] = useState(0);
@@ -399,23 +418,6 @@ export default function SeoResultsPage() {
     }, [loading, scanData]);
 
     useEffect(() => {
-        const savedTheme = localStorage.getItem('results-theme') as 'dark' | 'light' | null;
-        if (savedTheme) {
-            setTheme(savedTheme);
-            document.documentElement.setAttribute('data-theme', savedTheme);
-        } else {
-            document.documentElement.setAttribute('data-theme', 'dark');
-        }
-    }, []);
-
-    const toggleTheme = () => {
-        const newTheme = theme === 'dark' ? 'light' : 'dark';
-        setTheme(newTheme);
-        localStorage.setItem('results-theme', newTheme);
-        document.documentElement.setAttribute('data-theme', newTheme);
-    };
-
-    useEffect(() => {
         if (!scanId) return;
 
         const fetchScan = async () => {
@@ -442,61 +444,148 @@ export default function SeoResultsPage() {
         setTimeout(() => setCopiedKeyword(null), 2000);
     };
 
-    // Loading state - Clean, minimal design
+    // Loading state - Clean, minimal design matching Figma
     if (loading || (scanData && (scanData.status === 'ENQUEUED' || scanData.status === 'SCANNING'))) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center px-6">
-                <div className="w-full max-w-md text-center">
-                    {/* Spinner */}
-                    <div className="mb-8">
-                        <div className="w-12 h-12 mx-auto border-3 border-primary/20 border-t-primary rounded-full animate-spin" />
-                    </div>
+            <div 
+                className="min-h-screen transition-colors duration-300 relative overflow-hidden" 
+                style={{ 
+                    background: theme === 'dark' ? '#000000' : '#FFFEF9',
+                    color: theme === 'dark' ? '#ffffff' : '#000000'
+                }}
+            >
+                {/* Dark mode golden blur from right toward center */}
+                {theme === 'dark' && (
+                    <div 
+                        className="absolute pointer-events-none z-0"
+                        style={{
+                            top: '35%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            width: '60%',
+                            height: '55%',
+                            background: 'radial-gradient(ellipse 80% 80% at 50% 50%, rgba(255, 192, 4, 0.15) 0%, rgba(255, 192, 4, 0.08) 40%, transparent 70%)',
+                            filter: 'blur(80px)'
+                        }}
+                    />
+                )}
+                
+                {/* Light mode golden blur at bottom */}
+                {theme === 'light' && (
+                    <div 
+                        className="absolute bottom-0 left-0 right-0 pointer-events-none"
+                        style={{
+                            height: '50%',
+                            background: 'radial-gradient(ellipse 120% 100% at 50% 100%, rgba(255, 192, 4, 0.12) 0%, rgba(255, 192, 4, 0.06) 50%, transparent 100%)',
+                            filter: 'blur(60px)'
+                        }}
+                    />
+                )}
+                
+                {/* Navbar */}
+                <Navbar />
 
-                    {/* Title */}
-                    <h2 className="text-lg font-semibold text-foreground mb-2">
-                        Analyzing your domain
-                    </h2>
+                {/* Content */}
+                <div className="flex items-center justify-center px-6 relative z-10" style={{ minHeight: 'calc(100vh - 73px)' }}>
+                    <div className="w-full max-w-md text-center">
+                        {/* Title - Montserrat SemiBold 36px */}
+                        <h2 
+                            className="font-semibold mb-2" 
+                            style={{ 
+                                fontSize: '36px', 
+                                lineHeight: '1.2',
+                                color: theme === 'dark' ? '#FFFFFF' : '#000000'
+                            }}
+                        >
+                            Analyzing your domain
+                        </h2>
 
-                    {/* Rotating message */}
-                    <p className="text-[14px] text-muted-foreground mb-8 h-5">
-                        {statusMessages[currentMessage]}...
-                    </p>
+                        {/* Rotating message - Regular 20px */}
+                        <p 
+                            className="mb-8" 
+                            style={{ 
+                                fontSize: '20px', 
+                                lineHeight: '1.4',
+                                color: theme === 'dark' ? '#888888' : '#000000'
+                            }}
+                        >
+                            {statusMessages[currentMessage]}
+                        </p>
 
-                    {/* Progress bar */}
-                    <div className="bg-card rounded-xl p-6 border border-border/40 mb-6">
-                        <div className="flex justify-between text-[12px] text-muted-foreground mb-3">
-                            <span>Progress</span>
-                            <span>{Math.round(displayProgress)}%</span>
+                        {/* Progress bar with percentage inside on the right */}
+                        <div className="mb-8">
+                            <div className="relative w-full max-w-sm mx-auto">
+                                {/* Progress bar container with transparent background and border */}
+                                <div className="relative h-10 bg-transparent rounded-full border-2 border-[#FFC004] overflow-hidden">
+                                    {/* Progress fill - gradient from #A88000 to #FFC004 */}
+                                    <div
+                                        className="h-full transition-all duration-700 ease-out"
+                                        style={{ 
+                                            width: `${displayProgress}%`,
+                                            background: 'linear-gradient(90deg, #A88000 0%, #FFC004 100%)'
+                                        }}
+                                    />
+                                </div>
+                                
+                                {/* Percentage text inside on the right */}
+                                <div className="absolute inset-0 flex items-center justify-end pr-5">
+                                    <span 
+                                        className="font-semibold z-10" 
+                                        style={{ 
+                                            fontSize: '20px',
+                                            color: theme === 'dark' ? '#FFFFFF' : '#000000'
+                                        }}
+                                    >
+                                        {Math.round(displayProgress)} %
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Current step indicator */}
+                            {scanData?.currentStep && (
+                                <p 
+                                    className="mt-3" 
+                                    style={{ 
+                                        fontSize: '12px',
+                                        color: theme === 'dark' ? '#888888' : '#000000'
+                                    }}
+                                >
+                                    {scanData.currentStep}
+                                </p>
+                            )}
                         </div>
-                        <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                            <div
-                                className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
-                                style={{ width: `${displayProgress}%` }}
-                            />
-                        </div>
 
-                        {/* Current step indicator */}
-                        {scanData?.currentStep && (
-                            <p className="text-[11px] text-muted-foreground/70 mt-3">
-                                {scanData.currentStep}
-                            </p>
-                        )}
+                        {/* Reassurance - Regular 20px */}
+                        <p 
+                            className="mb-1" 
+                            style={{ 
+                                fontSize: '20px', 
+                                lineHeight: '1.4',
+                                color: theme === 'dark' ? '#888888' : '#000000'
+                            }}
+                        >
+                            This usually takes 2–3 minutes
+                        </p>
+                        <p 
+                            className="mb-6" 
+                            style={{ 
+                                fontSize: '16px', 
+                                lineHeight: '1.4',
+                                color: theme === 'dark' ? 'rgba(136, 136, 136, 0.7)' : '#000000'
+                            }}
+                        >
+                            You can safely leave — we'll save your results
+                        </p>
+
+                        {/* Start new scan button - Regular 20px */}
+                        <button
+                            onClick={() => router.push('/')}
+                            className="text-[#FFC004] hover:text-[#FFC004]/80 transition-colors inline-flex items-center gap-1"
+                            style={{ fontSize: '20px' }}
+                        >
+                            <span>←</span> Start a new scan
+                        </button>
                     </div>
-
-                    {/* Reassurance */}
-                    <p className="text-[12px] text-muted-foreground mb-1">
-                        This usually takes 2–3 minutes
-                    </p>
-                    <p className="text-[11px] text-muted-foreground/60 mb-4">
-                        You can safely leave — we'll save your results
-                    </p>
-
-                    <button
-                        onClick={() => router.push('/')}
-                        className="text-[12px] text-primary hover:underline"
-                    >
-                        ← Start a new scan
-                    </button>
                 </div>
             </div>
         );
@@ -505,10 +594,18 @@ export default function SeoResultsPage() {
     // Error state
     if (error || !scanData) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center px-6">
+            <div 
+                className="min-h-screen flex items-center justify-center px-6"
+                style={{ 
+                    background: theme === 'dark' 
+                        ? 'radial-gradient(ellipse 120% 80% at 50% 20%, #3d2f1a 0%, #2a2015 20%, #1a1510 40%, #0f0d0a 60%, #000000 100%)'
+                        : '#FFFEF9',
+                    color: theme === 'dark' ? '#ffffff' : '#000000'
+                }}
+            >
                 <div className="text-center max-w-md">
                     <p className="text-sm text-destructive mb-4">{error || 'Scan not found'}</p>
-                    <button onClick={() => router.push('/')} className="text-sm text-foreground hover:underline">
+                    <button onClick={() => router.push('/')} className="text-sm hover:underline" style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}>
                         Go back
                     </button>
                 </div>
@@ -519,11 +616,19 @@ export default function SeoResultsPage() {
     // Failed state
     if (scanData.status === 'FAILED') {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center px-6">
+            <div 
+                className="min-h-screen flex items-center justify-center px-6"
+                style={{ 
+                    background: theme === 'dark' 
+                        ? 'radial-gradient(ellipse 120% 80% at 50% 20%, #3d2f1a 0%, #2a2015 20%, #1a1510 40%, #0f0d0a 60%, #000000 100%)'
+                        : '#FFFEF9',
+                    color: theme === 'dark' ? '#ffffff' : '#000000'
+                }}
+            >
                 <div className="text-center max-w-md">
-                    <h2 className="text-xl font-semibold text-foreground mb-2">Scan Failed</h2>
+                    <h2 className="text-xl font-semibold mb-2">Scan Failed</h2>
                     <p className="text-sm text-destructive mb-4">{scanData.errorMessage || 'An error occurred'}</p>
-                    <button onClick={() => router.push('/')} className="text-sm text-foreground hover:underline">
+                    <button onClick={() => router.push('/')} className="text-sm hover:underline" style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}>
                         Try again
                     </button>
                 </div>
@@ -535,7 +640,57 @@ export default function SeoResultsPage() {
     if (!results) return null;
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
+        <div 
+            className="min-h-screen text-foreground transition-colors duration-300 relative overflow-hidden"
+            style={{ 
+                background: theme === 'dark' ? '#000000' : '#FFFEF9',
+                color: theme === 'dark' ? '#ffffff' : '#000000'
+            }}
+        >
+            {/* Dark mode golden blur from right toward center */}
+            {theme === 'dark' && (
+                <div 
+                    className="absolute pointer-events-none z-0"
+                    style={{
+                        top: '35%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: '60%',
+                        height: '55%',
+                        background: 'radial-gradient(ellipse 80% 80% at 50% 50%, rgba(255, 192, 4, 0.15) 0%, rgba(255, 192, 4, 0.08) 40%, transparent 70%)',
+                        filter: 'blur(80px)'
+                    }}
+                />
+            )}
+            
+            {/* Light mode golden blur throughout */}
+            {theme === 'light' && (
+                <>
+                    {/* Center blur */}
+                    <div 
+                        className="absolute pointer-events-none z-0"
+                        style={{
+                            top: '35%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            width: '70%',
+                            height: '60%',
+                            background: 'radial-gradient(ellipse 100% 100% at 50% 50%, rgba(171, 128, 0, 0.25) 0%, rgba(171, 128, 0, 0.15) 40%, rgba(171, 128, 0, 0.08) 70%, transparent 100%)',
+                            filter: 'blur(100px)'
+                        }}
+                    />
+                    {/* Bottom blur */}
+                    <div 
+                        className="absolute bottom-0 left-0 right-0 pointer-events-none z-0"
+                        style={{
+                            height: '50%',
+                            background: 'radial-gradient(ellipse 120% 100% at 50% 100%, rgba(171, 128, 0, 0.2) 0%, rgba(171, 128, 0, 0.1) 50%, transparent 100%)',
+                            filter: 'blur(80px)'
+                        }}
+                    />
+                </>
+            )}
+            
             {/* Copy notification toast */}
             {copiedKeyword && (
                 <div className="fixed bottom-6 right-6 z-50 bg-card border border-border/50 rounded-lg px-4 py-2.5 shadow-xl flex items-center gap-2 animate-in slide-in-from-bottom-2">
@@ -544,46 +699,43 @@ export default function SeoResultsPage() {
                 </div>
             )}
 
-            {/* Header */}
-            <header className="sticky top-0 z-10 border-b border-border bg-card/95 backdrop-blur">
-                <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => router.push('/')}
-                            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                            <ArrowLeft className="w-4 h-4" />
-                            Back
-                        </button>
-                        <div className="h-5 w-px bg-border/50" />
-                        <div>
-                            <h1 className="text-base font-semibold text-foreground">{results.domain}</h1>
-                            <p className="text-xs text-muted-foreground">
-                                Scanned {new Date(results.scanned_at).toLocaleString()}
-                            </p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={toggleTheme}
-                        className="flex items-center justify-center w-9 h-9 rounded-lg border border-border/40 bg-secondary/30 text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
-                    >
-                        {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                    </button>
-                </div>
-            </header>
+            {/* Navbar */}
+            <Navbar />
 
             {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-6 py-8">
+            <main className="max-w-7xl mx-auto px-6 py-8 relative z-10">
+                {/* Domain Name Header */}
+                <div className="mb-6">
+                    <h1 className="text-4xl font-bold text-foreground">{results.domain}</h1>
+                </div>
+
                 {/* Health Score Card */}
                 <div className="mb-8">
-                    <div className="rounded-xl p-8 bg-card border border-border/30">
+                    <div className="rounded-xl p-8" style={{
+                        background: 'transparent'
+                    }}>
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Domain Health Score</p>
-                                <div className="flex items-baseline gap-3">
-                                    <span className="text-5xl font-bold text-foreground">{results.health_score}</span>
+                                <div className="flex items-baseline gap-3 mb-3">
+                                    <span className="text-5xl font-bold" style={{ color: '#FFC004' }}>{results.health_score}</span>
                                     <span className="text-lg text-muted-foreground">/ 100</span>
                                 </div>
+                                
+                                {/* Progress Bar */}
+                                <div className="w-64 mb-3">
+                                    <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#5E4702' }}>
+                                        <div 
+                                            className="h-full rounded-full transition-all duration-1000"
+                                            style={{
+                                                width: `${results.health_score}%`,
+                                                background: 'linear-gradient(90deg, #A88000 0%, #FFC004 100%)',
+                                                borderRadius: '9999px'
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                                
                                 {/* Score Interpretation */}
                                 <p className="text-[13px] text-muted-foreground mt-3">
                                     {results.health_score >= 80
@@ -623,11 +775,11 @@ export default function SeoResultsPage() {
                                         />
                                     </svg>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <span className="text-xl font-bold text-foreground">{results.visibility_percentage || 0}%</span>
+                                        <span className="text-xl font-bold" style={{ color: '#FFC004' }}>{results.visibility_percentage || 0}%</span>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Visibility</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>Visibility</p>
                                     <Info className="w-3 h-3 text-primary/50 cursor-help" />
                                 </div>
                                 {/* Tooltip */}
@@ -645,7 +797,7 @@ export default function SeoResultsPage() {
                                         <p className="text-xs text-muted-foreground uppercase tracking-wide">Technical</p>
                                         <Info className="w-3 h-3 text-muted-foreground/50 cursor-help" />
                                     </div>
-                                    <p className="text-2xl font-bold text-foreground">{results.score_breakdown?.technical || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
+                                    <p className="text-2xl font-bold" style={{ color: '#FFC004' }}>{results.score_breakdown?.technical || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
                                     {/* Tooltip */}
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-slate-800 text-white text-[11px] leading-relaxed rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
                                         HTTPS, robots.txt, sitemap, mobile-friendly, page speed, and crawlability
@@ -659,7 +811,7 @@ export default function SeoResultsPage() {
                                         <Search className="w-3.5 h-3.5 text-blue-500" />
                                         <Info className="w-3 h-3 text-muted-foreground/50 cursor-help" />
                                     </div>
-                                    <p className="text-2xl font-bold text-foreground">{results.score_breakdown?.on_page_seo || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
+                                    <p className="text-2xl font-bold" style={{ color: '#FFC004' }}>{results.score_breakdown?.on_page_seo || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
                                     {/* Tooltip */}
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-slate-800 text-white text-[11px] leading-relaxed rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
                                         Title tags, meta descriptions, headings, content quality, keyword usage, and internal linking
@@ -672,7 +824,7 @@ export default function SeoResultsPage() {
                                         <p className="text-xs text-muted-foreground uppercase tracking-wide">Authority</p>
                                         <Info className="w-3 h-3 text-muted-foreground/50 cursor-help" />
                                     </div>
-                                    <p className="text-2xl font-bold text-foreground">{results.score_breakdown?.authority || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
+                                    <p className="text-2xl font-bold" style={{ color: '#FFC004' }}>{results.score_breakdown?.authority || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
                                     {/* Tooltip */}
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-slate-800 text-white text-[11px] leading-relaxed rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
                                         Domain age, Knowledge Graph recognition, brand authority, and backlink profile
@@ -686,7 +838,7 @@ export default function SeoResultsPage() {
                                         <Zap className="w-3.5 h-3.5 text-amber-500" />
                                         <Info className="w-3 h-3 text-muted-foreground/50 cursor-help" />
                                     </div>
-                                    <p className="text-2xl font-bold text-foreground">{results.score_breakdown?.performance || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
+                                    <p className="text-2xl font-bold" style={{ color: '#FFC004' }}>{results.score_breakdown?.performance || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
                                     {/* Tooltip */}
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-slate-800 text-white text-[11px] leading-relaxed rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
                                         Page load speed, Core Web Vitals (LCP, FCP, CLS), and overall site performance
@@ -773,7 +925,10 @@ export default function SeoResultsPage() {
                 {/* Grid Layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                     {/* Observed Keywords - Show ALL */}
-                    <div className="bg-card rounded-xl p-6 border border-border/30">
+                    <div className="rounded-xl p-6 border" style={{
+                        background: 'transparent',
+                        borderColor: '#FFC004'
+                    }}>
                         <div className="flex items-center gap-2 mb-4">
                             <span className="w-2 h-2 rounded-full bg-blue-500" />
                             <h3 className="text-sm font-semibold text-foreground">Observed Keywords</h3>
@@ -793,14 +948,17 @@ export default function SeoResultsPage() {
                     </div>
 
                     {/* SERP Positions - Dynamic colors for 1/2/3 */}
-                    <div className="bg-card rounded-xl border border-border/30 overflow-hidden">
+                    <div className="rounded-xl border overflow-hidden" style={{
+                        background: 'transparent',
+                        borderColor: '#FFC004'
+                    }}>
                         <div className="px-6 py-4 border-b border-border/40">
                             <div className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
                                 <h3 className="text-sm font-semibold text-foreground">SERP Positions</h3>
                             </div>
                         </div>
-                        <div className="bg-card">
+                        <div style={{ background: 'transparent' }}>
                             {results.sampled_positions.length > 0 ? (
                                 results.sampled_positions.map((pos, i) => {
                                     // Dynamic styling based on position
@@ -835,7 +993,10 @@ export default function SeoResultsPage() {
                     </div>
 
                     {/* Competitors - 2-column grid layout */}
-                    <div className="bg-card rounded-xl p-6 border border-border/30">
+                    <div className="rounded-xl p-6 border" style={{
+                        background: 'transparent',
+                        borderColor: '#FFC004'
+                    }}>
                         <div className="flex items-center gap-2 mb-4">
                             <span className="w-2 h-2 rounded-full bg-purple-500" />
                             <h3 className="text-sm font-semibold text-foreground">SERP Competitors</h3>
@@ -886,7 +1047,10 @@ export default function SeoResultsPage() {
                     </div>
 
                     {/* Domain Age */}
-                    <div className="bg-card rounded-xl p-6 border border-border/30">
+                    <div className="rounded-xl p-6 border" style={{
+                        background: 'transparent',
+                        borderColor: '#FFC004'
+                    }}>
                         <h3 className="text-sm font-semibold text-foreground mb-4">Domain Authority Signals</h3>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -919,7 +1083,10 @@ export default function SeoResultsPage() {
                     {/* SCIENTIFIC EXTRACTIONS - Power Data */}
                     <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                         {/* Entity Verification */}
-                        <div className="bg-card rounded-xl border border-border/30 overflow-hidden">
+                        <div className="rounded-xl border overflow-hidden" style={{
+                            background: 'transparent',
+                            borderColor: '#FFC004'
+                        }}>
                             <div className="px-6 py-4 border-b border-border/40 bg-primary/5">
                                 <div className="flex items-center gap-2">
                                     <Activity className="w-4 h-4 text-primary" />
@@ -966,7 +1133,10 @@ export default function SeoResultsPage() {
                         </div>
 
                         {/* Content Salience (NLP) */}
-                        <div className="bg-card rounded-xl border border-border/30 overflow-hidden">
+                        <div className="rounded-xl border overflow-hidden" style={{
+                            background: 'transparent',
+                            borderColor: '#FFC004'
+                        }}>
                             <div className="px-6 py-4 border-b border-border/40 bg-primary/5">
                                 <div className="flex items-center gap-2">
                                     <Activity className="w-4 h-4 text-primary" />
@@ -1121,14 +1291,37 @@ export default function SeoResultsPage() {
 
                 {/* Recommendations */}
                 {results.recommendations && results.recommendations.length > 0 && (
-                    <div className="bg-card rounded-xl p-8 border border-border/30 mb-12">
+                    <div className="rounded-xl p-8 border mb-12" style={{
+                        background: 'transparent',
+                        borderColor: '#FFC004'
+                    }}>
                         <h3 className="text-base font-semibold text-foreground mb-6 flex items-center gap-2">
                             <Activity className="w-4 h-4 text-primary" />
                             Strategic Action Plan
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {results.recommendations.map((rec, i) => (
-                                <div key={i} className="flex flex-col p-5 rounded-xl bg-secondary/30 border border-border/20 hover:border-primary/30 transition-all group">
+                                <div 
+                                    key={i} 
+                                    className="flex flex-col p-5 rounded-xl border border-border/20 transition-all group cursor-pointer"
+                                    style={{
+                                        background: 'rgba(0, 0, 0, 0.1)',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (theme === 'light') {
+                                            e.currentTarget.style.background = 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)';
+                                            e.currentTarget.style.borderColor = 'rgba(255, 192, 4, 0.5)';
+                                        } else {
+                                            e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
+                                            e.currentTarget.style.borderColor = 'rgba(255, 192, 4, 0.5)';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)';
+                                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                                    }}
+                                >
                                     <div className="flex items-center justify-between mb-3">
                                         <span className="text-[10px] font-bold text-primary uppercase tracking-tighter bg-primary/10 px-2 py-0.5 rounded">
                                             Task 0{i + 1}

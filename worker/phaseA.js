@@ -63,6 +63,7 @@ function extractJSONAggressively(text) {
  * Extract JSON from text that might have markdown formatting
  */
 function extractJSON(text) {
+  // Try 1: Direct parse
   try {
     const parsed = JSON.parse(text);
     if (parsed && typeof parsed === 'object') {
@@ -72,6 +73,7 @@ function extractJSON(text) {
 
   let cleaned = text.trim();
 
+  // Try 2: Remove markdown code blocks
   if (cleaned.startsWith('```json')) {
     cleaned = cleaned.substring(7);
   } else if (cleaned.startsWith('```')) {
@@ -82,7 +84,7 @@ function extractJSON(text) {
     cleaned = cleaned.substring(0, cleaned.length - 3);
   }
 
-  cleaned = cleaned.replace(/```/g, '').trim();
+  cleaned = cleaned.replace(/```json/g, '').replace(/```/g, '').trim();
 
   try {
     const parsed = JSON.parse(cleaned);
@@ -91,6 +93,21 @@ function extractJSON(text) {
     }
   } catch (e) { }
 
+  // Try 3: Find first { and last }
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    const extracted = cleaned.substring(firstBrace, lastBrace + 1);
+    try {
+      const parsed = JSON.parse(extracted);
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
+      }
+    } catch (e) { }
+  }
+
+  // Try 4: Handle multiple objects (take first complete one)
   const multiObjectPatterns = ['}\n{', '}\r\n{', '} {', '}\n\n{'];
   for (const pattern of multiObjectPatterns) {
     if (cleaned.includes(pattern)) {
@@ -106,6 +123,7 @@ function extractJSON(text) {
     return JSON.parse(cleaned);
   } catch (e) { }
 
+  // Try 5: Brace-balanced extraction
   let braceCount = 0;
   let startIndex = -1;
   let endIndex = -1;
@@ -239,7 +257,7 @@ QUALITY STANDARDS (KEEP CONCISE):
 - research_insight: 1 sentence with ONE specific stat or trend
 - ai_query_match: The headline should match natural language queries to AI assistants
 
-JSON OUTPUT FORMAT:
+JSON OUTPUT FORMAT (CRITICAL - FOLLOW EXACTLY):
 {
   "business_niche": "${niche}",
   "research_summary": "Brief 2-3 sentence summary of key insights from your Google Search research",
@@ -258,15 +276,19 @@ JSON OUTPUT FORMAT:
   ]
 }
 
-CRITICAL INSTRUCTIONS:
-- ACTUALLY USE Google Search for your research - don't make up generic scenarios
-- Each scenario should reflect REAL market insights you discovered
-- Ensure all 30 scenarios are SUBSTANTIALLY DIFFERENT from each other
-- Include diverse experience levels: beginners, intermediate, advanced, enterprise
-- Vary the contexts: budget-conscious, time-pressed, scaling up, starting out, etc.
-- Return ONLY the JSON object, no markdown formatting, no extra text
+CRITICAL OUTPUT REQUIREMENTS:
+1. Return ONLY valid JSON - no markdown code blocks, no \`\`\`json\`\`\`, no extra text
+2. Start your response with { and end with }
+3. Generate EXACTLY 30 scenarios in the scenarios array
+4. Each scenario must have ALL required fields
+5. Use proper JSON syntax - double quotes for strings, no trailing commas
+6. ACTUALLY USE Google Search for your research - don't make up generic scenarios
+7. Each scenario should reflect REAL market insights you discovered
+8. Ensure all 30 scenarios are SUBSTANTIALLY DIFFERENT from each other
+9. Include diverse experience levels: beginners, intermediate, advanced, enterprise
+10. Vary the contexts: budget-conscious, time-pressed, scaling up, starting out, etc.
 
-BEGIN YOUR RESEARCH NOW.`;
+BEGIN YOUR RESEARCH NOW. Output ONLY the JSON object.`;
 
     logger.info('Sending request to Gemini with Google Search grounding...');
 
@@ -337,6 +359,8 @@ BEGIN YOUR RESEARCH NOW.`;
     } catch (parseError) {
       logger.error('JSON extraction failed');
       logger.error('Error:', parseError.message);
+      logger.error('Response preview (first 1000 chars):', responseText.substring(0, 1000));
+      logger.error('Response preview (last 500 chars):', responseText.substring(Math.max(0, responseText.length - 500)));
 
       try {
         logger.info('Attempting aggressive JSON extraction...');
@@ -348,6 +372,8 @@ BEGIN YOUR RESEARCH NOW.`;
           throw parseError;
         }
       } catch (e) {
+        logger.error('Aggressive extraction also failed');
+        logger.error('Full response length:', responseText.length);
         throw new Error(`Invalid JSON response from Gemini API: ${parseError.message}`);
       }
     }

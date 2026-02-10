@@ -1,4 +1,5 @@
 import { Target, Lightbulb, MapPin, TrendingUp, FileText, BarChart3 } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface KeywordCluster {
     name: string;
@@ -38,10 +39,14 @@ interface ContentQuality {
 }
 
 export function KeywordClustersSection({ clusters }: { clusters: KeywordCluster[] }) {
+    const { theme } = useTheme();
     if (!clusters || clusters.length === 0) return null;
 
     return (
-        <div className="bg-card rounded-xl p-6 border border-border/30 mb-6">
+        <div className="rounded-xl p-6 border mb-6" style={{
+            background: 'transparent',
+            borderColor: '#FFC004'
+        }}>
             <div className="flex items-center gap-2 mb-4">
                 <Target className="w-4 h-4 text-blue-500" />
                 <h3 className="text-sm font-semibold text-foreground">Keyword Clusters & Topic Mapping</h3>
@@ -49,7 +54,24 @@ export function KeywordClustersSection({ clusters }: { clusters: KeywordCluster[
             </div>
             <div className="space-y-3">
                 {clusters.map((cluster, idx) => (
-                    <div key={idx} className="p-4 rounded-lg bg-secondary/30 border border-border/20">
+                    <div 
+                        key={idx} 
+                        className="p-4 rounded-lg border border-border/20 cursor-pointer transition-all"
+                        style={{
+                            background: 'rgba(0, 0, 0, 0.1)',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                            if (theme === 'light') {
+                                e.currentTarget.style.background = 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)';
+                            } else {
+                                e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)';
+                        }}
+                    >
                         <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
@@ -85,10 +107,14 @@ export function KeywordClustersSection({ clusters }: { clusters: KeywordCluster[
 }
 
 export function ContentGapsSection({ gaps }: { gaps: ContentGap[] }) {
+    const { theme } = useTheme();
     if (!gaps || gaps.length === 0) return null;
 
     return (
-        <div className="bg-card rounded-xl p-6 border border-border/30 mb-6">
+        <div className="rounded-xl p-6 border mb-6" style={{
+            background: 'transparent',
+            borderColor: '#FFC004'
+        }}>
             <div className="flex items-center gap-2 mb-4">
                 <FileText className="w-4 h-4 text-purple-500" />
                 <h3 className="text-sm font-semibold text-foreground">Content Gap Analysis</h3>
@@ -96,7 +122,24 @@ export function ContentGapsSection({ gaps }: { gaps: ContentGap[] }) {
             </div>
             <div className="space-y-3">
                 {gaps.map((gap, idx) => (
-                    <div key={idx} className="p-4 rounded-lg bg-secondary/30 border border-border/20">
+                    <div 
+                        key={idx} 
+                        className="p-4 rounded-lg border border-border/20 cursor-pointer transition-all"
+                        style={{
+                            background: 'rgba(0, 0, 0, 0.1)',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                            if (theme === 'light') {
+                                e.currentTarget.style.background = 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)';
+                            } else {
+                                e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)';
+                        }}
+                    >
                         <div className="mb-2">
                             <h4 className="text-sm font-medium text-foreground mb-1">{gap.topic}</h4>
                             <p className="text-[12px] text-muted-foreground mb-2">{gap.opportunity}</p>
@@ -124,10 +167,14 @@ export function ContentGapsSection({ gaps }: { gaps: ContentGap[] }) {
 }
 
 export function FeaturedSnippetSection({ opportunities }: { opportunities: FeaturedSnippetOpportunity[] }) {
+    const { theme } = useTheme();
     if (!opportunities || opportunities.length === 0) return null;
 
     return (
-        <div className="bg-card rounded-xl p-6 border border-border/30 mb-6">
+        <div className="rounded-xl p-6 border mb-6" style={{
+            background: 'transparent',
+            borderColor: '#FFC004'
+        }}>
             <div className="flex items-center gap-2 mb-4">
                 <Lightbulb className="w-4 h-4 text-amber-500" />
                 <h3 className="text-sm font-semibold text-foreground">Featured Snippet Opportunities</h3>
@@ -135,7 +182,24 @@ export function FeaturedSnippetSection({ opportunities }: { opportunities: Featu
             </div>
             <div className="space-y-3">
                 {opportunities.map((opp, idx) => (
-                    <div key={idx} className="p-4 rounded-lg bg-secondary/30 border border-border/20">
+                    <div 
+                        key={idx} 
+                        className="p-4 rounded-lg border border-border/20 cursor-pointer transition-all"
+                        style={{
+                            background: 'rgba(0, 0, 0, 0.1)',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                            if (theme === 'light') {
+                                e.currentTarget.style.background = 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)';
+                            } else {
+                                e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)';
+                        }}
+                    >
                         <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
@@ -161,7 +225,10 @@ export function LocalSEOSection({ localSeo }: { localSeo: LocalSEO | null }) {
     if (!localSeo || !localSeo.has_local_intent) return null;
 
     return (
-        <div className="bg-card rounded-xl p-6 border border-border/30 mb-6">
+        <div className="rounded-xl p-6 border mb-6" style={{
+            background: 'transparent',
+            borderColor: '#FFC004'
+        }}>
             <div className="flex items-center gap-2 mb-4">
                 <MapPin className="w-4 h-4 text-emerald-500" />
                 <h3 className="text-sm font-semibold text-foreground">Local SEO Insights</h3>
@@ -182,7 +249,10 @@ export function CompetitorStrategySection({ strategy }: { strategy: CompetitorSt
     if (!strategy) return null;
 
     return (
-        <div className="bg-card rounded-xl p-6 border border-border/30 mb-6">
+        <div className="rounded-xl p-6 border mb-6" style={{
+            background: 'transparent',
+            borderColor: '#FFC004'
+        }}>
             <div className="flex items-center gap-2 mb-4">
                 <TrendingUp className="w-4 h-4 text-blue-500" />
                 <h3 className="text-sm font-semibold text-foreground">Competitor Strategy Analysis</h3>
@@ -236,7 +306,10 @@ export function ContentQualitySection({ quality }: { quality: ContentQuality | n
     if (!quality) return null;
 
     return (
-        <div className="bg-card rounded-xl p-6 border border-border/30 mb-6">
+        <div className="rounded-xl p-6 border mb-6" style={{
+            background: 'transparent',
+            borderColor: '#FFC004'
+        }}>
             <div className="flex items-center gap-2 mb-4">
                 <BarChart3 className="w-4 h-4 text-purple-500" />
                 <h3 className="text-sm font-semibold text-foreground">Content Quality Score</h3>

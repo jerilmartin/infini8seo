@@ -4,20 +4,15 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { loginWithGoogle } from '@/utils/auth';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 function LoginContent() {
     const searchParams = useSearchParams();
+    const { theme } = useTheme();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        const savedTheme = localStorage.getItem('results-theme') as 'dark' | 'light' | null;
-        if (savedTheme) {
-            document.documentElement.setAttribute('data-theme', savedTheme);
-        } else {
-            document.documentElement.setAttribute('data-theme', 'dark');
-        }
-
         // Check for error in URL params
         const errorParam = searchParams.get('error');
         if (errorParam) {
@@ -47,17 +42,29 @@ function LoginContent() {
     };
 
     return (
-        <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
-            {/* Background gradient */}
-            <div
-                className="fixed inset-0 -z-10"
-                style={{
-                    background: 'radial-gradient(ellipse at center top, rgba(59, 130, 246, 0.08) 0%, transparent 50%)',
-                }}
-            />
+        <div 
+            className="min-h-screen flex flex-col items-center justify-center px-6 relative overflow-hidden"
+            style={{
+                background: theme === 'dark' 
+                    ? 'radial-gradient(ellipse 120% 80% at 50% 20%, #3d2f1a 0%, #2a2015 20%, #1a1510 40%, #0f0d0a 60%, #000000 100%)'
+                    : '#FFFEF9',
+                color: theme === 'dark' ? '#ffffff' : '#000000'
+            }}
+        >
+            {/* Light mode golden blur at bottom */}
+            {theme === 'light' && (
+                <div 
+                    className="absolute bottom-0 left-0 right-0 pointer-events-none z-0"
+                    style={{
+                        height: '50%',
+                        background: 'radial-gradient(ellipse 120% 100% at 50% 100%, rgba(255, 192, 4, 0.12) 0%, rgba(255, 192, 4, 0.06) 50%, transparent 100%)',
+                        filter: 'blur(60px)'
+                    }}
+                />
+            )}
 
             {/* Login Card */}
-            <div className="w-full max-w-md">
+            <div className="w-full max-w-md relative z-10">
                 {/* Brand */}
                 <div className="text-center mb-8">
                     <div className="flex items-center justify-center gap-2 mb-4">
@@ -195,7 +202,12 @@ function LoginContent() {
 
 function LoginSkeleton() {
     return (
-        <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
+        <div 
+            className="min-h-screen flex flex-col items-center justify-center px-6"
+            style={{
+                background: 'radial-gradient(ellipse 120% 80% at 50% 20%, #3d2f1a 0%, #2a2015 20%, #1a1510 40%, #0f0d0a 60%, #000000 100%)'
+            }}
+        >
             <div className="w-full max-w-md">
                 <div className="text-center mb-8">
                     <div className="flex items-center justify-center gap-2 mb-4">

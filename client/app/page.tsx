@@ -6,6 +6,7 @@ import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api } from '@/utils/api';
 import { UserMenu } from '@/components/UserMenu';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const CONTENT_TYPES = [
   { key: 'informational', label: 'Educational', desc: 'In-depth guides' },
@@ -72,6 +73,7 @@ const SHOWCASE_ITEMS = [
 
 function HomeContent() {
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
   const [niche, setNiche] = useState('');
   const [valueProposition, setValueProposition] = useState('');
   const [tone, setTone] = useState('professional');
@@ -80,15 +82,8 @@ function HomeContent() {
   const [allocations, setAllocations] = useState<Allocations>(DEFAULT_ALLOCATIONS);
   const [targetWordCount, setTargetWordCount] = useState(DEFAULT_WORD_COUNT);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   const totalPosts = CONTENT_TYPES.reduce((acc, t) => acc + allocations[t.key], 0);
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    document.documentElement.setAttribute('data-theme', newTheme);
-  };
 
   const handleAllocationChange = (key: ContentTypeKey, value: number) => {
     setAllocations((prev: Allocations) => ({ ...prev, [key]: Math.max(0, Math.min(MAX_PER_TYPE, value)) }));
@@ -125,16 +120,40 @@ function HomeContent() {
 
   return (
     <div 
-      className="min-h-screen font-sans"
+      className="min-h-screen font-sans relative overflow-hidden"
       style={{
-        background: theme === 'dark' 
-          ? 'radial-gradient(ellipse 120% 80% at 50% 20%, #3d2f1a 0%, #2a2015 20%, #1a1510 40%, #0f0d0a 60%, #000000 100%)' 
-          : 'radial-gradient(ellipse 130% 80% at 48% 28%, #c9b895 0%, #d8cdb8 20%, #e3dac8 40%, #ede7dc 60%, #f5f1ea 80%, #faf8f5 100%)',
+        background: theme === 'dark' ? '#000000' : '#FFFEF9',
         color: theme === 'dark' ? '#ffffff' : '#000000'
       }}
     >
+      {/* Dark mode golden blur centered behind the card */}
+      {theme === 'dark' && (
+        <div 
+          className="absolute pointer-events-none z-0"
+          style={{
+            top: '35%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '60%',
+            height: '55%',
+            background: 'radial-gradient(ellipse 80% 80% at 50% 50%, rgba(255, 192, 4, 0.35) 0%, rgba(255, 192, 4, 0.25) 30%, rgba(255, 192, 4, 0.1) 60%, transparent 80%)',
+            filter: 'blur(140px)'
+          }}
+        />
+      )}
+      {/* Light mode golden blur at bottom */}
+      {theme === 'light' && (
+        <div 
+          className="absolute bottom-0 left-0 right-0 pointer-events-none z-0"
+          style={{
+            height: '50%',
+            background: 'radial-gradient(ellipse 120% 100% at 50% 100%, rgba(255, 192, 4, 0.12) 0%, rgba(255, 192, 4, 0.06) 50%, transparent 100%)',
+            filter: 'blur(60px)'
+          }}
+        />
+      )}
       {/* Header */}
-      <header className="max-w-7xl mx-auto px-8 py-6 flex items-center justify-between">
+      <header className="max-w-7xl mx-auto px-8 py-6 flex items-center justify-between relative z-10">
         <div className="flex items-center gap-3">
           <span className="text-xl font-bold">
             infini8 <span className="text-[#C8A05F]">SEO</span>
@@ -146,21 +165,21 @@ function HomeContent() {
             <img 
               src={theme === 'dark' ? '/assets/button.svg' : '/assets/button1.svg'} 
               alt="Theme Toggle" 
-              className="w-auto h-8"
+              className="w-10 h-10"
             />
           </button>
         </div>
         <div className="flex items-center gap-8">
           <button 
-            className="text-sm font-medium transition-colors"
-            style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.9)' : '#000000' }}
+            className="text-sm font-medium transition-colors hover:opacity-80"
+            style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
           >
             Content Factory
           </button>
           <button 
             onClick={() => router.push('/seo-scan')}
-            className="text-sm font-medium transition-colors"
-            style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.9)' : '#000000' }}
+            className="text-sm font-medium transition-colors hover:opacity-80"
+            style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
           >
             Site Insights
           </button>
@@ -169,10 +188,10 @@ function HomeContent() {
       </header>
 
       {/* Hero Section */}
-      <section className="max-w-7xl mx-auto px-8 py-12 text-center">
+      <section className="max-w-7xl mx-auto px-8 py-12 text-center relative z-10">
         <p 
-          className="text-sm mb-3 tracking-wide font-medium"
-          style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : '#000000' }}
+          className="text-base mb-3 tracking-wide font-medium"
+          style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
         >
           AI-Powered SEO Content Engine
         </p>
@@ -192,27 +211,33 @@ function HomeContent() {
         </h1>
 
         {/* Content Form */}
-        <div className="max-w-[580px] mx-auto">
+        <div className="max-w-[580px] mx-auto relative">
+          {/* Blur effect behind card */}
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse 120% 120% at 50% 50%, rgba(171, 128, 0, 0.15) 0%, rgba(171, 128, 0, 0.08) 40%, transparent 70%)',
+              filter: 'blur(80px)',
+              transform: 'scale(1.2)',
+              zIndex: -1
+            }}
+          />
+          
           <form
             onSubmit={handleSubmit}
             className="relative rounded-[32px] p-8"
             style={{
-              background: theme === 'dark'
-                ? 'linear-gradient(135deg, rgba(42, 42, 42, 0.35) 0%, rgba(26, 26, 26, 0.55) 100%)'
-                : 'rgba(255, 255, 255, 0.6)',
+              background: 'transparent',
               border: theme === 'dark' 
                 ? '1px solid rgba(255, 192, 4, 0.15)'
                 : '2px solid rgba(184, 134, 11, 0.3)',
-              boxShadow: theme === 'dark' 
-                ? '0 8px 32px rgba(0, 0, 0, 0.4)'
-                : '0 8px 24px rgba(184, 134, 11, 0.15)',
-              backdropFilter: theme === 'light' ? 'blur(10px)' : 'none'
+              boxShadow: 'none'
             }}
           >
             {/* Your Niche */}
             <div className="mb-5 text-left">
               <label 
-                className="text-xs mb-2 block font-semibold"
+                className="text-sm mb-2 block font-semibold"
                 style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.7)' : '#000000' }}
               >
                 Your Niche
@@ -222,7 +247,7 @@ function HomeContent() {
                 value={niche}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNiche(e.target.value)}
                 placeholder="e.g., B2B SaaS, Personal Finance"
-                className={`w-full px-4 py-3.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC004]/50 placeholder:text-gray-400 ${
+                className={`w-full px-4 py-3.5 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC004]/50 placeholder:text-gray-400 ${
                   theme === 'dark' ? 'bg-white text-black' : 'bg-white text-black border border-gray-300'
                 }`}
                 disabled={loading}
@@ -232,7 +257,7 @@ function HomeContent() {
             {/* What You Offer */}
             <div className="mb-6 text-left">
               <label 
-                className="text-xs mb-2 block font-semibold"
+                className="text-sm mb-2 block font-semibold"
                 style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.7)' : '#000000' }}
               >
                 What You Offer
@@ -242,7 +267,7 @@ function HomeContent() {
                 value={valueProposition}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValueProposition(e.target.value)}
                 placeholder="A key service or unique angle"
-                className={`w-full px-4 py-3.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC004]/50 placeholder:text-gray-400 ${
+                className={`w-full px-4 py-3.5 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC004]/50 placeholder:text-gray-400 ${
                   theme === 'dark' ? 'bg-white text-black' : 'bg-white text-black border border-gray-300'
                 }`}
                 disabled={loading}
@@ -253,13 +278,13 @@ function HomeContent() {
             <div className="mb-6 text-left">
               <div className="flex items-center justify-between mb-4">
                 <label 
-                  className="text-[11px] font-bold tracking-widest"
+                  className="text-xs font-bold tracking-widest"
                   style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : '#000000' }}
                 >
                   CONTENT MIX
                 </label>
                 <span 
-                  className="text-sm font-semibold"
+                  className="text-base font-semibold"
                   style={{ color: theme === 'dark' ? '#FFC004' : '#B8860B' }}
                 >
                   {totalPosts} posts
@@ -273,7 +298,7 @@ function HomeContent() {
                     <div key={type.key} className="flex items-center justify-between py-1">
                       <div className="flex items-center gap-2.5">
                         <span 
-                          className="text-sm font-semibold"
+                          className="text-base font-semibold"
                           style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
                         >
                           {type.label}
@@ -281,8 +306,9 @@ function HomeContent() {
                         <span 
                           className="px-2.5 py-0.5 rounded-md text-xs font-semibold"
                           style={{
-                            color: '#1E90FF',
-                            backgroundColor: 'rgba(30, 144, 255, 0.15)'
+                            color: theme === 'dark' ? '#ffffff' : '#000000',
+                            backgroundColor: 'transparent',
+                            border: `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'}`
                           }}
                         >
                           {type.desc}
@@ -408,7 +434,7 @@ function HomeContent() {
       </section>
 
       {/* Showcase Section */}
-      <section className="max-w-7xl mx-auto px-8 py-16">
+      <section className="max-w-7xl mx-auto px-8 py-16 relative z-10">
         <div className="mb-10">
           <h2 
             className="text-4xl font-bold mb-3 leading-tight"
@@ -456,12 +482,12 @@ function HomeContent() {
                       className="rounded-3xl p-10 flex gap-10 relative"
                       style={{
                         background: theme === 'dark'
-                          ? 'linear-gradient(135deg, rgba(50, 50, 50, 0.4) 0%, rgba(30, 30, 30, 0.6) 100%)'
-                          : 'rgba(255, 255, 255, 0.7)',
+                          ? 'rgba(30, 30, 30, 0.3)'
+                          : 'rgba(255, 255, 255, 0.3)',
                         border: theme === 'dark' 
                           ? '1px solid rgba(255, 255, 255, 0.1)'
-                          : '2px solid rgba(184, 134, 11, 0.2)',
-                        backdropFilter: theme === 'light' ? 'blur(10px)' : 'none'
+                          : '1px solid rgba(184, 134, 11, 0.15)',
+                        backdropFilter: 'blur(10px)'
                       }}
                     >
                       {/* Sparkle decorations */}
