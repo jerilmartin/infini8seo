@@ -115,8 +115,11 @@ function SeoScanContent() {
             <form onSubmit={handleSubmit}>
               {/* LABEL */}
               <label 
-                className="block text-xs tracking-[0.08em] mb-3 font-medium uppercase"
-                style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#666666' }}
+                className="block text-xs tracking-[0.08em] mb-3 uppercase"
+                style={{ 
+                  color: '#000000',
+                  fontWeight: 600
+                }}
               >
                 WEBSITE URL :
               </label>

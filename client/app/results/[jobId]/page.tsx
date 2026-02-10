@@ -218,25 +218,42 @@ export default function ResultsPage() {
 
   return (
     <div className="h-screen text-foreground flex flex-col overflow-hidden relative">
-      {/* Background - Black in dark mode, white in light mode */}
+      {/* Background - Black in dark mode, light cream in light mode */}
       <div 
         className="absolute inset-0 -z-10"
         style={{
-          background: theme === 'dark' ? '#000000' : '#FFFFFF'
+          background: theme === 'dark' ? '#000000' : '#FFFEF9'
         }}
       />
       
-      {/* Golden blur effect - positioned from middle to bottom in dark mode, diagonal in light mode */}
-      <div 
-        className="absolute inset-0 pointer-events-none -z-10"
-        style={{
-          background: theme === 'dark' 
-            ? 'radial-gradient(ellipse 80% 60% at 50% 75%, rgba(255, 192, 4, 0.2) 0%, rgba(255, 192, 4, 0.1) 40%, transparent 70%)'
-            : 'radial-gradient(ellipse 70% 50% at 20% 60%, rgba(171, 128, 0, 0.25) 0%, rgba(171, 128, 0, 0.15) 40%, transparent 70%)',
-          filter: 'blur(120px)',
-          opacity: 1
-        }}
-      />
+      {/* Dark mode golden blur - diagonal from top-left to bottom-right */}
+      {theme === 'dark' && (
+        <div 
+          className="absolute pointer-events-none -z-10"
+          style={{
+            top: '0',
+            left: '0',
+            right: '0',
+            bottom: '0',
+            background: 'linear-gradient(to bottom right, transparent 0%, transparent 20%, rgba(255, 192, 4, 0.15) 35%, rgba(255, 192, 4, 0.25) 50%, rgba(255, 192, 4, 0.15) 65%, transparent 80%, transparent 100%)',
+            filter: 'blur(500px)'
+          }}
+        />
+      )}
+      {/* Light mode golden blur - diagonal from top-left to bottom-right */}
+      {theme === 'light' && (
+        <div 
+          className="absolute pointer-events-none -z-10"
+          style={{
+            top: '0',
+            left: '0',
+            right: '0',
+            bottom: '0',
+            background: 'linear-gradient(to bottom right, transparent 0%, transparent 25%, rgba(171, 128, 0, 0.08) 40%, rgba(171, 128, 0, 0.12) 50%, rgba(171, 128, 0, 0.08) 60%, transparent 75%, transparent 100%)',
+            filter: 'blur(350px)'
+          }}
+        />
+      )}
       
       {/* Top Header Bar */}
       <header className="shrink-0 bg-transparent">
@@ -353,7 +370,7 @@ export default function ResultsPage() {
                   : 'hover:bg-white/5 border-l-2 border-l-transparent'
                   }`}
                 style={selectedPost === post.scenarioId && theme === 'light' ? {
-                  background: 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)'
+                  background: 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)'
                 } : selectedPost === post.scenarioId ? {
                   background: 'rgba(171, 128, 0, 0.2)'
                 } : undefined}

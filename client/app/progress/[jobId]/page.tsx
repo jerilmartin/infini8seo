@@ -120,25 +120,42 @@ export default function ProgressPage() {
 
   return (
     <div className="h-screen overflow-hidden flex flex-col relative">
-      {/* Background - Black in dark mode, white in light mode */}
+      {/* Background - Black in dark mode, light cream in light mode */}
       <div 
         className="absolute inset-0"
         style={{
-          background: theme === 'dark' ? '#000000' : '#FFFFFF'
+          background: theme === 'dark' ? '#000000' : '#FFFEF9'
         }}
       />
       
-      {/* Golden blur effect - positioned from middle to bottom in dark mode */}
-      <div 
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: theme === 'dark' 
-            ? 'radial-gradient(ellipse 80% 60% at 50% 75%, rgba(255, 192, 4, 0.2) 0%, rgba(255, 192, 4, 0.1) 40%, transparent 70%)'
-            : 'radial-gradient(ellipse 80% 80% at 50% 50%, rgba(171, 128, 0, 0.15) 0%, transparent 70%)',
-          filter: 'blur(100px)',
-          opacity: 1
-        }}
-      />
+      {/* Dark mode golden blur - diagonal from top-left to bottom-right */}
+      {theme === 'dark' && (
+        <div 
+          className="absolute pointer-events-none"
+          style={{
+            top: '0',
+            left: '0',
+            right: '0',
+            bottom: '0',
+            background: 'linear-gradient(to bottom right, transparent 0%, transparent 20%, rgba(255, 192, 4, 0.15) 35%, rgba(255, 192, 4, 0.25) 50%, rgba(255, 192, 4, 0.15) 65%, transparent 80%, transparent 100%)',
+            filter: 'blur(500px)'
+          }}
+        />
+      )}
+      {/* Light mode golden blur - diagonal from top-left to bottom-right */}
+      {theme === 'light' && (
+        <div 
+          className="absolute pointer-events-none"
+          style={{
+            top: '0',
+            left: '0',
+            right: '0',
+            bottom: '0',
+            background: 'linear-gradient(to bottom right, transparent 0%, transparent 25%, rgba(171, 128, 0, 0.08) 40%, rgba(171, 128, 0, 0.12) 50%, rgba(171, 128, 0, 0.08) 60%, transparent 75%, transparent 100%)',
+            filter: 'blur(350px)'
+          }}
+        />
+      )}
 
       <div className="relative z-10">
         <Navbar />
@@ -195,7 +212,7 @@ export default function ProgressPage() {
                       className="h-full rounded-full transition-all duration-700 ease-out"
                       style={{ 
                         width: `${progress}%`,
-                        background: phase === 'complete' ? '#10B981' : 'linear-gradient(90deg, #A88000 0%, #FFC004 100%)'
+                        background: 'linear-gradient(90deg, #A88000 0%, #FFC004 100%)'
                       }}
                     />
                   </div>
@@ -256,11 +273,12 @@ export default function ProgressPage() {
           {/* Right Column - Live Titles */}
           <aside className="animate-fade-in h-full min-h-0" style={{ animationDelay: '100ms' }}>
             <div 
-              className="border p-6 h-full flex flex-col overflow-hidden"
+              className="border p-6 h-full flex flex-col"
               style={{
-                background: 'rgba(176, 176, 176, 0.1)',
+                background: 'transparent',
                 borderColor: 'rgba(176, 176, 176, 1)',
-                borderRadius: '50px'
+                borderRadius: '50px',
+                overflow: 'hidden'
               }}
             >
               <div className="flex items-center justify-between mb-4 shrink-0">
@@ -271,7 +289,12 @@ export default function ProgressPage() {
               </div>
 
               {/* Live Titles List */}
-              <div className="space-y-2 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-2 flex-1" style={{ overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                <style jsx>{`
+                  div::-webkit-scrollbar {
+                    display: none;
+                  }
+                `}</style>
                 {titles.length === 0 && phase !== 'complete' ? (
                   <div className="flex flex-col items-center justify-center h-full text-center opacity-60">
                     {phase === 'research' ? (

@@ -45,20 +45,35 @@ function LoginContent() {
         <div 
             className="min-h-screen flex flex-col items-center justify-center px-6 relative overflow-hidden"
             style={{
-                background: theme === 'dark' 
-                    ? 'radial-gradient(ellipse 120% 80% at 50% 20%, #3d2f1a 0%, #2a2015 20%, #1a1510 40%, #0f0d0a 60%, #000000 100%)'
-                    : '#FFFEF9',
+                background: theme === 'dark' ? '#000000' : '#FFFEF9',
                 color: theme === 'dark' ? '#ffffff' : '#000000'
             }}
         >
-            {/* Light mode golden blur at bottom */}
+            {/* Dark mode golden blur - diagonal from top-left to bottom-right */}
+            {theme === 'dark' && (
+                <div 
+                    className="absolute pointer-events-none z-0"
+                    style={{
+                        top: '0',
+                        left: '0',
+                        right: '0',
+                        bottom: '0',
+                        background: 'linear-gradient(to bottom right, transparent 0%, transparent 20%, rgba(255, 192, 4, 0.15) 35%, rgba(255, 192, 4, 0.25) 50%, rgba(255, 192, 4, 0.15) 65%, transparent 80%, transparent 100%)',
+                        filter: 'blur(500px)'
+                    }}
+                />
+            )}
+            {/* Light mode golden blur - diagonal from top-left to bottom-right */}
             {theme === 'light' && (
                 <div 
-                    className="absolute bottom-0 left-0 right-0 pointer-events-none z-0"
+                    className="absolute pointer-events-none z-0"
                     style={{
-                        height: '50%',
-                        background: 'radial-gradient(ellipse 120% 100% at 50% 100%, rgba(255, 192, 4, 0.12) 0%, rgba(255, 192, 4, 0.06) 50%, transparent 100%)',
-                        filter: 'blur(60px)'
+                        top: '0',
+                        left: '0',
+                        right: '0',
+                        bottom: '0',
+                        background: 'linear-gradient(to bottom right, transparent 0%, transparent 25%, rgba(171, 128, 0, 0.08) 40%, rgba(171, 128, 0, 0.12) 50%, rgba(171, 128, 0, 0.08) 60%, transparent 75%, transparent 100%)',
+                        filter: 'blur(350px)'
                     }}
                 />
             )}

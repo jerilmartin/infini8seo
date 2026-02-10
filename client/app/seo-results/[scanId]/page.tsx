@@ -750,7 +750,7 @@ export default function SeoResultsPage() {
                             </div>
 
                             {/* Visibility Percentage - Premium Circular Metric */}
-                            <div className="hidden md:flex flex-col items-center justify-center p-6 bg-primary/5 rounded-2xl border border-primary/10 group relative">
+                            <div className="hidden md:flex flex-col items-center justify-center p-6 group relative">
                                 <div className="relative w-24 h-24 mb-2">
                                     <svg className="w-full h-full transform -rotate-90">
                                         <circle

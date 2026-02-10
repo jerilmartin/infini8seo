@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api } from '@/utils/api';
@@ -75,13 +75,43 @@ function HomeContent() {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [niche, setNiche] = useState('');
-  const [valueProposition, setValueProposition] = useState('');
+  const [valuePropositions, setValuePropositions] = useState<string[]>(['']);
   const [tone, setTone] = useState('professional');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [allocations, setAllocations] = useState<Allocations>(DEFAULT_ALLOCATIONS);
   const [targetWordCount, setTargetWordCount] = useState(DEFAULT_WORD_COUNT);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [credits, setCredits] = useState<number | null>(null);
+
+  // Fetch user credits
+  useEffect(() => {
+    const fetchCredits = async () => {
+      try {
+        const response = await api.get('/api/user/credits');
+        setCredits(response.data.credits);
+      } catch (error) {
+        console.error('Error fetching credits:', error);
+      }
+    };
+    fetchCredits();
+  }, []);
+
+  const addValueProposition = () => {
+    setValuePropositions([...valuePropositions, '']);
+  };
+
+  const updateValueProposition = (index: number, value: string) => {
+    const updated = [...valuePropositions];
+    updated[index] = value;
+    setValuePropositions(updated);
+  };
+
+  const removeValueProposition = (index: number) => {
+    if (valuePropositions.length > 1) {
+      setValuePropositions(valuePropositions.filter((_, i) => i !== index));
+    }
+  };
 
   const totalPosts = CONTENT_TYPES.reduce((acc, t) => acc + allocations[t.key], 0);
 
@@ -94,14 +124,17 @@ function HomeContent() {
     setError('');
 
     if (!niche.trim()) return setError('Enter a niche to continue');
-    if (!valueProposition.trim()) return setError('Enter what you offer');
+    
+    const filledPropositions = valuePropositions.filter(vp => vp.trim());
+    if (filledPropositions.length === 0) return setError('Enter at least one value proposition');
+    
     if (totalPosts === 0) return setError('Select at least one post type');
 
     setLoading(true);
     try {
       const response = await api.post('/api/generate-content', {
         niche: niche.trim(),
-        valuePropositions: [valueProposition.trim()],
+        valuePropositions: filledPropositions.map(vp => vp.trim()),
         tone,
         totalBlogs: totalPosts,
         blogTypeAllocations: allocations,
@@ -126,29 +159,31 @@ function HomeContent() {
         color: theme === 'dark' ? '#ffffff' : '#000000'
       }}
     >
-      {/* Dark mode golden blur centered behind the card */}
+      {/* Dark mode golden blur - diagonal from top-left to bottom-right */}
       {theme === 'dark' && (
         <div 
           className="absolute pointer-events-none z-0"
           style={{
-            top: '35%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '60%',
-            height: '55%',
-            background: 'radial-gradient(ellipse 80% 80% at 50% 50%, rgba(255, 192, 4, 0.35) 0%, rgba(255, 192, 4, 0.25) 30%, rgba(255, 192, 4, 0.1) 60%, transparent 80%)',
-            filter: 'blur(140px)'
+            top: '0',
+            left: '0',
+            right: '0',
+            bottom: '0',
+            background: 'linear-gradient(to bottom right, transparent 0%, transparent 20%, rgba(255, 192, 4, 0.15) 35%, rgba(255, 192, 4, 0.25) 50%, rgba(255, 192, 4, 0.15) 65%, transparent 80%, transparent 100%)',
+            filter: 'blur(500px)'
           }}
         />
       )}
-      {/* Light mode golden blur at bottom */}
+      {/* Light mode golden blur - diagonal from top-left to bottom-right */}
       {theme === 'light' && (
         <div 
-          className="absolute bottom-0 left-0 right-0 pointer-events-none z-0"
+          className="absolute pointer-events-none z-0"
           style={{
-            height: '50%',
-            background: 'radial-gradient(ellipse 120% 100% at 50% 100%, rgba(255, 192, 4, 0.12) 0%, rgba(255, 192, 4, 0.06) 50%, transparent 100%)',
-            filter: 'blur(60px)'
+            top: '0',
+            left: '0',
+            right: '0',
+            bottom: '0',
+            background: 'linear-gradient(to bottom right, transparent 0%, transparent 25%, rgba(171, 128, 0, 0.08) 40%, rgba(171, 128, 0, 0.12) 50%, rgba(171, 128, 0, 0.08) 60%, transparent 75%, transparent 100%)',
+            filter: 'blur(350px)'
           }}
         />
       )}
@@ -199,9 +234,11 @@ function HomeContent() {
           key={theme}
           className="text-[88px] font-bold mb-12 leading-[0.9] tracking-tight"
           style={{
+            fontFamily: '"Futura PT Heavy", "Futura PT", Futura, sans-serif',
+            fontWeight: 900,
             background: theme === 'dark' 
-              ? 'linear-gradient(135deg, #FFC004 0%, #FFD04A 50%, #FFA500 100%)' 
-              : 'linear-gradient(135deg, #B8860B 0%, #DAA520 50%, #B8860B 100%)',
+              ? 'linear-gradient(90deg, rgb(70, 53, 2) 0%, rgb(118, 89, 3) 20%, rgb(248, 187, 5) 50%, rgb(118, 89, 3) 80%, rgb(70, 53, 2) 100%)' 
+              : 'linear-gradient(90deg, rgb(70, 53, 2) 0%, rgb(118, 89, 3) 20%, rgb(248, 187, 5) 50%, rgb(118, 89, 3) 80%, rgb(70, 53, 2) 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text'
@@ -212,17 +249,6 @@ function HomeContent() {
 
         {/* Content Form */}
         <div className="max-w-[580px] mx-auto relative">
-          {/* Blur effect behind card */}
-          <div 
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: 'radial-gradient(ellipse 120% 120% at 50% 50%, rgba(171, 128, 0, 0.15) 0%, rgba(171, 128, 0, 0.08) 40%, transparent 70%)',
-              filter: 'blur(80px)',
-              transform: 'scale(1.2)',
-              zIndex: -1
-            }}
-          />
-          
           <form
             onSubmit={handleSubmit}
             className="relative rounded-[32px] p-8"
@@ -238,7 +264,7 @@ function HomeContent() {
             <div className="mb-5 text-left">
               <label 
                 className="text-sm mb-2 block font-semibold"
-                style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.7)' : '#000000' }}
+                style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}
               >
                 Your Niche
               </label>
@@ -258,28 +284,63 @@ function HomeContent() {
             <div className="mb-6 text-left">
               <label 
                 className="text-sm mb-2 block font-semibold"
-                style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.7)' : '#000000' }}
+                style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}
               >
                 What You Offer
               </label>
-              <input
-                type="text"
-                value={valueProposition}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValueProposition(e.target.value)}
-                placeholder="A key service or unique angle"
-                className={`w-full px-4 py-3.5 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC004]/50 placeholder:text-gray-400 ${
-                  theme === 'dark' ? 'bg-white text-black' : 'bg-white text-black border border-gray-300'
-                }`}
-                disabled={loading}
-              />
+              <div className="space-y-3">
+                {valuePropositions.map((vp, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={vp}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateValueProposition(index, e.target.value)}
+                      placeholder="A key service or unique angle"
+                      className={`flex-1 px-4 py-3.5 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC004]/50 placeholder:text-gray-400 ${
+                        theme === 'dark' ? 'bg-white text-black' : 'bg-white text-black border border-gray-300'
+                      }`}
+                      disabled={loading}
+                    />
+                    {valuePropositions.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeValueProposition(index)}
+                        disabled={loading}
+                        className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors disabled:opacity-50"
+                        style={{
+                          background: theme === 'dark' ? 'rgba(255, 192, 4, 0.1)' : 'rgba(184, 134, 11, 0.1)',
+                          color: theme === 'dark' ? '#FFC004' : '#B8860B'
+                        }}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={addValueProposition}
+                  disabled={loading}
+                  className="text-sm font-medium transition-opacity hover:opacity-80 disabled:opacity-50"
+                  style={{ 
+                    color: theme === 'dark' ? '#FFC004' : '#B8860B',
+                    fontFamily: 'Montserrat, sans-serif'
+                  }}
+                >
+                  + Add another
+                </button>
+              </div>
             </div>
 
             {/* Content Mix */}
             <div className="mb-6 text-left">
               <div className="flex items-center justify-between mb-4">
                 <label 
-                  className="text-xs font-bold tracking-widest"
-                  style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : '#000000' }}
+                  className="text-sm font-medium tracking-widest"
+                  style={{ 
+                    color: theme === 'dark' ? '#ffffff' : '#000000',
+                    fontFamily: 'Montserrat, sans-serif'
+                  }}
                 >
                   CONTENT MIX
                 </label>
@@ -298,17 +359,22 @@ function HomeContent() {
                     <div key={type.key} className="flex items-center justify-between py-1">
                       <div className="flex items-center gap-2.5">
                         <span 
-                          className="text-base font-semibold"
-                          style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
+                          className="text-base font-medium"
+                          style={{ 
+                            color: theme === 'dark' ? '#FFFFFF' : '#000000',
+                            fontFamily: 'Montserrat, sans-serif'
+                          }}
                         >
                           {type.label}
                         </span>
                         <span 
-                          className="px-2.5 py-0.5 rounded-md text-xs font-semibold"
+                          className="px-2.5 py-0.5 text-xs font-medium"
                           style={{
-                            color: theme === 'dark' ? '#ffffff' : '#000000',
-                            backgroundColor: 'transparent',
-                            border: `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'}`
+                            color: theme === 'dark' ? 'rgb(198, 184, 183)' : '#808080',
+                            backgroundColor: theme === 'dark' ? 'rgb(75, 68, 48)' : 'rgb(230, 228, 220)',
+                            border: 'none',
+                            fontFamily: 'Montserrat, sans-serif',
+                            borderRadius: '24px'
                           }}
                         >
                           {type.desc}
@@ -345,24 +411,38 @@ function HomeContent() {
             <div className="grid grid-cols-2 gap-4 mb-7 text-left">
               <div>
                 <label 
-                  className="text-[11px] mb-2 block font-bold tracking-widest"
-                  style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : '#000000' }}
+                  className="text-sm mb-2 block font-medium tracking-widest"
+                  style={{ 
+                    color: theme === 'dark' ? '#ffffff' : '#000000',
+                    fontFamily: 'Montserrat, sans-serif'
+                  }}
                 >
                   TONE
                 </label>
                 <select
                   value={tone}
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setTone(e.target.value)}
-                  className="w-full bg-white text-black px-4 py-3.5 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#FFC004]/50 appearance-none cursor-pointer"
+                  className="w-full px-4 py-3.5 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC004]/50 appearance-none cursor-pointer"
                   style={{
+                    background: theme === 'dark' ? '#FFFFFF' : '#FFFFFF',
+                    color: '#000000',
                     backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23000' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right 12px center',
+                    fontFamily: 'Montserrat, sans-serif',
+                    border: theme === 'dark' ? 'none' : '1px solid #d1d5db'
                   }}
                   disabled={loading}
                 >
                   {TONES.map((t) => (
-                    <option key={t.value} value={t.value}>
+                    <option 
+                      key={t.value} 
+                      value={t.value}
+                      style={{
+                        background: '#FFFFFF',
+                        color: '#000000'
+                      }}
+                    >
                       {t.label}
                     </option>
                   ))}
@@ -370,8 +450,11 @@ function HomeContent() {
               </div>
               <div>
                 <label 
-                  className="text-[11px] mb-2 block font-bold tracking-widest"
-                  style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : '#000000' }}
+                  className="text-sm mb-2 block font-medium tracking-widest"
+                  style={{ 
+                    color: theme === 'dark' ? '#ffffff' : '#000000',
+                    fontFamily: 'Montserrat, sans-serif'
+                  }}
                 >
                   LENGTH
                 </label>
@@ -383,21 +466,18 @@ function HomeContent() {
                     step={100}
                     value={targetWordCount}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTargetWordCount(Number(e.target.value))}
-                    className="flex-1 h-1 bg-white/20 rounded-full appearance-none cursor-pointer slider-thumb"
+                    className="flex-1 h-1 bg-white rounded-full appearance-none cursor-pointer slider-thumb"
                     disabled={loading}
                     style={{
-                      background: `linear-gradient(to right, #FFC004 0%, #FFC004 ${
-                        ((targetWordCount - MIN_WORD_COUNT) / (MAX_WORD_COUNT - MIN_WORD_COUNT)) *
-                        100
-                      }%, rgba(255,255,255,0.2) ${
-                        ((targetWordCount - MIN_WORD_COUNT) / (MAX_WORD_COUNT - MIN_WORD_COUNT)) *
-                        100
-                      }%, rgba(255,255,255,0.2) 100%)`,
+                      background: '#FFFFFF'
                     }}
                   />
                   <span 
-                    className="text-sm font-bold w-14 text-right tabular-nums"
-                    style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
+                    className="text-sm font-medium w-14 text-right tabular-nums"
+                    style={{ 
+                      color: theme === 'dark' ? '#ffffff' : '#000000',
+                      fontFamily: 'Montserrat, sans-serif'
+                    }}
                   >
                     {targetWordCount}w
                   </span>
@@ -415,9 +495,10 @@ function HomeContent() {
             <button
               type="submit"
               disabled={loading || totalPosts === 0}
-              className="w-full py-4 rounded-xl font-bold text-black text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+              className="w-full py-4 rounded-xl font-bold text-white text-base disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
               style={{
-                background: 'linear-gradient(135deg, #FFC004 0%, #FFD04A 50%, #FFA500 100%)',
+                background: '#AB8000',
+                fontFamily: 'Montserrat, sans-serif'
               }}
             >
               {loading ? (
@@ -440,13 +521,13 @@ function HomeContent() {
             className="text-4xl font-bold mb-3 leading-tight"
             style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
           >
-            Built for <span style={{ color: theme === 'dark' ? '#FFC004' : '#B8860B' }}>Search Visibility</span> Across
+            Built for <span style={{ color: 'rgb(171, 128, 0)' }}>Search Visibility</span> Across
             <br />
             AI and Traditional Search
           </h2>
           <p 
             className="text-base font-medium"
-            style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : '#000000' }}
+            style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}
           >
             Create AI-optimized SEO-ready content that
             <br />
@@ -481,13 +562,8 @@ function HomeContent() {
                     <div
                       className="rounded-3xl p-10 flex gap-10 relative"
                       style={{
-                        background: theme === 'dark'
-                          ? 'rgba(30, 30, 30, 0.3)'
-                          : 'rgba(255, 255, 255, 0.3)',
-                        border: theme === 'dark' 
-                          ? '1px solid rgba(255, 255, 255, 0.1)'
-                          : '1px solid rgba(184, 134, 11, 0.15)',
-                        backdropFilter: 'blur(10px)'
+                        background: theme === 'dark' ? 'rgb(49, 49, 46)' : 'rgb(200, 200, 200)',
+                        border: 'none'
                       }}
                     >
                       {/* Sparkle decorations */}
@@ -508,13 +584,13 @@ function HomeContent() {
                       <div className="flex-1 flex flex-col justify-center">
                         <h3 
                           className="text-4xl font-bold mb-6 leading-tight"
-                          style={{ color: theme === 'dark' ? '#FFC004' : '#B8860B' }}
+                          style={{ color: 'rgb(171, 128, 0)' }}
                         >
                           {item.title}
                         </h3>
                         <p 
                           className="text-lg mb-6 leading-relaxed"
-                          style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.7)' : '#000000' }}
+                          style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}
                         >
                           {item.description}
                         </p>
@@ -534,28 +610,51 @@ function HomeContent() {
                           </span>
                         </div>
                         <button
-                          className="px-8 py-3.5 rounded-xl font-bold text-black text-sm transition-all shadow-lg hover:shadow-xl w-fit"
+                          className="px-8 py-3.5 rounded-xl font-bold text-white text-sm transition-all shadow-lg hover:shadow-xl w-fit"
                           style={{
-                            background:
-                              'linear-gradient(135deg, #FFC004 0%, #FFD04A 50%, #FFA500 100%)',
+                            background: 'linear-gradient(to right, rgb(70, 53, 2) 0%, rgb(118, 89, 3) 30%, rgb(248, 187, 5) 100%)',
                           }}
                         >
                           Book a demo
                         </button>
                       </div>
-                      <div
-                        className="w-[380px] h-[300px] rounded-2xl flex items-center justify-center relative overflow-hidden flex-shrink-0"
-                        style={{
-                          background: 'linear-gradient(135deg, #FFC004 0%, #FFD04A 100%)',
-                          padding: '3px',
-                        }}
-                      >
-                        <div className="w-full h-full bg-white rounded-2xl overflow-hidden">
-                          <img
-                            src={item.image}
-                            alt={item.title}
-                            className="w-full h-full object-cover"
-                          />
+                      <div className="relative w-[320px] h-[240px] flex-shrink-0">
+                        {/* Golden glow behind image - positioned absolutely to extend beyond container */}
+                        <div 
+                          className="absolute"
+                          style={{
+                            width: '360px',
+                            height: '280px',
+                            background: 'radial-gradient(ellipse, rgba(255, 192, 4, 0.7) 0%, rgba(255, 192, 4, 0.5) 25%, rgba(255, 192, 4, 0.3) 45%, transparent 70%)',
+                            filter: 'blur(50px)',
+                            zIndex: 0,
+                            left: '50%',
+                            top: '50%',
+                            transform: 'translate(-50%, -50%)'
+                          }}
+                        />
+                        <div
+                          className="absolute inset-0 rounded-[20px] overflow-hidden"
+                          style={{
+                            background: '#FFC004',
+                            zIndex: 1
+                          }}
+                        >
+                          <div 
+                            className="absolute bg-white rounded-[16px] overflow-hidden"
+                            style={{
+                              top: '4px',
+                              left: '4px',
+                              right: '4px',
+                              bottom: '4px'
+                            }}
+                          >
+                            <img
+                              src={item.image}
+                              alt={item.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>

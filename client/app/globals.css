@@ -768,28 +768,29 @@ tom Range Slider Styling */
   transform: scale(1.1);
 }
 
-/* Custom Range Slider Styling - Exact Figma Colors */
+/* Custom Range Slider Styling - White thumb, smaller size, centered */
 .slider-thumb::-webkit-slider-thumb {
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: #FFC004;
+  background: #FFFFFF !important;
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   transition: all 0.2s ease;
+  margin-top: -3px;
 }
 
 .slider-thumb::-webkit-slider-thumb:hover {
-  background: #FFD04A;
+  background: #FFFFFF !important;
   transform: scale(1.1);
 }
 
 .slider-thumb::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: #FFC004;
+  background: #FFFFFF !important;
   cursor: pointer;
   border: none;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
@@ -797,6 +798,19 @@ tom Range Slider Styling */
 }
 
 .slider-thumb::-moz-range-thumb:hover {
-  background: #FFD04A;
+  background: #FFFFFF !important;
   transform: scale(1.1);
+}
+
+/* Override any default range slider track styling */
+.slider-thumb::-webkit-slider-runnable-track {
+  background: #FFFFFF;
+  height: 4px;
+  border-radius: 9999px;
+}
+
+.slider-thumb::-moz-range-track {
+  background: #FFFFFF;
+  height: 4px;
+  border-radius: 9999px;
 }
