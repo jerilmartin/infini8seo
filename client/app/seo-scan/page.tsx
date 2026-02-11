@@ -188,7 +188,6 @@ function SeoScanContent() {
               }}
             >
               <div 
-                style={{ fontSize: '10px', letterSpacing: '0.15em' }} 
                 className="mb-3 uppercase font-medium"
                 style={{ 
                   fontSize: '10px', 
@@ -231,7 +230,6 @@ function SeoScanContent() {
                 })}
               </div>
               <div 
-                style={{ fontSize: '13px', lineHeight: '1.6' }} 
                 className="space-y-2"
                 style={{
                   fontSize: '13px',
@@ -349,7 +347,7 @@ function SeoScanContent() {
           {/* Card 1 - Dark with smaller gold moon showing bottom-right portion only */}
           <div 
             className="h-[580px] rounded-[32px] p-8 relative overflow-hidden cursor-pointer transition-transform hover:scale-[1.02]"
-            style={{ background: theme === 'dark' ? '#1A1A18' : 'rgba(194, 194, 194, 0.99)' }}
+            style={{ background: theme === 'dark' ? 'rgb(46, 39, 23)' : 'rgb(230, 228, 224)' }}
           >
             {/* Smaller moon - showing more of bottom-right portion */}
             <div 
@@ -468,7 +466,7 @@ function SeoScanContent() {
           {/* Card 4 - Dark teal/blue with bulb design at top-left corner */}
           <div 
             className="h-[580px] rounded-[32px] p-8 relative overflow-hidden cursor-pointer transition-transform hover:scale-[1.02]"
-            style={{ background: theme === 'dark' ? '#1A2730' : 'rgba(176, 176, 176, 0.65)' }}
+            style={{ background: theme === 'dark' ? 'rgb(46, 39, 23)' : 'rgb(230, 228, 224)' }}
           >
             {/* Bulb SVG from file - scaled and positioned to touch corner */}
             <div className="absolute" style={{ top: '-5px', left: '-5px', transform: 'scale(1.7)', transformOrigin: 'top left' }}>
