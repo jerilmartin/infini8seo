@@ -10,7 +10,7 @@ export default function Navbar() {
     const { theme, toggleTheme } = useTheme();
 
     const isContentFactory = pathname === '/' || pathname?.startsWith('/progress') || pathname?.startsWith('/results');
-    const isSeoScanner = pathname?.startsWith('/seo-results');
+    const isSeoScanner = pathname?.startsWith('/seo-scan') || pathname?.startsWith('/seo-results');
 
     return (
         <nav className="bg-transparent transition-colors duration-300">
@@ -18,10 +18,14 @@ export default function Navbar() {
                 <div className="flex items-center justify-between">
                     {/* Logo */}
                     <div className="flex items-center gap-3">
-                        <span className="font-semibold" style={{ fontSize: '24px', lineHeight: '1' }}>
+                        <button
+                            onClick={() => router.push('/')}
+                            className="font-semibold transition-opacity hover:opacity-80"
+                            style={{ fontSize: '24px', lineHeight: '1' }}
+                        >
                             <span style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>infini8</span>
                             <span className="text-[#FFC004]"> SEO</span>
-                        </span>
+                        </button>
                         
                         {/* Theme Toggle Button */}
                         <button
@@ -60,7 +64,7 @@ export default function Navbar() {
                             Content Factory
                         </button>
                         <button
-                            onClick={() => router.push('/')}
+                            onClick={() => router.push('/seo-scan')}
                             className={`font-semibold transition-colors hover:opacity-80 ${
                                 isSeoScanner
                                     ? ''

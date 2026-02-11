@@ -59,7 +59,7 @@ export function CompetitorTrackingSection({ competitors }: { competitors: Compet
                             }}
                             onMouseEnter={(e) => {
                                 if (theme === 'light') {
-                                    e.currentTarget.style.background = 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)';
+                                    e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
                                 } else {
                                     e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
                                 }
@@ -101,7 +101,7 @@ export function CompetitorTrackingSection({ competitors }: { competitors: Compet
                                         </div>
                                     )}
                                     {comp.serp_features_owned.paa && comp.serp_features_owned.paa > 0 && (
-                                        <div className="bg-blue-500/10 text-blue-600 text-xs font-medium py-1 px-2.5 rounded-full border border-blue-500/20">
+                                        <div className="bg-amber-500/10 text-amber-600 text-xs font-medium py-1 px-2.5 rounded-full border border-amber-500/20">
                                             {comp.serp_features_owned.paa} PAA
                                         </div>
                                     )}
@@ -180,7 +180,7 @@ export function ActionItemsSection({ items }: { items: ActionItem[] }) {
     const getImpactColor = (impact: string) => {
         if (impact === 'High') return 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20';
         if (impact === 'Medium') return 'text-amber-500 bg-amber-500/10 border-amber-500/20';
-        return 'text-blue-500 bg-blue-500/10 border-blue-500/20';
+        return 'text-amber-500 bg-amber-500/10 border-amber-500/20';
     };
 
     const getEffortColor = (effort: string) => {
@@ -273,7 +273,7 @@ export function ActionItemsSection({ items }: { items: ActionItem[] }) {
                             }}
                             onMouseEnter={(e) => {
                                 if (theme === 'light') {
-                                    e.currentTarget.style.background = 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)';
+                                    e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
                                 } else {
                                     e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
                                 }
@@ -388,14 +388,14 @@ export function ContentRecommendationsSection({ recommendations }: { recommendat
                     <div className="flex items-center justify-between">
                         <div>
                             <div className="flex items-center gap-2 mb-1">
-                                <Lightbulb className="w-5 h-5 text-blue-500" />
+                                <Lightbulb className="w-5 h-5 text-amber-500" />
                                 <h2 className="text-lg font-semibold text-foreground">Content Recommendations</h2>
                             </div>
                             <p className="text-[13px] text-muted-foreground">
                                 Blog topics to close content gaps and capture new rankings
                             </p>
                         </div>
-                        <div className="bg-blue-500/10 text-blue-500 text-xs font-bold py-1.5 px-3 rounded-full border border-blue-500/20">
+                        <div className="bg-amber-500/10 text-amber-600 text-xs font-bold py-1.5 px-3 rounded-full border border-amber-500/20">
                             {recommendations.length} TOPICS
                         </div>
                     </div>
@@ -408,12 +408,12 @@ export function ContentRecommendationsSection({ recommendations }: { recommendat
                             key={rec.id}
                             className="p-5 rounded-xl border border-border/30 transition-all group cursor-pointer"
                             style={{
-                                background: 'rgba(0, 0, 0, 0.1)',
+                                background: 'transparent',
                                 transition: 'all 0.2s ease'
                             }}
                             onMouseEnter={(e) => {
                                 if (theme === 'light') {
-                                    e.currentTarget.style.background = 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)';
+                                    e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
                                     e.currentTarget.style.borderColor = 'rgba(255, 192, 4, 0.5)';
                                 } else {
                                     e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
@@ -421,7 +421,7 @@ export function ContentRecommendationsSection({ recommendations }: { recommendat
                                 }
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)';
+                                e.currentTarget.style.background = 'transparent';
                                 e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
                             }}
                         >
@@ -524,11 +524,11 @@ export function RankingHistorySection({ history }: { history: RankingHistoryData
                 borderColor: '#FFC004'
             }}>
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-border/40 bg-gradient-to-r from-indigo-500/5 to-purple-500/5">
+                <div className="px-6 py-5 border-b border-border/40 bg-gradient-to-r from-amber-500/5 to-amber-500/5">
                     <div className="flex items-center justify-between">
                         <div>
                             <div className="flex items-center gap-2 mb-1">
-                                <TrendingUp className="w-5 h-5 text-indigo-500" />
+                                <TrendingUp className="w-5 h-5 text-amber-500" />
                                 <h2 className="text-lg font-semibold text-foreground">Ranking Progress Over Time</h2>
                             </div>
                             <p className="text-[13px] text-muted-foreground">
@@ -564,7 +564,24 @@ export function RankingHistorySection({ history }: { history: RankingHistoryData
                     {selectedData && (
                         <div className="space-y-3">
                             {selectedData.history.map((point, idx) => (
-                                <div key={idx} className="flex items-center gap-4 p-4 rounded-lg bg-secondary/30 border border-border/30">
+                                <div 
+                                    key={idx} 
+                                    className="flex items-center gap-4 p-4 rounded-lg border border-border/30 cursor-pointer transition-all"
+                                    style={{
+                                        background: 'transparent',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (theme === 'light') {
+                                            e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
+                                        } else {
+                                            e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'transparent';
+                                    }}
+                                >
                                     <div className="flex-shrink-0 w-24">
                                         <p className="text-xs text-muted-foreground">
                                             {new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}

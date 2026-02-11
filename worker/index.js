@@ -44,7 +44,8 @@ const processContentGenerationJob = async (job) => {
       valuePropositions,
       tone,
       totalBlogs,
-      blogTypeAllocations
+      blogTypeAllocations,
+      targetWordCount
     });
 
     logger.info(`Phase A Complete: Generated ${scenarios.length} scenarios`);

@@ -309,23 +309,24 @@ const KeywordCategoryCard = ({
             </div>
 
             {/* Keywords List */}
-            <div className="flex-1">
+            <div className="flex-1" style={{ background: theme === 'light' ? '#FFFEF9' : 'transparent' }}>
                 {displayedKeywords.map((kwObj, idx) => (
                     <div
                         key={`${category}-${idx}`}
                         className="group flex flex-col px-5 py-3 border-b border-border/30 last:border-0 transition-all cursor-pointer"
                         style={{
-                            transition: 'all 0.2s ease'
+                            transition: 'all 0.2s ease',
+                            background: theme === 'light' ? '#FFFEF9' : 'transparent'
                         }}
                         onMouseEnter={(e) => {
                             if (theme === 'light') {
-                                e.currentTarget.style.background = 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)';
+                                e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
                             } else {
                                 e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
                             }
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.background = theme === 'light' ? '#FFFEF9' : 'transparent';
                         }}
                     >
                         <div className="flex items-center justify-between">
@@ -663,32 +664,19 @@ export default function SeoResultsPage() {
                 />
             )}
             
-            {/* Light mode golden blur throughout */}
+            {/* Light mode golden blur - diagonal from top-left to bottom-right */}
             {theme === 'light' && (
-                <>
-                    {/* Center blur */}
-                    <div 
-                        className="absolute pointer-events-none z-0"
-                        style={{
-                            top: '35%',
-                            left: '50%',
-                            transform: 'translate(-50%, -50%)',
-                            width: '70%',
-                            height: '60%',
-                            background: 'radial-gradient(ellipse 100% 100% at 50% 50%, rgba(171, 128, 0, 0.25) 0%, rgba(171, 128, 0, 0.15) 40%, rgba(171, 128, 0, 0.08) 70%, transparent 100%)',
-                            filter: 'blur(100px)'
-                        }}
-                    />
-                    {/* Bottom blur */}
-                    <div 
-                        className="absolute bottom-0 left-0 right-0 pointer-events-none z-0"
-                        style={{
-                            height: '50%',
-                            background: 'radial-gradient(ellipse 120% 100% at 50% 100%, rgba(171, 128, 0, 0.2) 0%, rgba(171, 128, 0, 0.1) 50%, transparent 100%)',
-                            filter: 'blur(80px)'
-                        }}
-                    />
-                </>
+                <div 
+                    className="absolute pointer-events-none z-0"
+                    style={{
+                        top: '0',
+                        left: '0',
+                        right: '0',
+                        bottom: '0',
+                        background: 'linear-gradient(to bottom right, transparent 0%, transparent 25%, rgba(171, 128, 0, 0.08) 40%, rgba(171, 128, 0, 0.12) 50%, rgba(171, 128, 0, 0.08) 60%, transparent 75%, transparent 100%)',
+                        filter: 'blur(350px)'
+                    }}
+                />
             )}
             
             {/* Copy notification toast */}
@@ -1305,12 +1293,12 @@ export default function SeoResultsPage() {
                                     key={i} 
                                     className="flex flex-col p-5 rounded-xl border border-border/20 transition-all group cursor-pointer"
                                     style={{
-                                        background: 'rgba(0, 0, 0, 0.1)',
+                                        background: 'transparent',
                                         transition: 'all 0.2s ease'
                                     }}
                                     onMouseEnter={(e) => {
                                         if (theme === 'light') {
-                                            e.currentTarget.style.background = 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)';
+                                            e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
                                             e.currentTarget.style.borderColor = 'rgba(255, 192, 4, 0.5)';
                                         } else {
                                             e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
@@ -1318,7 +1306,7 @@ export default function SeoResultsPage() {
                                         }
                                     }}
                                     onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)';
+                                        e.currentTarget.style.background = 'transparent';
                                         e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
                                     }}
                                 >

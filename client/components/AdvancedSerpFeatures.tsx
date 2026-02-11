@@ -48,7 +48,7 @@ export function KeywordClustersSection({ clusters }: { clusters: KeywordCluster[
             borderColor: '#FFC004'
         }}>
             <div className="flex items-center gap-2 mb-4">
-                <Target className="w-4 h-4 text-blue-500" />
+                <Target className="w-4 h-4 text-amber-500" />
                 <h3 className="text-sm font-semibold text-foreground">Keyword Clusters & Topic Mapping</h3>
                 <span className="text-[11px] text-muted-foreground ml-auto">{clusters.length} clusters</span>
             </div>
@@ -58,18 +58,18 @@ export function KeywordClustersSection({ clusters }: { clusters: KeywordCluster[
                         key={idx} 
                         className="p-4 rounded-lg border border-border/20 cursor-pointer transition-all"
                         style={{
-                            background: 'rgba(0, 0, 0, 0.1)',
+                            background: 'transparent',
                             transition: 'all 0.2s ease'
                         }}
                         onMouseEnter={(e) => {
                             if (theme === 'light') {
-                                e.currentTarget.style.background = 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)';
+                                e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
                             } else {
                                 e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
                             }
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)';
+                            e.currentTarget.style.background = 'transparent';
                         }}
                     >
                         <div className="flex items-start justify-between mb-2">
@@ -126,18 +126,18 @@ export function ContentGapsSection({ gaps }: { gaps: ContentGap[] }) {
                         key={idx} 
                         className="p-4 rounded-lg border border-border/20 cursor-pointer transition-all"
                         style={{
-                            background: 'rgba(0, 0, 0, 0.1)',
+                            background: 'transparent',
                             transition: 'all 0.2s ease'
                         }}
                         onMouseEnter={(e) => {
                             if (theme === 'light') {
-                                e.currentTarget.style.background = 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)';
+                                e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
                             } else {
                                 e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
                             }
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)';
+                            e.currentTarget.style.background = 'transparent';
                         }}
                     >
                         <div className="mb-2">
@@ -186,18 +186,18 @@ export function FeaturedSnippetSection({ opportunities }: { opportunities: Featu
                         key={idx} 
                         className="p-4 rounded-lg border border-border/20 cursor-pointer transition-all"
                         style={{
-                            background: 'rgba(0, 0, 0, 0.1)',
+                            background: 'transparent',
                             transition: 'all 0.2s ease'
                         }}
                         onMouseEnter={(e) => {
                             if (theme === 'light') {
-                                e.currentTarget.style.background = 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)';
+                                e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
                             } else {
                                 e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
                             }
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)';
+                            e.currentTarget.style.background = 'transparent';
                         }}
                     >
                         <div className="flex items-start justify-between mb-2">
@@ -254,7 +254,7 @@ export function CompetitorStrategySection({ strategy }: { strategy: CompetitorSt
             borderColor: '#FFC004'
         }}>
             <div className="flex items-center gap-2 mb-4">
-                <TrendingUp className="w-4 h-4 text-blue-500" />
+                <TrendingUp className="w-4 h-4 text-amber-500" />
                 <h3 className="text-sm font-semibold text-foreground">Competitor Strategy Analysis</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -264,7 +264,7 @@ export function CompetitorStrategySection({ strategy }: { strategy: CompetitorSt
                         <ul className="space-y-1.5">
                             {strategy.patterns.map((pattern, idx) => (
                                 <li key={idx} className="text-[12px] text-foreground flex items-start gap-2">
-                                    <span className="text-blue-500 mt-0.5">•</span>
+                                    <span className="text-amber-500 mt-0.5">•</span>
                                     <span>{pattern}</span>
                                 </li>
                             ))}
@@ -323,7 +323,7 @@ export function ContentQualitySection({ quality }: { quality: ContentQuality | n
                     <div
                         className={`h-full rounded-full transition-all duration-1000 ${
                             quality.score >= 80 ? 'bg-emerald-500' :
-                            quality.score >= 60 ? 'bg-blue-500' :
+                            quality.score >= 60 ? 'bg-amber-500' :
                             quality.score >= 40 ? 'bg-amber-500' :
                             'bg-red-500'
                         }`}

@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api } from '@/utils/api';
-import { UserMenu } from '@/components/UserMenu';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { useTheme } from '@/contexts/ThemeContext';
+
+// Lazy load heavy components
+const UserMenu = lazy(() => import('@/components/UserMenu').then(mod => ({ default: mod.UserMenu })));
 
 const CONTENT_TYPES = [
   { key: 'informational', label: 'Educational', desc: 'In-depth guides' },
@@ -43,7 +45,7 @@ const SHOWCASE_ITEMS = [
       'A comprehensive guide covering modern SEO fundamentals, ranking factors, and AI-driven search behavior.',
     type: 'Educational',
     readTime: 6,
-    image: '/assets/1.png',
+    image: '/assets/1.svg',
   },
   {
     title: 'How to Create Content That Actually Converts',
@@ -51,7 +53,7 @@ const SHOWCASE_ITEMS = [
       'Step-by-step guidance on structuring content, aligning with user intent, and improving conversion rates.',
     type: 'How-to',
     readTime: 8,
-    image: '/assets/2.png',
+    image: '/assets/2.svg',
   },
   {
     title: 'Top 10 Strategies Your Competitors Are Using',
@@ -59,7 +61,7 @@ const SHOWCASE_ITEMS = [
       'A competitive analysis highlighting effective strategies used by top-performing brands.',
     type: 'Comparison',
     readTime: 7,
-    image: '/assets/3.png',
+    image: '/assets/3.svg',
   },
   {
     title: 'Why Most Businesses Fail at Content Marketing',
@@ -67,7 +69,7 @@ const SHOWCASE_ITEMS = [
       'An insight-driven breakdown of common mistakes, paired with solution-focused recommendations.',
     type: 'Product-led',
     readTime: 5,
-    image: '/assets/4.png',
+    image: '/assets/4.svg',
   },
 ];
 
@@ -153,6 +155,7 @@ function HomeContent() {
 
   return (
     <div 
+      key={`home-${theme}`}
       className="min-h-screen font-sans relative overflow-hidden"
       style={{
         background: theme === 'dark' ? '#000000' : '#FFFEF9',
@@ -162,6 +165,7 @@ function HomeContent() {
       {/* Dark mode golden blur - diagonal from top-left to bottom-right */}
       {theme === 'dark' && (
         <div 
+          key="dark-gradient"
           className="absolute pointer-events-none z-0"
           style={{
             top: '0',
@@ -176,6 +180,7 @@ function HomeContent() {
       {/* Light mode golden blur - diagonal from top-left to bottom-right */}
       {theme === 'light' && (
         <div 
+          key="light-gradient"
           className="absolute pointer-events-none z-0"
           style={{
             top: '0',
@@ -188,9 +193,9 @@ function HomeContent() {
         />
       )}
       {/* Header */}
-      <header className="max-w-7xl mx-auto px-8 py-6 flex items-center justify-between relative z-10">
+      <header className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10">
         <div className="flex items-center gap-3">
-          <span className="text-xl font-bold">
+          <span className="text-lg sm:text-xl font-bold">
             infini8 <span className="text-[#C8A05F]">SEO</span>
           </span>
           <button 
@@ -204,7 +209,7 @@ function HomeContent() {
             />
           </button>
         </div>
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-4 sm:gap-8">
           <button 
             className="text-sm font-medium transition-colors hover:opacity-80"
             style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
@@ -218,21 +223,23 @@ function HomeContent() {
           >
             Site Insights
           </button>
-          <UserMenu />
+          <Suspense fallback={<div className="w-8 h-8" />}>
+            <UserMenu />
+          </Suspense>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="max-w-7xl mx-auto px-8 py-12 text-center relative z-10">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 text-center relative z-10">
         <p 
-          className="text-base mb-3 tracking-wide font-medium"
+          className="text-sm sm:text-base mb-3 tracking-wide font-medium"
           style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
         >
           AI-Powered SEO Content Engine
         </p>
         <h1 
           key={theme}
-          className="text-[88px] font-bold mb-12 leading-[0.9] tracking-tight"
+          className="text-5xl sm:text-6xl md:text-7xl lg:text-[88px] font-bold mb-8 sm:mb-12 leading-[0.9] tracking-tight"
           style={{
             fontFamily: '"Futura PT Heavy", "Futura PT", Futura, sans-serif',
             fontWeight: 900,
@@ -248,7 +255,7 @@ function HomeContent() {
         </h1>
 
         {/* Content Form */}
-        <div className="max-w-[580px] mx-auto relative">
+        <div className="max-w-[580px] mx-auto relative px-4 sm:px-0">
           <form
             onSubmit={handleSubmit}
             className="relative rounded-[32px] p-8"
@@ -389,9 +396,19 @@ function HomeContent() {
                         >
                           −
                         </button>
-                        <span className="w-7 text-center text-black font-bold text-sm tabular-nums">
-                          {value}
-                        </span>
+                        <input
+                          type="number"
+                          value={value}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                            const newValue = parseInt(e.target.value) || 0;
+                            handleAllocationChange(type.key, newValue);
+                          }}
+                          onFocus={(e: React.FocusEvent<HTMLInputElement>) => e.target.select()}
+                          disabled={loading}
+                          className="no-spinner w-7 text-center text-black font-bold text-sm tabular-nums bg-transparent border-none outline-none"
+                          min="0"
+                          max={MAX_PER_TYPE}
+                        />
                         <button
                           type="button"
                           onClick={() => handleAllocationChange(type.key, value + 1)}
@@ -515,22 +532,22 @@ function HomeContent() {
       </section>
 
       {/* Showcase Section */}
-      <section className="max-w-7xl mx-auto px-8 py-16 relative z-10">
-        <div className="mb-10">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 relative z-10">
+        <div className="mb-8 sm:mb-10">
           <h2 
-            className="text-4xl font-bold mb-3 leading-tight"
+            className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 leading-tight"
             style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
           >
             Built for <span style={{ color: 'rgb(171, 128, 0)' }}>Search Visibility</span> Across
-            <br />
+            <br className="hidden sm:block" />
             AI and Traditional Search
           </h2>
           <p 
-            className="text-base font-medium"
+            className="text-sm sm:text-base font-medium"
             style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}
           >
             Create AI-optimized SEO-ready content that
-            <br />
+            <br className="hidden sm:block" />
             ranks across search engines and AI answers.
           </p>
         </div>
@@ -558,9 +575,9 @@ function HomeContent() {
                 style={{ transform: `translateX(-${currentSlide * 100}%)` }}
               >
                 {SHOWCASE_ITEMS.map((item, idx) => (
-                  <div key={idx} className="w-full flex-shrink-0 px-3">
+                  <div key={idx} className="w-full flex-shrink-0 px-2 sm:px-3">
                     <div
-                      className="rounded-3xl p-10 flex gap-10 relative"
+                      className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 flex flex-col lg:flex-row gap-6 sm:gap-8 lg:gap-10 relative overflow-hidden"
                       style={{
                         background: theme === 'dark' ? 'rgb(49, 49, 46)' : 'rgb(200, 200, 200)',
                         border: 'none'
@@ -583,78 +600,64 @@ function HomeContent() {
 
                       <div className="flex-1 flex flex-col justify-center">
                         <h3 
-                          className="text-4xl font-bold mb-6 leading-tight"
+                          className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6 leading-tight"
                           style={{ color: 'rgb(171, 128, 0)' }}
                         >
                           {item.title}
                         </h3>
                         <p 
-                          className="text-lg mb-6 leading-relaxed"
+                          className="text-base sm:text-lg mb-4 sm:mb-6 leading-relaxed"
                           style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}
                         >
                           {item.description}
                         </p>
-                        <div className="flex items-center gap-2 mb-8">
+                        <div className="flex items-center gap-2 mb-6 sm:mb-8">
                           <span 
-                            className="text-sm font-medium"
+                            className="text-xs sm:text-sm font-medium"
                             style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : '#000000' }}
                           >
                             {item.type}
                           </span>
                           <span style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.3)' : '#000000' }}>·</span>
                           <span 
-                            className="text-sm"
+                            className="text-xs sm:text-sm"
                             style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : '#000000' }}
                           >
                             {item.readTime} min read
                           </span>
                         </div>
                         <button
-                          className="px-8 py-3.5 rounded-xl font-bold text-white text-sm transition-all shadow-lg hover:shadow-xl w-fit"
+                          className="px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-lg hover:shadow-xl w-fit"
                           style={{
                             background: 'linear-gradient(to right, rgb(70, 53, 2) 0%, rgb(118, 89, 3) 30%, rgb(248, 187, 5) 100%)',
+                            color: '#FFFFFF'
                           }}
                         >
                           Book a demo
                         </button>
                       </div>
-                      <div className="relative w-[320px] h-[240px] flex-shrink-0">
-                        {/* Golden glow behind image - positioned absolutely to extend beyond container */}
+                      <div className="relative w-full lg:w-[380px] h-[200px] sm:h-[250px] lg:h-[300px] flex-shrink-0 flex items-center justify-center">
+                        {/* Golden glow behind SVG only */}
                         <div 
                           className="absolute"
                           style={{
-                            width: '360px',
-                            height: '280px',
-                            background: 'radial-gradient(ellipse, rgba(255, 192, 4, 0.7) 0%, rgba(255, 192, 4, 0.5) 25%, rgba(255, 192, 4, 0.3) 45%, transparent 70%)',
-                            filter: 'blur(50px)',
+                            width: '440px',
+                            height: '360px',
+                            background: 'radial-gradient(ellipse, rgba(255, 192, 4, 0.6) 0%, rgba(255, 192, 4, 0.4) 30%, rgba(255, 192, 4, 0.2) 50%, transparent 70%)',
+                            filter: 'blur(150px)',
                             zIndex: 0,
                             left: '50%',
                             top: '50%',
-                            transform: 'translate(-50%, -50%)'
+                            transform: 'translate(-50%, -50%)',
+                            pointerEvents: 'none'
                           }}
                         />
-                        <div
-                          className="absolute inset-0 rounded-[20px] overflow-hidden"
-                          style={{
-                            background: '#FFC004',
-                            zIndex: 1
-                          }}
-                        >
-                          <div 
-                            className="absolute bg-white rounded-[16px] overflow-hidden"
-                            style={{
-                              top: '4px',
-                              left: '4px',
-                              right: '4px',
-                              bottom: '4px'
-                            }}
-                          >
-                            <img
-                              src={item.image}
-                              alt={item.title}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
+                        <div className="w-full h-full rounded-[20px] overflow-hidden flex items-center justify-center relative z-10">
+                          <img
+                            src={item.image}
+                            alt={item.title}
+                            className="w-full h-full object-contain"
+                          />
                         </div>
                       </div>
                     </div>

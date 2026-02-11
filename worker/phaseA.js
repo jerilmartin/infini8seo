@@ -177,7 +177,7 @@ function extractJSON(text) {
  * Phase A: Deep Research & Scenario Generation
  * Uses Gemini with Google Search grounding to generate unique personas/scenarios
  */
-export async function executePhaseA({ niche, valuePropositions, tone, totalBlogs, blogTypeAllocations }) {
+export async function executePhaseA({ niche, valuePropositions, tone, totalBlogs, blogTypeAllocations, targetWordCount }) {
   logger.info(`Phase A: Initiating research for niche: ${niche}`);
 
   if (totalBlogs) {
@@ -186,6 +186,10 @@ export async function executePhaseA({ niche, valuePropositions, tone, totalBlogs
 
   if (blogTypeAllocations) {
     logger.info(`Phase A: Blog type allocations: ${JSON.stringify(blogTypeAllocations)}`);
+  }
+
+  if (targetWordCount) {
+    logger.info(`Phase A: Target word count: ${targetWordCount}`);
   }
 
   try {
@@ -270,7 +274,7 @@ JSON OUTPUT FORMAT (CRITICAL - FOLLOW EXACTLY):
       "goal_focus": "1 sentence: What they want to achieve.",
       "blog_topic_headline": "Benefit-driven headline under 100 chars",
       "target_keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
-      "required_word_count": 1000,
+      "required_word_count": ${targetWordCount || 1200},
       "research_insight": "1 sentence with ONE stat/trend"
     }
   ]
@@ -307,6 +311,12 @@ BEGIN YOUR RESEARCH NOW. Output ONLY the JSON object.`;
           throw new Error(`Content blocked: ${response.promptFeedback?.blockReason || 'Unknown reason'}`);
         }
 
+        // Check if response has text before breaking
+        const responseText = response.text();
+        if (!responseText || responseText.trim().length === 0) {
+          throw new Error('Empty response from Gemini API');
+        }
+
         break;
       } catch (error) {
         attempts++;
@@ -316,6 +326,8 @@ BEGIN YOUR RESEARCH NOW. Output ONLY the JSON object.`;
           error.message.includes('quota') ||
           error.message.includes('Too Many Requests')
         );
+
+        const isEmptyResponse = error.message && error.message.includes('Empty response');
 
         // Log full error details for debugging
         logger.error(`Phase A attempt ${attempts} error details:`, {
@@ -329,10 +341,13 @@ BEGIN YOUR RESEARCH NOW. Output ONLY the JSON object.`;
           if (isRateLimit) {
             throw new Error('Rate limit exceeded. Please wait 60 seconds and try again.');
           }
+          if (isEmptyResponse) {
+            throw new Error('Gemini API returned empty response after multiple attempts. Please try again.');
+          }
           throw error;
         }
 
-        const waitTime = isRateLimit ? 60000 : (2000 * attempts);
+        const waitTime = isRateLimit ? 60000 : isEmptyResponse ? 5000 : (2000 * attempts);
         logger.warn(`Phase A attempt ${attempts} failed: ${error.message}`);
         logger.warn(`Waiting ${waitTime / 1000}s before retry...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
@@ -416,7 +431,7 @@ BEGIN YOUR RESEARCH NOW. Output ONLY the JSON object.`;
       if (!scenario.scenario_id) scenario.scenario_id = index + 1;
       if (!scenario.persona_name) scenario.persona_name = `Persona ${index + 1}`;
       if (!scenario.persona_archetype) scenario.persona_archetype = 'Professional User';
-      if (!scenario.required_word_count) scenario.required_word_count = 1000;
+      if (!scenario.required_word_count) scenario.required_word_count = targetWordCount || 1200;
       if (!scenario.target_keywords || !Array.isArray(scenario.target_keywords)) {
         scenario.target_keywords = [`${niche}`, 'solution', 'guide'];
       }

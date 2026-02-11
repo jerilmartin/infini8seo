@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, Check, X, ArrowLeft, Circle } from 'lucide-react';
+import { Loader2, Circle } from 'lucide-react';
 import { api } from '@/utils/api';
-import Navbar from '@/components/Navbar';
 import { useTheme } from '@/contexts/ThemeContext';
+
+// Lazy load components
+const Navbar = lazy(() => import('@/components/Navbar'));
 
 interface GeneratedTitle {
   title: string;
@@ -158,24 +160,14 @@ export default function ProgressPage() {
       )}
 
       <div className="relative z-10">
-        <Navbar />
+        <Suspense fallback={<div className="h-16" />}>
+          <Navbar />
+        </Suspense>
       </div>
 
-      <div className="max-w-[1400px] w-full mx-auto px-6 py-6 h-full flex flex-col relative z-10">
+      <div className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 h-full flex flex-col relative z-10">
         {/* Page Header */}
         <div className="mb-6 animate-fade-in shrink-0">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-secondary border border-border">
-              <div className={`w-1.5 h-1.5 rounded-full ${phase === 'complete' ? 'bg-emerald-500' :
-                phase === 'failed' ? 'bg-destructive' :
-                  'bg-primary animate-pulse'
-                }`} />
-              <span className="text-[11px] font-medium uppercase tracking-wide" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
-                {phase === 'complete' ? 'Complete' : phase === 'failed' ? 'Failed' : 'In Progress'}
-              </span>
-            </div>
-          </div>
-
           <div className="flex items-baseline gap-3">
             <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
               {phase === 'complete' ? 'Your content is ready' : 'Building your content engine'}
@@ -188,21 +180,22 @@ export default function ProgressPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0 pb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 pb-4 sm:pb-6" style={{ height: 'calc(100vh - 200px)', minHeight: '500px' }}>
           {/* Left Column - Progress */}
-          <div className="animate-fade-in h-full min-h-0" style={{ animationDelay: '50ms' }}>
+          <div className="animate-fade-in h-full overflow-hidden" style={{ animationDelay: '50ms' }}>
             {/* Progress Card */}
             <div 
-              className="p-6 h-full flex flex-col overflow-y-auto"
+              className="p-6 h-full flex flex-col"
               style={{
                 background: theme === 'light' ? 'transparent' : 'rgba(176, 176, 176, 0.1)',
                 border: '1px solid rgba(176, 176, 176, 1)',
-                borderRadius: '50px'
+                borderRadius: '50px',
+                maxHeight: '100%'
               }}
             >
-              <div>
+              <div className="flex-1 min-h-0 flex flex-col">
                 {/* Progress Bar */}
-                <div className="mb-6">
+                <div className="mb-6 shrink-0">
                   <div className="flex items-baseline justify-between mb-2">
                     <span className="text-[12px] font-medium uppercase tracking-wide" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>Overall Progress</span>
                     <span className="text-[20px] font-semibold" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>{progress}%</span>
@@ -219,7 +212,12 @@ export default function ProgressPage() {
                 </div>
 
                 {/* Step List */}
-                <div className="space-y-3">
+                <div className="space-y-3 flex-1 min-h-0 overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  <style jsx>{`
+                    div::-webkit-scrollbar {
+                      display: none;
+                    }
+                  `}</style>
                   <StepItem
                     state={phase === 'research' ? 'active' : ['writing', 'complete'].includes(phase) ? 'complete' : 'pending'}
                     title="Researching your niche"
@@ -253,7 +251,7 @@ export default function ProgressPage() {
 
               {/* Time estimate */}
               {jobStatus?.estimatedSecondsRemaining && phase !== 'complete' && (
-                <div className="mt-auto pt-4 border-t border-border/30">
+                <div className="mt-4 pt-4 border-t border-border/30 shrink-0">
                   <div className="flex items-center justify-between text-[13px]">
                     <span style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>Time remaining</span>
                     <span className="font-medium tabular-nums" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>{formatTime(jobStatus.estimatedSecondsRemaining)}</span>
@@ -263,7 +261,7 @@ export default function ProgressPage() {
 
               {/* Error state */}
               {phase === 'failed' && jobStatus?.errorMessage && (
-                <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 shrink-0">
                   <p className="text-[13px] text-destructive">{jobStatus.errorMessage}</p>
                 </div>
               )}
@@ -271,20 +269,21 @@ export default function ProgressPage() {
           </div>
 
           {/* Right Column - Live Titles */}
-          <aside className="animate-fade-in h-full min-h-0" style={{ animationDelay: '100ms' }}>
+          <aside className="animate-fade-in h-full overflow-hidden" style={{ animationDelay: '100ms' }}>
             <div 
               className="border p-6 h-full flex flex-col"
               style={{
-                background: 'transparent',
-                borderColor: 'rgba(176, 176, 176, 1)',
+                background: theme === 'light' ? 'transparent' : 'rgba(176, 176, 176, 0.1)',
+                border: '1px solid rgba(176, 176, 176, 1)',
                 borderRadius: '50px',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                maxHeight: '100%'
               }}
             >
               <div className="flex items-center justify-between mb-4 shrink-0">
                 <p className="text-[12px] font-medium uppercase tracking-wide" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>Generated Content</p>
                 {titles.length > 0 && (
-                  <span className="text-[11px] px-1.5 py-0.5 bg-secondary border border-border rounded" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>{titles.length}</span>
+                  <span className="text-[13px] px-2 py-0.5 rounded font-semibold" style={{ color: '#FFC004', background: 'transparent' }}>{titles.length}</span>
                 )}
               </div>
 

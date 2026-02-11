@@ -15,9 +15,9 @@
     --card: 225 15% 10%;
     --card-foreground: 228 15% 93%;
     --card-elevated: 225 12% 12%;
-    /* Primary accent - soft blue for CTAs */
-    --primary: 220 70% 55%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary accent - golden for CTAs */
+    --primary: 45 100% 50%;
+    --primary-foreground: 0 0% 0%;
     /* Secondary text: more readable gray - #C4C8D0 */
     --secondary: 225 12% 14%;
     --secondary-foreground: 224 15% 78%;
@@ -66,9 +66,9 @@
     /* ═══════════════════════════════════════════════════════════════
        LAYER 4: Accent (very limited - CTA, active tab, key metrics)
        ═══════════════════════════════════════════════════════════════ */
-    --primary: 221 83% 53%;
-    --primary-foreground: 0 0% 100%;
-    --ring: 220 70% 50%;
+    --primary: 45 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --ring: 45 100% 50%;
 
     /* ═══════════════════════════════════════════════════════════════
        TYPOGRAPHY - Never pure black

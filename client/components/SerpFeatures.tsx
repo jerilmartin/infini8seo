@@ -68,18 +68,18 @@ export function QuickWinsSection({ quickWins }: { quickWins: QuickWin[] }) {
                         key={idx} 
                         className="p-4 rounded-lg border border-border/20 cursor-pointer transition-all"
                         style={{
-                            background: 'rgba(0, 0, 0, 0.1)',
+                            background: 'transparent',
                             transition: 'all 0.2s ease'
                         }}
                         onMouseEnter={(e) => {
                             if (theme === 'light') {
-                                e.currentTarget.style.background = 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)';
+                                e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
                             } else {
                                 e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
                             }
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)';
+                            e.currentTarget.style.background = 'transparent';
                         }}
                     >
                         <div className="flex items-start justify-between mb-2">
@@ -87,7 +87,7 @@ export function QuickWinsSection({ quickWins }: { quickWins: QuickWin[] }) {
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="text-sm font-medium text-foreground">{qw.keyword}</span>
                                     {qw.current_position && (
-                                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-500">
+                                        <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-600">
                                             #{qw.current_position}
                                         </span>
                                     )}
@@ -136,18 +136,18 @@ export function HighOpportunitiesSection({ opportunities }: { opportunities: Hig
                         key={idx} 
                         className="p-4 rounded-lg border border-border/20 cursor-pointer transition-all"
                         style={{
-                            background: 'rgba(0, 0, 0, 0.1)',
+                            background: 'transparent',
                             transition: 'all 0.2s ease'
                         }}
                         onMouseEnter={(e) => {
                             if (theme === 'light') {
-                                e.currentTarget.style.background = 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)';
+                                e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
                             } else {
                                 e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
                             }
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)';
+                            e.currentTarget.style.background = 'transparent';
                         }}
                     >
                         <div className="flex items-start justify-between mb-2">
@@ -155,7 +155,7 @@ export function HighOpportunitiesSection({ opportunities }: { opportunities: Hig
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="text-sm font-medium text-foreground">{opp.keyword}</span>
                                     {opp.current_position && (
-                                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-500">
+                                        <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-600">
                                             #{opp.current_position}
                                         </span>
                                     )}
@@ -195,7 +195,7 @@ export function RegionalRankingsSection({ regional }: { regional: RegionalAnalys
             borderColor: '#FFC004'
         }}>
             <div className="flex items-center gap-2 mb-4">
-                <Globe className="w-4 h-4 text-blue-500" />
+                <Globe className="w-4 h-4 text-amber-500" />
                 <h3 className="text-sm font-semibold text-foreground">Regional Rankings</h3>
                 <span className="text-[11px] text-muted-foreground ml-auto">
                     {regional.keyword}
