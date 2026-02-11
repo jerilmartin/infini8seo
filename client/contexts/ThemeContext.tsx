@@ -40,11 +40,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setTheme(newTheme);
     };
 
+    // Don't hide children, just return them immediately
+    // The CSS will handle the theme transition
     return (
         <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
-            <div style={{ visibility: mounted ? 'visible' : 'hidden' }}>
-                {children}
-            </div>
+            {children}
         </ThemeContext.Provider>
     );
 }

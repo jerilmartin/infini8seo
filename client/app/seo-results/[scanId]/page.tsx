@@ -580,7 +580,7 @@ export default function SeoResultsPage() {
 
                         {/* Start new scan button - Regular 20px */}
                         <button
-                            onClick={() => router.push('/')}
+                            onClick={() => router.push('/seo-scan')}
                             className="text-[#FFC004] hover:text-[#FFC004]/80 transition-colors inline-flex items-center gap-1"
                             style={{ fontSize: '20px' }}
                         >

@@ -134,20 +134,22 @@ function SeoScanContent() {
                   value={url}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
                   placeholder="e.g. example.com or https://example.com"
-                  className="flex-1 h-[52px] sm:h-[48px] rounded-xl bg-white text-[#333] px-4 sm:px-5 text-sm sm:text-base border-none outline-none placeholder:text-[#999] shadow-lg w-full"
+                  className="flex-1 h-[64px] sm:h-[52px] lg:h-[48px] rounded-xl bg-white text-[#333] px-5 text-base border-none outline-none placeholder:text-[#999] shadow-lg w-full"
+                  style={{ minHeight: '64px' }}
                   disabled={loading}
                 />
                 
                 <button
                   type="submit"
                   disabled={loading || !url.trim()}
-                  className="h-[52px] sm:h-[48px] px-6 rounded-xl font-bold text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 transition-all hover:scale-105 hover:shadow-xl whitespace-nowrap w-full sm:w-auto"
+                  className="h-[64px] sm:h-[52px] lg:h-[48px] px-6 rounded-xl font-bold text-base sm:text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 transition-all hover:scale-105 hover:shadow-xl whitespace-nowrap w-full sm:w-auto"
                   style={{
                     background: '#C19207 !important',
                     backgroundColor: '#C19207',
                     color: '#FFFFFF',
                     border: 'none',
-                    boxShadow: '0 4px 20px rgba(193, 146, 7, 0.5)'
+                    boxShadow: '0 4px 20px rgba(193, 146, 7, 0.5)',
+                    minHeight: '64px'
                   }}
                 >
                   {loading ? (

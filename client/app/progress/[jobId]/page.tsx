@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, Circle } from 'lucide-react';
+import { Loader2, Circle, X, ArrowLeft } from 'lucide-react';
 import { api } from '@/utils/api';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -238,7 +238,6 @@ export default function ProgressPage() {
                     state={phase === 'writing' ? 'active' : phase === 'complete' ? 'complete' : 'pending'}
                     title="Writing articles"
                     subtitle={phase === 'writing' ? `${generated}/${totalTarget} done` : undefined}
-                    highlight={phase === 'writing'}
                     theme={theme}
                   />
                   <StepItem
@@ -362,17 +361,15 @@ function StepItem({
   state,
   title,
   subtitle,
-  highlight = false,
   theme
 }: {
   state: 'pending' | 'active' | 'complete' | 'failed';
   title: string;
   subtitle?: string;
-  highlight?: boolean;
   theme: 'dark' | 'light';
 }) {
   return (
-    <div className={`flex items-center gap-3 ${highlight ? 'bg-primary/5 -mx-3 px-3 py-2 rounded-lg' : 'py-0.5'}`}>
+    <div className="flex items-center gap-3 py-0.5">
       <div className="w-5 h-5 flex items-center justify-center shrink-0 relative">
         {state === 'complete' ? (
           <img src="/assets/tick.svg" alt="Complete" className="w-5 h-5" />

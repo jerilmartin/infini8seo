@@ -141,10 +141,47 @@ export default function LibraryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-6 h-6 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading library...</p>
+      <div 
+        className="min-h-screen flex items-center justify-center relative overflow-hidden"
+        style={{ background: theme === 'dark' ? '#000000' : '#FFFEF9' }}
+      >
+        {/* Dark mode golden blur */}
+        {theme === 'dark' && (
+          <div 
+            className="absolute pointer-events-none z-0"
+            style={{
+              top: '0',
+              left: '0',
+              right: '0',
+              bottom: '0',
+              background: 'linear-gradient(to bottom right, transparent 0%, transparent 20%, rgba(255, 192, 4, 0.15) 35%, rgba(255, 192, 4, 0.25) 50%, rgba(255, 192, 4, 0.15) 65%, transparent 80%, transparent 100%)',
+              filter: 'blur(500px)'
+            }}
+          />
+        )}
+        {/* Light mode golden blur */}
+        {theme === 'light' && (
+          <div 
+            className="absolute pointer-events-none z-0"
+            style={{
+              top: '0',
+              left: '0',
+              right: '0',
+              bottom: '0',
+              background: 'linear-gradient(to bottom right, transparent 0%, transparent 25%, rgba(171, 128, 0, 0.08) 40%, rgba(171, 128, 0, 0.12) 50%, rgba(171, 128, 0, 0.08) 60%, transparent 75%, transparent 100%)',
+              filter: 'blur(350px)'
+            }}
+          />
+        )}
+        
+        <div className="flex flex-col items-center gap-3 relative z-10">
+          <div className="relative w-16 h-16">
+            <div className="absolute inset-0 border-4 border-[#FFC004]/20 rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-[#FFC004] border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <p className="text-sm" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
+            Loading library...
+          </p>
         </div>
       </div>
     );
