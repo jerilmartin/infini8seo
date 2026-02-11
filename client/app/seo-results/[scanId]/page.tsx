@@ -691,27 +691,27 @@ export default function SeoResultsPage() {
             <Navbar />
 
             {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-6 py-8 relative z-10">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 relative z-10">
                 {/* Domain Name Header */}
-                <div className="mb-6">
-                    <h1 className="text-4xl font-bold text-foreground">{results.domain}</h1>
+                <div className="mb-4 sm:mb-6">
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground break-words">{results.domain}</h1>
                 </div>
 
                 {/* Health Score Card */}
-                <div className="mb-8">
-                    <div className="rounded-xl p-8" style={{
+                <div className="mb-6 sm:mb-8">
+                    <div className="rounded-xl p-4 sm:p-6 lg:p-8" style={{
                         background: 'transparent'
                     }}>
-                        <div className="flex items-center justify-between">
-                            <div>
+                        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                            <div className="w-full lg:w-auto">
                                 <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Domain Health Score</p>
                                 <div className="flex items-baseline gap-3 mb-3">
-                                    <span className="text-5xl font-bold" style={{ color: '#FFC004' }}>{results.health_score}</span>
-                                    <span className="text-lg text-muted-foreground">/ 100</span>
+                                    <span className="text-4xl sm:text-5xl font-bold" style={{ color: '#FFC004' }}>{results.health_score}</span>
+                                    <span className="text-base sm:text-lg text-muted-foreground">/ 100</span>
                                 </div>
                                 
                                 {/* Progress Bar */}
-                                <div className="w-64 mb-3">
+                                <div className="w-full sm:w-64 mb-3">
                                     <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: '#5E4702' }}>
                                         <div 
                                             className="h-full rounded-full transition-all duration-1000"
@@ -725,7 +725,7 @@ export default function SeoResultsPage() {
                                 </div>
                                 
                                 {/* Score Interpretation */}
-                                <p className="text-[13px] text-muted-foreground mt-3">
+                                <p className="text-xs sm:text-[13px] text-muted-foreground mt-3">
                                     {results.health_score >= 80
                                         ? "Excellent foundation — focus on content expansion"
                                         : results.health_score >= 60
@@ -778,14 +778,14 @@ export default function SeoResultsPage() {
                             </div>
 
                             {/* Detailed Metrics Grid */}
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 w-full lg:w-auto mt-6 lg:mt-0">
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full lg:w-auto">
                                 {/* Technical */}
                                 <div className="space-y-1 text-center lg:text-right group relative">
                                     <div className="flex items-center justify-center lg:justify-end gap-1">
                                         <p className="text-xs text-muted-foreground uppercase tracking-wide">Technical</p>
                                         <Info className="w-3 h-3 text-muted-foreground/50 cursor-help" />
                                     </div>
-                                    <p className="text-2xl font-bold" style={{ color: '#FFC004' }}>{results.score_breakdown?.technical || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
+                                    <p className="text-xl sm:text-2xl font-bold" style={{ color: '#FFC004' }}>{results.score_breakdown?.technical || 0}<span className="text-xs text-muted-foreground font-normal">/25</span></p>
                                     {/* Tooltip */}
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 bg-slate-800 text-white text-[11px] leading-relaxed rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
                                         HTTPS, robots.txt, sitemap, mobile-friendly, page speed, and crawlability

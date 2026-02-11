@@ -19,6 +19,7 @@ import { api } from '@/utils/api';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface SavedBlog {
   id: string;
@@ -43,6 +44,7 @@ interface SavedBlog {
 
 export default function LibraryPage() {
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
   const [savedBlogs, setSavedBlogs] = useState<SavedBlog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -149,36 +151,84 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
+    <div className="h-screen text-foreground flex flex-col overflow-hidden relative" style={{
+      background: theme === 'dark' ? '#000000' : '#FFFEF9',
+      color: theme === 'dark' ? '#ffffff' : '#000000'
+    }}>
+      {/* Dark mode golden blur - diagonal from top-left to bottom-right */}
+      {theme === 'dark' && (
+        <div 
+          className="absolute pointer-events-none z-0"
+          style={{
+            top: '0',
+            left: '0',
+            right: '0',
+            bottom: '0',
+            background: 'linear-gradient(to bottom right, transparent 0%, transparent 20%, rgba(255, 192, 4, 0.15) 35%, rgba(255, 192, 4, 0.25) 50%, rgba(255, 192, 4, 0.15) 65%, transparent 80%, transparent 100%)',
+            filter: 'blur(500px)'
+          }}
+        />
+      )}
+      {/* Light mode golden blur - diagonal from top-left to bottom-right */}
+      {theme === 'light' && (
+        <div 
+          className="absolute pointer-events-none z-0"
+          style={{
+            top: '0',
+            left: '0',
+            right: '0',
+            bottom: '0',
+            background: 'linear-gradient(to bottom right, transparent 0%, transparent 25%, rgba(171, 128, 0, 0.08) 40%, rgba(171, 128, 0, 0.12) 50%, rgba(171, 128, 0, 0.08) 60%, transparent 75%, transparent 100%)',
+            filter: 'blur(350px)'
+          }}
+        />
+      )}
+      
       {/* Header */}
-      <header className="shrink-0 border-b border-border bg-card">
-        <div className="flex items-center justify-between px-5 py-3">
-          <div className="flex items-center gap-4">
+      <header className="shrink-0 bg-transparent relative z-10">
+        <div className="flex items-center justify-between px-3 sm:px-5 py-3">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={() => router.push('/')}
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-secondary-foreground transition-colors"
+              className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground hover:text-secondary-foreground transition-colors"
             >
-              <ArrowLeft className="w-4 h-4" />
-              Back
+              <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Back</span>
             </button>
-            <div className="h-5 w-px bg-border/50" />
-            <div className="flex items-center gap-2">
-              <BookmarkCheck className="w-5 h-5 text-primary" />
-              <h1 className="text-base font-medium text-foreground">Content Library</h1>
+            <div className="h-4 sm:h-5 w-px bg-border/50" />
+            <div className="flex items-center gap-1 sm:gap-2">
+              <BookmarkCheck className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+              <h1 className="text-sm sm:text-base font-medium text-foreground">Content Library</h1>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="text-[10px] sm:text-xs text-muted-foreground hidden sm:inline">
               {filteredBlogs.length} saved {filteredBlogs.length === 1 ? 'blog' : 'blogs'}
             </span>
+            <div className="h-4 sm:h-5 w-px bg-border/50 hidden sm:block" />
+            <button
+              onClick={toggleTheme}
+              className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg hover:opacity-80 transition-opacity"
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {theme === 'dark' ? (
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar */}
-        <aside className="w-[350px] shrink-0 border-r border-border flex flex-col bg-secondary overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative z-10">
+        {/* Sidebar - Article List */}
+        <aside className="w-full md:w-[350px] shrink-0 md:border-r border-border flex flex-col bg-transparent overflow-hidden max-h-[40vh] md:max-h-none">
           {/* Search & Filter */}
           <div className="px-4 py-3 border-b border-border shrink-0 space-y-3">
             <div className="relative">
@@ -221,13 +271,18 @@ export default function LibraryPage() {
                 <button
                   key={blog.id}
                   onClick={() => setSelectedBlog(blog)}
-                  className={`w-full text-left px-4 py-3 border-b border-border transition-all ${
+                  className={`w-full text-left px-5 py-4 transition-all relative ${
                     selectedBlog?.id === blog.id
-                      ? 'bg-card border-l-2 border-l-primary'
-                      : 'hover:bg-card/50 border-l-2 border-l-transparent'
+                      ? 'border-l-2 border-l-[#FFC004]'
+                      : 'hover:bg-white/5 border-l-2 border-l-transparent'
                   }`}
+                  style={selectedBlog?.id === blog.id && theme === 'light' ? {
+                    background: 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)'
+                  } : selectedBlog?.id === blog.id ? {
+                    background: 'rgba(171, 128, 0, 0.2)'
+                  } : undefined}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-4">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -244,32 +299,14 @@ export default function LibraryPage() {
                       />
                     </button>
                     <div className="min-w-0 flex-1">
-                      <p className={`text-sm leading-relaxed line-clamp-2 ${
+                      <p className={`text-[14px] leading-relaxed line-clamp-2 ${
                         selectedBlog?.id === blog.id ? 'text-foreground font-semibold' : 'text-foreground font-medium'
                       }`}>
                         {blog.contents.blog_title}
                       </p>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <span className="text-[11px] text-muted-foreground">
-                          {blog.contents.word_count.toLocaleString()} words
-                        </span>
-                        <span className="text-muted-foreground">·</span>
-                        <span className="text-[11px] text-muted-foreground">
-                          {new Date(blog.saved_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      {blog.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {blog.tags.slice(0, 2).map((tag, i) => (
-                            <span
-                              key={i}
-                              className="text-[10px] text-secondary-foreground bg-secondary/50 px-1.5 py-0.5 rounded"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      <p className="text-[11px] text-muted-foreground mt-1 font-medium">
+                        {blog.contents.word_count.toLocaleString()} words
+                      </p>
                     </div>
                   </div>
                 </button>
@@ -279,11 +316,11 @@ export default function LibraryPage() {
         </aside>
 
         {/* Main Reading Area */}
-        <main className="flex-1 flex flex-col overflow-hidden bg-card">
+        <main className="flex-1 flex flex-col overflow-hidden bg-transparent">
           {selectedBlog ? (
             <>
               {/* Article Header */}
-              <div className="shrink-0 border-b border-border px-10 py-5 bg-card">
+              <div className="shrink-0 px-10 py-4 bg-transparent">
                 <div className="max-w-[950px]">
                   <h2 className="text-xl font-bold text-foreground leading-tight mb-2">
                     {selectedBlog.contents.blog_title}
@@ -294,26 +331,38 @@ export default function LibraryPage() {
                   <div className="flex items-center gap-4 flex-wrap">
                     <button
                       onClick={() => copyToClipboard(selectedBlog.contents.blog_content)}
-                      className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-secondary-foreground transition-colors"
+                      className="flex items-center gap-1.5 text-xs font-medium hover:opacity-80 transition-all px-3 py-1.5 rounded-lg"
+                      style={theme === 'light' ? {
+                        background: 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)',
+                        color: '#000000'
+                      } : {
+                        background: '#241A06',
+                        color: '#FFFFFF'
+                      }}
                     >
                       {copiedId === selectedBlog.content_id ? (
-                        <><Check className="w-3.5 h-3.5 text-emerald-500" /> Copied</>
+                        <><Check className="w-3.5 h-3.5" /> Copied</>
                       ) : (
                         <><Copy className="w-3.5 h-3.5" /> Copy</>
                       )}
                     </button>
-                    <span className="text-border">·</span>
                     <button
                       onClick={() => downloadMarkdown(selectedBlog)}
-                      className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-secondary-foreground transition-colors"
+                      className="flex items-center gap-1.5 text-xs font-medium hover:opacity-80 transition-all px-3 py-1.5 rounded-lg"
+                      style={theme === 'light' ? {
+                        background: 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)',
+                        color: '#000000'
+                      } : {
+                        background: '#241A06',
+                        color: '#FFFFFF'
+                      }}
                     >
                       <Download className="w-3.5 h-3.5" /> Download
                     </button>
-                    <span className="text-border">·</span>
                     <button
                       onClick={() => handleUnsave(selectedBlog.content_id)}
                       disabled={deletingId === selectedBlog.content_id}
-                      className="flex items-center gap-1.5 text-xs font-medium text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-1.5 text-xs font-medium text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50 px-3 py-1.5"
                     >
                       {deletingId === selectedBlog.content_id ? (
                         <><div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Removing...</>
@@ -322,16 +371,23 @@ export default function LibraryPage() {
                       )}
                     </button>
                     {selectedBlog.contents.keywords.length > 0 && (
-                      <>
-                        <span className="text-border">·</span>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedBlog.contents.keywords.slice(0, 4).map((k, i) => (
-                            <span key={i} className="text-[12px] text-secondary-foreground bg-secondary/30 border border-border/20 px-2.5 py-1 rounded-md font-medium">
-                              {k}
-                            </span>
-                          ))}
-                        </div>
-                      </>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedBlog.contents.keywords.slice(0, 4).map((k, i) => (
+                          <span 
+                            key={i} 
+                            className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                            style={theme === 'light' ? {
+                              background: 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)',
+                              color: '#000000'
+                            } : {
+                              background: '#241A06',
+                              color: '#FFFFFF'
+                            }}
+                          >
+                            {k}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>

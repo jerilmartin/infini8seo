@@ -103,13 +103,13 @@ function SeoScanContent() {
         </div>
 
         {/* BOTTOM SECTION - Search Form LEFT, Score Cards RIGHT */}
-        <div className="flex flex-col lg:flex-row items-start justify-between gap-6 lg:gap-3 max-w-[1450px] mx-auto">
+        <div className="flex flex-col lg:flex-row items-start justify-between gap-6 lg:gap-8 max-w-[1450px] mx-auto">
           
           {/* LEFT SECTION - Search Form */}
           <div className="flex-shrink-0 w-full lg:w-[650px]">
             {/* Description */}
             <p 
-              className="text-base leading-relaxed mb-8"
+              className="text-sm sm:text-base leading-relaxed mb-6 sm:mb-8"
               style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}
             >
               Scan any website to evaluate its SEO health and discover actionable opportunities to improve search performance.
@@ -118,7 +118,7 @@ function SeoScanContent() {
             <form onSubmit={handleSubmit}>
               {/* LABEL */}
               <label 
-                className="block text-sm tracking-[0.08em] mb-3 uppercase"
+                className="block text-xs sm:text-sm tracking-[0.08em] mb-3 uppercase"
                 style={{ 
                   color: theme === 'dark' ? '#FFFFFF' : '#000000',
                   fontWeight: 600
@@ -134,14 +134,14 @@ function SeoScanContent() {
                   value={url}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
                   placeholder="e.g. example.com or https://example.com"
-                  className="flex-1 h-[48px] rounded-xl bg-white text-[#333] px-5 text-sm border-none outline-none placeholder:text-[#999] shadow-lg"
+                  className="flex-1 h-[52px] sm:h-[48px] rounded-xl bg-white text-[#333] px-4 sm:px-5 text-sm sm:text-base border-none outline-none placeholder:text-[#999] shadow-lg w-full"
                   disabled={loading}
                 />
                 
                 <button
                   type="submit"
                   disabled={loading || !url.trim()}
-                  className="h-[48px] px-6 rounded-xl font-bold text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 transition-all hover:scale-105 hover:shadow-xl whitespace-nowrap"
+                  className="h-[52px] sm:h-[48px] px-6 rounded-xl font-bold text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 transition-all hover:scale-105 hover:shadow-xl whitespace-nowrap w-full sm:w-auto"
                   style={{
                     background: '#C19207 !important',
                     backgroundColor: '#C19207',
@@ -169,48 +169,23 @@ function SeoScanContent() {
             </form>
           </div>
 
-          {/* RIGHT SECTION - SVG Images with Glass Effect */}
-          <div className="flex-shrink-0 relative w-full lg:w-[540px]" style={{ height: '280px' }}>
+          {/* RIGHT SECTION - SVG Images */}
+          <div className="hidden lg:flex flex-shrink-0 relative w-full lg:w-[600px]" style={{ height: '320px' }}>
             {theme === 'dark' ? (
               <>
-                {/* Dark mode - BOX1.svg and BOX2.svg */}
+                {/* Dark mode - BOX5.svg with glass effect */}
                 <div
                   className="absolute"
                   style={{
-                    left: '10px',
-                    top: '0',
-                    width: '300px',
-                    height: 'auto',
-                    transform: 'rotate(-8deg)'
+                    right: '-50px',
+                    top: '20px',
+                    width: '650px',
+                    height: 'auto'
                   }}
                 >
                   <img 
-                    src="/assets/BOX1.svg" 
-                    alt="SEO Score Card 1" 
-                    style={{
-                      width: '100%',
-                      height: 'auto',
-                      display: 'block',
-                      filter: 'drop-shadow(0 8px 32px rgba(0, 0, 0, 0.5))',
-                      backdropFilter: 'blur(40px) saturate(180%)',
-                      WebkitBackdropFilter: 'blur(40px) saturate(180%)'
-                    }}
-                  />
-                </div>
-                <div
-                  className="absolute"
-                  style={{
-                    right: '10px',
-                    top: '0',
-                    width: '300px',
-                    height: 'auto',
-                    transform: 'rotate(8deg)',
-                    zIndex: 1
-                  }}
-                >
-                  <img 
-                    src="/assets/BOX2.svg" 
-                    alt="SEO Score Card 2" 
+                    src="/assets/BOX5.png" 
+                    alt="SEO Score Card" 
                     style={{
                       width: '100%',
                       height: 'auto',
@@ -224,51 +199,23 @@ function SeoScanContent() {
               </>
             ) : (
               <>
-                {/* Light mode - BOX3.svg and BOX4.svg */}
+                {/* Light mode - BOX6.png */}
                 <div
                   className="absolute"
                   style={{
-                    left: '10px',
-                    top: '0',
-                    width: '300px',
-                    height: 'auto',
-                    transform: 'rotate(-8deg)'
+                    right: '-50px',
+                    top: '20px',
+                    width: '650px',
+                    height: 'auto'
                   }}
                 >
                   <img 
-                    src="/assets/BOX3.svg" 
-                    alt="SEO Score Card 1" 
+                    src="/assets/BOX6.png" 
+                    alt="SEO Score Card" 
                     style={{
                       width: '100%',
                       height: 'auto',
-                      display: 'block',
-                      filter: 'drop-shadow(0 8px 32px rgba(0, 0, 0, 0.15))',
-                      backdropFilter: 'blur(40px) saturate(180%)',
-                      WebkitBackdropFilter: 'blur(40px) saturate(180%)'
-                    }}
-                  />
-                </div>
-                <div
-                  className="absolute"
-                  style={{
-                    right: '10px',
-                    top: '0',
-                    width: '300px',
-                    height: 'auto',
-                    transform: 'rotate(8deg)',
-                    zIndex: 1
-                  }}
-                >
-                  <img 
-                    src="/assets/BOX4.svg" 
-                    alt="SEO Score Card 2" 
-                    style={{
-                      width: '100%',
-                      height: 'auto',
-                      display: 'block',
-                      filter: 'drop-shadow(0 8px 32px rgba(0, 0, 0, 0.15))',
-                      backdropFilter: 'blur(40px) saturate(180%)',
-                      WebkitBackdropFilter: 'blur(40px) saturate(180%)'
+                      display: 'block'
                     }}
                   />
                 </div>
@@ -280,7 +227,7 @@ function SeoScanContent() {
         {/* SECTION TITLE - mt-12, mb-8 */}
         <div className="mt-12 mb-8">
           <h2 
-            className="text-3xl font-bold leading-tight"
+            className="text-2xl sm:text-3xl font-bold leading-tight"
             style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}
           >
             See Your Website<br />
@@ -289,30 +236,30 @@ function SeoScanContent() {
           </h2>
         </div>
 
-        {/* FEATURE CARDS GRID - 4 columns, gap-6 */}
-        <div className="grid grid-cols-4 gap-6">
+        {/* FEATURE CARDS GRID - Responsive: 1 col mobile, 2 cols tablet, 4 cols desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           
           {/* Card 1 - Dark with smaller gold moon showing bottom-right portion only */}
           <div 
-            className="h-[580px] rounded-[32px] p-8 relative overflow-hidden cursor-pointer transition-transform hover:scale-[1.02]"
+            className="h-[400px] sm:h-[500px] lg:h-[580px] rounded-[24px] sm:rounded-[32px] p-6 sm:p-8 relative overflow-hidden cursor-pointer transition-transform hover:scale-[1.02]"
             style={{ background: theme === 'dark' ? 'rgb(46, 39, 23)' : 'rgb(230, 228, 224)' }}
           >
             {/* Smaller moon - showing more of bottom-right portion */}
             <div 
-              className="absolute -top-24 -left-24 w-48 h-48 rounded-full"
+              className="absolute -top-16 sm:-top-24 -left-16 sm:-left-24 w-32 sm:w-48 h-32 sm:h-48 rounded-full"
               style={{ 
                 background: 'radial-gradient(circle, #B8922F 0%, #9C7420 40%, rgba(156, 116, 32, 0.4) 70%, transparent 100%)'
               }}
             />
             <div className="relative h-full flex flex-col">
               <div className="flex justify-end">
-                <ArrowUpRight className="w-6 h-6" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#000000' }} />
+                <ArrowUpRight className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#000000' }} />
               </div>
               <div className="mt-auto">
-                <h3 className="text-2xl font-bold mb-4 leading-tight" style={{ color: theme === 'dark' ? '#B8922F' : '#000000' }}>
+                <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 leading-tight" style={{ color: theme === 'dark' ? '#B8922F' : '#000000' }}>
                   Domain Health<br />Score
                 </h3>
-                <p className="text-base leading-relaxed" style={{ color: theme === 'dark' ? '#A0A0A0' : '#000000' }}>
+                <p className="text-sm sm:text-base leading-relaxed" style={{ color: theme === 'dark' ? '#A0A0A0' : '#000000' }}>
                   A clear 0–100 score that summarizes your website's overall SEO health and readiness for search visibility.
                 </p>
               </div>
@@ -321,12 +268,12 @@ function SeoScanContent() {
 
           {/* Card 2 - Light with 4-point concave Bézier star */}
           <div 
-            className="h-[580px] rounded-[32px] p-8 relative overflow-hidden cursor-pointer transition-transform hover:scale-[1.02]"
+            className="h-[400px] sm:h-[500px] lg:h-[580px] rounded-[24px] sm:rounded-[32px] p-6 sm:p-8 relative overflow-hidden cursor-pointer transition-transform hover:scale-[1.02]"
             style={{ background: theme === 'dark' ? '#F5F3EE' : '#453400' }}
           >
             {/* Star SVG with improved quality - touching top-left corner */}
             <div className="absolute top-0 left-0" style={{ transform: 'translate(-2px, -2px)' }}>
-              <svg width="120" height="120" viewBox="0 0 119 126" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ shapeRendering: 'geometricPrecision', imageRendering: 'crisp-edges' }}>
+              <svg width="80" height="84" viewBox="0 0 119 126" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-20 h-20 sm:w-28 sm:h-28 lg:w-[120px] lg:h-[120px]" style={{ shapeRendering: 'geometricPrecision', imageRendering: 'crisp-edges' }}>
                 <defs>
                   <filter id="antialiasing_star" x="-50%" y="-50%" width="200%" height="200%">
                     <feGaussianBlur in="SourceGraphic" stdDeviation="0.5" result="blur1"/>
@@ -341,13 +288,13 @@ function SeoScanContent() {
             </div>
             <div className="relative h-full flex flex-col">
               <div className="flex justify-end">
-                <ArrowUpRight className="w-6 h-6" style={{ color: theme === 'dark' ? 'rgba(0, 0, 0, 0.6)' : 'rgba(255, 255, 255, 0.7)' }} />
+                <ArrowUpRight className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: theme === 'dark' ? 'rgba(0, 0, 0, 0.6)' : 'rgba(255, 255, 255, 0.7)' }} />
               </div>
               <div className="mt-auto">
-                <h3 className="text-2xl font-bold mb-4 leading-tight" style={{ color: theme === 'dark' ? '#B8922F' : '#F4D47C' }}>
+                <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 leading-tight" style={{ color: theme === 'dark' ? '#B8922F' : '#F4D47C' }}>
                   Keyword &<br />Ranking Insights
                 </h3>
-                <p className="text-base leading-relaxed" style={{ color: theme === 'dark' ? '#000000' : 'rgba(255, 255, 255, 0.9)' }}>
+                <p className="text-sm sm:text-base leading-relaxed" style={{ color: theme === 'dark' ? '#000000' : 'rgba(255, 255, 255, 0.9)' }}>
                   Discover ranking keywords and understand how your site performs across sampled SERP positions.
                 </p>
               </div>
@@ -356,7 +303,7 @@ function SeoScanContent() {
 
           {/* Card 3 - Gold with concentric quarter circles (dartboard target) */}
           <div 
-            className="h-[580px] rounded-[32px] p-8 relative overflow-hidden cursor-pointer transition-transform hover:scale-[1.02]"
+            className="h-[400px] sm:h-[500px] lg:h-[580px] rounded-[24px] sm:rounded-[32px] p-6 sm:p-8 relative overflow-hidden cursor-pointer transition-transform hover:scale-[1.02]"
             style={{ background: theme === 'dark' ? 'linear-gradient(135deg, #B8922F 0%, #9C7420 100%)' : '#FFC004' }}
           >
             {/* Target SVG from file - touching top-left corner */}
@@ -364,18 +311,18 @@ function SeoScanContent() {
               <img 
                 src="/assets/target.svg" 
                 alt="" 
-                className="w-[85px] h-[85px]"
+                className="w-[60px] h-[60px] sm:w-[70px] sm:h-[70px] lg:w-[85px] lg:h-[85px]"
               />
             </div>
             <div className="relative h-full flex flex-col">
               <div className="flex justify-end">
-                <ArrowUpRight className="w-6 h-6" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.8)' : '#000000' }} />
+                <ArrowUpRight className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.8)' : '#000000' }} />
               </div>
               <div className="mt-auto">
-                <h3 className="text-2xl font-bold mb-4 leading-tight" style={{ color: theme === 'dark' ? 'white' : '#000000' }}>
+                <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 leading-tight" style={{ color: theme === 'dark' ? 'white' : '#000000' }}>
                   Competitor<br />Landscape
                 </h3>
-                <p className="text-base leading-relaxed" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.95)' : '#000000' }}>
+                <p className="text-sm sm:text-base leading-relaxed" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.95)' : '#000000' }}>
                   Identify direct and content-level competitors competing for the same search visibility.
                 </p>
               </div>
@@ -384,26 +331,26 @@ function SeoScanContent() {
 
           {/* Card 4 - Dark teal/blue with bulb design at top-left corner */}
           <div 
-            className="h-[580px] rounded-[32px] p-8 relative overflow-hidden cursor-pointer transition-transform hover:scale-[1.02]"
+            className="h-[400px] sm:h-[500px] lg:h-[580px] rounded-[24px] sm:rounded-[32px] p-6 sm:p-8 relative overflow-hidden cursor-pointer transition-transform hover:scale-[1.02]"
             style={{ background: theme === 'dark' ? 'rgb(46, 39, 23)' : 'rgb(230, 228, 224)' }}
           >
             {/* Bulb SVG from file - scaled and positioned to touch corner */}
-            <div className="absolute" style={{ top: '-5px', left: '-5px', transform: 'scale(1.7)', transformOrigin: 'top left' }}>
+            <div className="absolute sm:scale-[1.5] lg:scale-[1.7]" style={{ top: '-5px', left: '-5px', transform: 'scale(1.3)', transformOrigin: 'top left' }}>
               <img 
                 src="/assets/bulb.svg" 
                 alt="" 
-                className="w-[150px] h-[150px]"
+                className="w-[120px] h-[120px] sm:w-[140px] sm:h-[140px] lg:w-[150px] lg:h-[150px]"
               />
             </div>
             <div className="relative h-full flex flex-col">
               <div className="flex justify-end">
-                <ArrowUpRight className="w-6 h-6" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#000000' }} />
+                <ArrowUpRight className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#000000' }} />
               </div>
               <div className="mt-auto">
-                <h3 className="text-2xl font-bold mb-4 leading-tight" style={{ color: theme === 'dark' ? '#B8922F' : '#B8922F' }}>
+                <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 leading-tight" style={{ color: theme === 'dark' ? '#B8922F' : '#B8922F' }}>
                   Strategic SEO<br />Actions
                 </h3>
-                <p className="text-base leading-relaxed" style={{ color: theme === 'dark' ? '#A0A0A0' : '#000000' }}>
+                <p className="text-sm sm:text-base leading-relaxed" style={{ color: theme === 'dark' ? '#A0A0A0' : '#000000' }}>
                   Receive prioritized, actionable recommendations to improve rankings and organic performance.
                 </p>
               </div>
