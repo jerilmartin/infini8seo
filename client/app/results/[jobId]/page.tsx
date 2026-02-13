@@ -365,7 +365,7 @@ export default function ResultsPage() {
                 style={selectedPost === post.scenarioId && theme === 'light' ? {
                   background: 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)'
                 } : selectedPost === post.scenarioId ? {
-                  background: 'rgba(171, 128, 0, 0.2)'
+                  background: 'linear-gradient(to right, rgb(41, 32, 5) 0%, rgb(0, 0, 0) 100%)'
                 } : undefined}
               >
                 <div className="flex items-start gap-2 sm:gap-4">

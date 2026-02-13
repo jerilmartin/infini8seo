@@ -224,40 +224,31 @@ export default function LibraryPage() {
       {/* Header */}
       <header className="shrink-0 bg-transparent relative z-10">
         <div className="flex items-center justify-between px-3 sm:px-5 py-3">
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <button
               onClick={() => router.push('/')}
-              className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground hover:text-secondary-foreground transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Go back"
             >
-              <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Back</span>
+              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
-            <div className="h-4 sm:h-5 w-px bg-border/50" />
-            <div className="flex items-center gap-1 sm:gap-2">
-              <BookmarkCheck className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-              <h1 className="text-sm sm:text-base font-medium text-foreground">Content Library</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base sm:text-lg font-medium">
+                <span style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>infini8 </span>
+                <span style={{ color: '#FFC004' }}>SEO</span>
+              </h1>
+              <button
+                onClick={toggleTheme}
+                className="hover:opacity-80 transition-opacity"
+                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                <img 
+                  src={theme === 'dark' ? '/assets/button.svg' : '/assets/button1.svg'} 
+                  alt="Theme toggle"
+                  className="w-8 h-4"
+                />
+              </button>
             </div>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <span className="text-[10px] sm:text-xs text-muted-foreground hidden sm:inline">
-              {filteredBlogs.length} saved {filteredBlogs.length === 1 ? 'blog' : 'blogs'}
-            </span>
-            <div className="h-4 sm:h-5 w-px bg-border/50 hidden sm:block" />
-            <button
-              onClick={toggleTheme}
-              className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg hover:opacity-80 transition-opacity"
-              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {theme === 'dark' ? (
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
-                </svg>
-              )}
-            </button>
           </div>
         </div>
       </header>
@@ -267,28 +258,37 @@ export default function LibraryPage() {
         {/* Sidebar - Article List */}
         <aside className="w-full md:w-[350px] shrink-0 md:border-r border-border flex flex-col bg-transparent overflow-hidden max-h-[40vh] md:max-h-none">
           {/* Search & Filter */}
-          <div className="px-4 py-3 border-b border-border shrink-0 space-y-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search blogs..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
+          <div className="px-4 py-3 shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search blogs..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+              <button
+                onClick={() => setFilterFavorites(!filterFavorites)}
+                className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
+                  filterFavorites
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-card text-muted-foreground hover:text-foreground border border-border'
+                }`}
+                title="Favorites Only"
+              >
+                <Star className={`w-4 h-4 ${filterFavorites ? 'fill-current' : ''}`} />
+              </button>
             </div>
-            <button
-              onClick={() => setFilterFavorites(!filterFavorites)}
-              className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${
-                filterFavorites
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-card text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Star className={`w-3.5 h-3.5 ${filterFavorites ? 'fill-current' : ''}`} />
-              Favorites Only
-            </button>
+          </div>
+          
+          {/* Saved Blogs Count */}
+          <div className="px-4 sm:px-5 py-3 shrink-0 border-b border-border">
+            <span className="text-sm font-normal" style={{ color: theme === 'dark' ? '#888888' : '#666666' }}>
+              {filteredBlogs.length} Saved {filteredBlogs.length === 1 ? 'Blog' : 'Blogs'}
+            </span>
           </div>
 
           {/* Blog List */}
@@ -316,7 +316,7 @@ export default function LibraryPage() {
                   style={selectedBlog?.id === blog.id && theme === 'light' ? {
                     background: 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)'
                   } : selectedBlog?.id === blog.id ? {
-                    background: 'rgba(171, 128, 0, 0.2)'
+                    background: 'linear-gradient(to right, rgb(41, 32, 5) 0%, rgb(0, 0, 0) 100%)'
                   } : undefined}
                 >
                   <div className="flex items-start gap-4">
@@ -354,61 +354,71 @@ export default function LibraryPage() {
 
         {/* Main Reading Area */}
         <main className="flex-1 flex flex-col overflow-hidden bg-transparent">
+          {/* Content Library Header */}
+          <div className="shrink-0 px-4 sm:px-10 py-3 border-b border-border flex items-center justify-end gap-2">
+            <BookmarkCheck className="w-4 h-4" style={{ color: theme === 'dark' ? '#888888' : '#666666' }} />
+            <h2 className="text-sm font-normal" style={{ color: theme === 'dark' ? '#888888' : '#666666' }}>
+              Content Library
+            </h2>
+          </div>
+          
           {selectedBlog ? (
             <>
               {/* Article Header */}
-              <div className="shrink-0 px-10 py-4 bg-transparent">
-                <div className="max-w-[950px]">
+              <div className="shrink-0 px-4 sm:px-10 py-4 bg-transparent">
+                <div className="w-full">
                   <h2 className="text-xl font-bold text-foreground leading-tight mb-2">
                     {selectedBlog.contents.blog_title}
                   </h2>
                   <p className="text-sm text-secondary-foreground leading-relaxed mb-4">
                     {selectedBlog.contents.meta_description}
                   </p>
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <button
-                      onClick={() => copyToClipboard(selectedBlog.contents.blog_content)}
-                      className="flex items-center gap-1.5 text-xs font-medium hover:opacity-80 transition-all px-3 py-1.5 rounded-lg"
-                      style={theme === 'light' ? {
-                        background: 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)',
-                        color: '#000000'
-                      } : {
-                        background: '#241A06',
-                        color: '#FFFFFF'
-                      }}
-                    >
-                      {copiedId === selectedBlog.content_id ? (
-                        <><Check className="w-3.5 h-3.5" /> Copied</>
-                      ) : (
-                        <><Copy className="w-3.5 h-3.5" /> Copy</>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => downloadMarkdown(selectedBlog)}
-                      className="flex items-center gap-1.5 text-xs font-medium hover:opacity-80 transition-all px-3 py-1.5 rounded-lg"
-                      style={theme === 'light' ? {
-                        background: 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)',
-                        color: '#000000'
-                      } : {
-                        background: '#241A06',
-                        color: '#FFFFFF'
-                      }}
-                    >
-                      <Download className="w-3.5 h-3.5" /> Download
-                    </button>
-                    <button
-                      onClick={() => handleUnsave(selectedBlog.content_id)}
-                      disabled={deletingId === selectedBlog.content_id}
-                      className="flex items-center gap-1.5 text-xs font-medium text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50 px-3 py-1.5"
-                    >
-                      {deletingId === selectedBlog.content_id ? (
-                        <><div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Removing...</>
-                      ) : (
-                        <><Trash2 className="w-3.5 h-3.5" /> Remove</>
-                      )}
-                    </button>
+                  <div className="flex items-start justify-between gap-4 w-full">
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <button
+                        onClick={() => copyToClipboard(selectedBlog.contents.blog_content)}
+                        className="flex items-center gap-1.5 text-xs font-medium hover:opacity-80 transition-all px-3 py-1.5 rounded-lg"
+                        style={theme === 'light' ? {
+                          background: 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)',
+                          color: '#000000'
+                        } : {
+                          background: '#241A06',
+                          color: '#FFFFFF'
+                        }}
+                      >
+                        {copiedId === selectedBlog.content_id ? (
+                          <><Check className="w-3.5 h-3.5" /> Copied</>
+                        ) : (
+                          <><Copy className="w-3.5 h-3.5" /> Copy</>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => downloadMarkdown(selectedBlog)}
+                        className="flex items-center gap-1.5 text-xs font-medium hover:opacity-80 transition-all px-3 py-1.5 rounded-lg"
+                        style={theme === 'light' ? {
+                          background: 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)',
+                          color: '#000000'
+                        } : {
+                          background: '#241A06',
+                          color: '#FFFFFF'
+                        }}
+                      >
+                        <Download className="w-3.5 h-3.5" /> Download
+                      </button>
+                      <button
+                        onClick={() => handleUnsave(selectedBlog.content_id)}
+                        disabled={deletingId === selectedBlog.content_id}
+                        className="flex items-center gap-1.5 text-xs font-medium text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50 px-3 py-1.5"
+                      >
+                        {deletingId === selectedBlog.content_id ? (
+                          <><div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Removing...</>
+                        ) : (
+                          <><Trash2 className="w-3.5 h-3.5" /> Remove</>
+                        )}
+                      </button>
+                    </div>
                     {selectedBlog.contents.keywords.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 justify-end ml-auto">
                         {selectedBlog.contents.keywords.slice(0, 4).map((k, i) => (
                           <span 
                             key={i} 
@@ -431,8 +441,11 @@ export default function LibraryPage() {
               </div>
 
               {/* Article Content */}
-              <div className="flex-1 overflow-y-auto px-10 py-8">
-                <article className="article-content">
+              <div 
+                className="flex-1 overflow-y-auto px-4 sm:px-10 py-8"
+                style={{ width: '100%', height: '100%' }}
+              >
+                <article className="article-content" style={{ width: '100%', maxWidth: 'none' }}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
                     {selectedBlog.contents.blog_content}
                   </ReactMarkdown>
