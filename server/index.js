@@ -1740,7 +1740,15 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     initSupabase();
-    await testConnection();
+    
+    // Test Supabase connection but don't crash if it's temporarily unavailable
+    try {
+      await testConnection();
+    } catch (dbError) {
+      logger.warn('⚠️  Supabase connection test failed - server will start but database features may be unavailable');
+      logger.warn(`   Reason: ${dbError.message}`);
+      logger.warn('   The server will retry database operations when requests come in.');
+    }
 
     // Initialize auth client
     initAuthClient();

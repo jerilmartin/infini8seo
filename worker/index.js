@@ -94,9 +94,9 @@ const processContentGenerationJob = async (job) => {
       const totalCreditsCost = jobDoc.credits_cost || 0;
       const perBlogCost = totalBlogs > 0 ? totalCreditsCost / totalBlogs : 0;
       creditsToRefund = Math.floor(perBlogCost * failureCount);
-      
+
       logger.info(`Refunding ${creditsToRefund} credits for ${failureCount} failed blogs`);
-      
+
       // Refund credits if there were failures
       if (creditsToRefund > 0 && jobDoc.user_id) {
         try {
@@ -115,9 +115,9 @@ const processContentGenerationJob = async (job) => {
     }
 
     // Mark job as complete even with partial failures
-    const finalStatus = failureCount === totalBlogs ? 'FAILED' : 
-                       failureCount > 0 ? 'PARTIAL_COMPLETE' : 'COMPLETE';
-    
+    const finalStatus = failureCount === totalBlogs ? 'FAILED' :
+      failureCount > 0 ? 'PARTIAL_COMPLETE' : 'COMPLETE';
+
     await JobRepository.update(jobId, {
       status: finalStatus,
       progress: 100,
@@ -126,7 +126,7 @@ const processContentGenerationJob = async (job) => {
       failed_content_count: failureCount,
       credits_refunded: creditsToRefund
     });
-    
+
     await job.updateProgress(100);
 
     logger.info(`Job ${jobId} completed with status: ${finalStatus}`);
@@ -206,8 +206,13 @@ const processJob = async (job) => {
 const startWorker = async () => {
   try {
     initSupabase();
-    await testConnection();
-    logger.info('Worker: Supabase connected');
+    try {
+      await testConnection();
+    } catch (dbError) {
+      logger.warn('⚠️  Supabase connection test failed - worker will start but database features may be unavailable');
+      logger.warn(`   Reason: ${dbError.message}`);
+    }
+    logger.info('Worker: Supabase connected (or bypassed)');
 
     worker = new Worker(
       QUEUE_NAME,
