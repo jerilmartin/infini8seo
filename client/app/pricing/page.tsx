@@ -2,10 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Loader2, ArrowRight, Zap, Shield, Sparkles } from 'lucide-react';
+import { Check, Loader2, Zap, Shield, Sparkles } from 'lucide-react';
 import { api } from '@/utils/api';
 import { UserMenu } from '@/components/UserMenu';
 import { useTheme } from '@/contexts/ThemeContext';
+import { Montserrat } from 'next/font/google';
+
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800']
+});
 
 interface Plan {
   name: string;
@@ -29,11 +35,13 @@ interface SubscriptionStatus {
 export default function PricingPage() {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
+
   const [plans, setPlans] = useState<Record<string, Plan>>({});
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState<string | null>(null);
   const [currentSubscription, setCurrentSubscription] = useState<SubscriptionStatus | null>(null);
   const [currency, setCurrency] = useState<'USD' | 'INR'>('USD');
+  const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPricing();
@@ -56,7 +64,6 @@ export default function PricingPage() {
       const response = await api.get('/api/subscription/status');
       setCurrentSubscription(response.data);
     } catch (error) {
-      // User not authenticated or no subscription
       console.log('No subscription status');
     }
   };
@@ -64,8 +71,6 @@ export default function PricingPage() {
   const handleUpgrade = async (tier: string) => {
     setUpgrading(tier);
     try {
-      // TODO: Integrate with Stripe/Razorpay payment
-      // For now, just call the upgrade endpoint
       const response = await api.post('/api/subscription/upgrade', {
         tier,
         paymentData: {
@@ -86,168 +91,109 @@ export default function PricingPage() {
 
   if (loading) {
     return (
-      <div 
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: theme === 'dark' ? '#000000' : '#FFFEF9' }}
+      <div
+        className="min-h-screen flex items-center justify-center transition-colors duration-300"
+        style={{ backgroundColor: theme === 'light' ? '#F3F3F3' : '#0A0A0A' }}
       >
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#FFC004' }} />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#CA9700' }} />
       </div>
     );
   }
 
-  const paidPlans = Object.entries(plans).filter(([key]) => key !== 'free');
+  // Ensure preferred order: free, starter, pro
+  const orderedKeys = ['free', 'starter', 'pro'];
+  const displayPlans = orderedKeys.map(key => ({ key, plan: plans[key] })).filter(item => item.plan);
 
   return (
-    <div 
-      className="min-h-screen relative overflow-hidden"
-      style={{ background: theme === 'dark' ? '#000000' : '#FFFEF9' }}
+    <div
+      className={`min-h-screen relative overflow-hidden transition-colors duration-300 ${montserrat.className}`}
+      style={{ backgroundColor: theme === 'light' ? '#F3F3F3' : '#0A0A0A' }}
     >
-      {/* Dark mode golden blur - diagonal from top-left to bottom-right */}
-      {theme === 'dark' && (
-        <div 
-          className="absolute pointer-events-none z-0"
-          style={{
-            top: '0',
-            left: '0',
-            right: '0',
-            bottom: '0',
-            background: 'linear-gradient(to bottom right, transparent 0%, transparent 20%, rgba(255, 192, 4, 0.15) 35%, rgba(255, 192, 4, 0.25) 50%, rgba(255, 192, 4, 0.15) 65%, transparent 80%, transparent 100%)',
-            filter: 'blur(500px)'
-          }}
-        />
-      )}
-      {/* Light mode golden blur - diagonal from top-left to bottom-right */}
-      {theme === 'light' && (
-        <div 
-          className="absolute pointer-events-none z-0"
-          style={{
-            top: '0',
-            left: '0',
-            right: '0',
-            bottom: '0',
-            background: 'linear-gradient(to bottom right, transparent 0%, transparent 25%, rgba(171, 128, 0, 0.08) 40%, rgba(171, 128, 0, 0.12) 50%, rgba(171, 128, 0, 0.08) 60%, transparent 75%, transparent 100%)',
-            filter: 'blur(350px)'
-          }}
-        />
-      )}
 
-      <div className="max-w-7xl mx-auto px-6 py-4 relative z-10">
-        {/* Header */}
-        <header className="mb-8 animate-fade-in">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => router.push('/')}
-                className="font-semibold transition-opacity hover:opacity-80"
-                style={{ fontSize: '24px', lineHeight: '1' }}
-              >
-                <span style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>infini8</span>
-                <span className="text-[#FFC004]"> SEO</span>
-              </button>
-              
-              {/* Theme Toggle Button */}
-              <button
-                onClick={toggleTheme}
-                className="flex items-center justify-center w-10 h-10 rounded-lg hover:opacity-80 transition-opacity"
-                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              >
-                {theme === 'dark' ? (
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
-                    <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
-                    <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
-            </div>
-            <UserMenu />
+      {/* Background large text "Pricing" and glow */}
+      <div className="absolute top-[12%] md:top-[14%] left-1/2 -translate-x-1/2 w-full text-center pointer-events-none z-0">
+        <h2 className="text-[#CA9700] text-xl md:text-3xl font-semibold tracking-wider mb-0 md:mb-2">Infini8 SEO</h2>
+        <h1
+          className="text-[20vw] md:text-[18vw] font-bold tracking-tighter"
+          style={{
+            background: 'linear-gradient(to right, #453400 0%, #CA9700 50%, #584200 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            lineHeight: 0.8,
+            opacity: 0.85
+          }}
+        >
+          Pricing
+        </h1>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 py-6 relative z-10">
+        {/* Header navigation */}
+        <header className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push('/')}
+              className={`font-semibold transition-opacity hover:opacity-80 flex items-center gap-1 text-2xl ${theme === 'light' ? 'text-black' : 'text-white'}`}
+            >
+              <span>infini8</span>
+              <span className="text-[#CA9700]"> SEO</span>
+            </button>
+            <button
+              onClick={toggleTheme}
+              className={`flex items-center justify-center w-10 h-10 rounded-lg hover:opacity-80 transition-opacity ${theme === 'light' ? 'text-black' : 'text-white'}`}
+            >
+              <Sparkles className="w-5 h-5 opacity-70" />
+            </button>
           </div>
-
-          <div className="text-center max-w-2xl mx-auto">
-            <h1 className="text-[28px] font-semibold mb-3" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
-              Choose Your Plan
-            </h1>
-            <p className="text-[15px]" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
-              Start with 10 free credits. Upgrade anytime for more content and site insights.
-            </p>
-
+          <div className="flex items-center gap-4">
             {/* Currency Toggle */}
-            <div className="flex items-center justify-center gap-2 mt-4">
+            <div
+              className="flex items-center border rounded-full p-1"
+              style={{
+                background: theme === 'light' ? 'rgba(0,0,0,0.05)' : '#131111',
+                borderColor: theme === 'light' ? 'rgba(0,0,0,0.1)' : '#222'
+              }}
+            >
               <button
                 onClick={() => setCurrency('USD')}
-                className={`px-3 py-1.5 rounded-md text-[13px] font-medium transition-all`}
-                style={currency === 'USD' ? (theme === 'light' ? {
-                  background: 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)',
-                  color: '#000000'
-                } : {
-                  background: '#241A06',
-                  color: '#FFFFFF'
-                }) : {
-                  color: theme === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)'
-                }}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${currency === 'USD' ? 'bg-[#CA9700] text-black' : 'text-zinc-500 hover:text-white'}`}
               >
                 USD ($)
               </button>
               <button
                 onClick={() => setCurrency('INR')}
-                className={`px-3 py-1.5 rounded-md text-[13px] font-medium transition-all`}
-                style={currency === 'INR' ? (theme === 'light' ? {
-                  background: 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)',
-                  color: '#000000'
-                } : {
-                  background: '#241A06',
-                  color: '#FFFFFF'
-                }) : {
-                  color: theme === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)'
-                }}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${currency === 'INR' ? 'bg-[#CA9700] text-black' : 'text-zinc-500 hover:text-white'}`}
               >
                 INR (₹)
               </button>
             </div>
+            <UserMenu />
           </div>
         </header>
 
         {/* Current Subscription Banner */}
         {currentSubscription && currentSubscription.tier !== 'free' && (
-          <div className="mb-8 animate-fade-in">
-            <div 
-              className="p-4 flex items-center justify-between rounded-xl"
-              style={theme === 'light' ? {
-                background: 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)',
-                border: '1px solid rgba(171, 128, 0, 0.3)'
-              } : {
-                background: 'rgba(255, 192, 4, 0.08)',
-                border: '1px solid rgba(255, 192, 4, 0.2)'
-              }}
+          <div className="mb-8 max-w-4xl mx-auto animate-fade-in relative z-20">
+            <div
+              className="p-4 flex items-center justify-between rounded-xl border border-[#CA9700]/30 backdrop-blur-md"
+              style={{ background: theme === 'light' ? 'rgba(202, 151, 0, 0.15)' : 'rgba(202, 151, 0, 0.1)' }}
             >
               <div className="flex items-center gap-3">
-                <div 
-                  className="w-10 h-10 rounded-lg flex items-center justify-center"
-                  style={{ background: theme === 'dark' ? 'rgba(255, 192, 4, 0.2)' : 'rgba(171, 128, 0, 0.2)' }}
-                >
-                  <Sparkles className="w-5 h-5" style={{ color: '#FFC004' }} />
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[#CA9700]/20">
+                  <Shield className="w-5 h-5 text-[#CA9700]" />
                 </div>
                 <div>
-                  <div className="text-[14px] font-medium" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
-                    Current Plan: {currentSubscription.tier.charAt(0).toUpperCase() + currentSubscription.tier.slice(1)}
+                  <div className={`text-sm font-medium ${theme === 'light' ? 'text-black' : 'text-white'}`}>
+                    Current Plan: <span className="text-[#CA9700]">{currentSubscription.tier.toUpperCase()}</span>
                   </div>
-                  <div className="text-[12px]" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
+                  <div className={`text-xs ${theme === 'light' ? 'text-black/70' : 'text-white/70'}`}>
                     {currentSubscription.creditsRemaining} / {currentSubscription.creditsTotal} credits remaining
                   </div>
                 </div>
               </div>
               <button
                 onClick={() => router.push('/')}
-                className="text-[13px] h-9 px-4 rounded-lg transition-opacity hover:opacity-80"
-                style={theme === 'light' ? {
-                  background: 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)',
-                  color: '#000000'
-                } : {
-                  background: '#241A06',
-                  color: '#FFFFFF'
-                }}
+                className="text-xs h-9 px-5 rounded-full font-semibold bg-[#CA9700] text-black hover:brightness-110 transition-all"
               >
                 Go to Dashboard
               </button>
@@ -255,262 +201,157 @@ export default function PricingPage() {
           </div>
         )}
 
-        {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto animate-fade-in" style={{ animationDelay: '100ms' }}>
-          {paidPlans.map(([key, plan]) => {
+        {/* Pricing Cards Layer */}
+        <div
+          className="flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-8 max-w-6xl mx-auto mt-32 lg:mt-48 relative z-10"
+          onMouseLeave={() => setHoveredPlan(null)}
+        >
+          {displayPlans.map(({ key, plan }) => {
             const isCurrentPlan = currentSubscription?.tier === key;
             const displayPrice = currency === 'INR' && plan.priceINR ? plan.priceINR : plan.price;
             const currencySymbol = currency === 'INR' ? '₹' : '$';
+            // Default to starter if nothing hovered, else highlight hovered
+            const isHighlighted = hoveredPlan ? hoveredPlan === key : key === 'starter';
 
             return (
               <div
                 key={key}
-                className="p-6 relative rounded-xl transition-all hover:scale-[1.02]"
-                style={{
-                  background: 'transparent',
-                  border: plan.popular 
-                    ? `2px solid ${theme === 'dark' ? '#FFC004' : '#AB8000'}`
-                    : `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-                }}
-                onMouseEnter={(e) => {
-                  if (theme === 'light') {
-                    e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
-                  } else {
-                    e.currentTarget.style.background = 'rgba(255, 192, 4, 0.08)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                }}
+                onMouseEnter={() => setHoveredPlan(key)}
+                className={`relative rounded-[26px] transition-all duration-300 flex-1 w-full max-w-[360px] ${isHighlighted ? 'z-20 scale-105 shadow-2xl shadow-[#CA9700]/10' : 'z-10 scale-100 opacity-90'}`}
               >
-                {/* Popular Badge */}
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <div 
-                      className="px-3 py-1 rounded-full text-[11px] font-medium flex items-center gap-1"
-                      style={{
-                        background: '#FFC004',
-                        color: '#000000'
-                      }}
-                    >
-                      <Zap className="w-3 h-3" />
-                      Most Popular
-                    </div>
-                  </div>
+                {/* Glow effect for highlighted card */}
+                {isHighlighted && (
+                  <div
+                    className="absolute -inset-1 blur-2xl opacity-40 z-[-2]"
+                    style={{ background: 'linear-gradient(135deg, #453400 0%, #CA9700 100%)' }}
+                  />
                 )}
 
-                {/* Plan Header */}
-                <div className="mb-6">
-                  <h3 className="text-[20px] font-semibold mb-2" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
-                    {plan.name}
-                  </h3>
-                  <div className="flex items-baseline gap-1 mb-2">
-                    <span className="text-[32px] font-bold" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
-                      {currencySymbol}{displayPrice}
-                    </span>
-                    <span className="text-[14px]" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>/month</span>
-                  </div>
-                  <div className="text-[13px]" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
-                    {plan.credits} credits per month
-                  </div>
-                  {plan.bestFor && (
-                    <div className="mt-2 text-[12px]" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)' }}>
-                      Best for: {plan.bestFor}
-                    </div>
-                  )}
-                </div>
+                {/* Gradient Border Ring (Center remains perfectly transparent!) */}
+                {isHighlighted && (
+                  <div
+                    className="absolute z-[-1] pointer-events-none rounded-[26px]"
+                    style={{
+                      inset: '-2px',
+                      padding: '2px', // Gradient border thickness
+                      background: 'linear-gradient(135deg, #453400 0%, #584200 26%, #CA9700 100%)',
+                      WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                      WebkitMaskComposite: 'xor',
+                      maskComposite: 'exclude'
+                    }}
+                  />
+                )}
 
-                {/* Features */}
-                <div className="space-y-3 mb-6">
-                  {plan.features.map((feature, idx) => (
-                    <div key={idx} className="flex items-start gap-2">
-                      <Check className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#FFC004' }} />
-                      <span className="text-[13px]" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)' }}>{feature}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* CTA Button */}
-                <button
-                  onClick={() => handleUpgrade(key)}
-                  disabled={upgrading === key || isCurrentPlan}
-                  className="w-full h-10 rounded-md font-medium text-[14px] transition-all flex items-center justify-center"
-                  style={
-                    isCurrentPlan
-                      ? {
-                          background: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-                          color: theme === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)',
-                          cursor: 'not-allowed'
-                        }
-                      : plan.popular
-                      ? {
-                          background: '#FFC004',
-                          color: '#000000'
-                        }
-                      : theme === 'light'
-                      ? {
-                          background: 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)',
-                          color: '#000000'
-                        }
-                      : {
-                          background: '#241A06',
-                          color: '#FFFFFF'
-                        }
-                  }
+                <div
+                  className="h-full rounded-[24px] p-8 flex flex-col items-center text-center transition-colors duration-300 backdrop-blur-xl"
+                  style={{
+                    background: theme === 'light' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(19, 17, 17, 0.75)',
+                    border: isHighlighted ? '1px solid transparent' : '1px solid rgba(255,255,255,0.05)'
+                  }}
                 >
-                  {upgrading === key ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : isCurrentPlan ? (
-                    <>
-                      <Shield className="w-4 h-4 mr-2" />
-                      Current Plan
-                    </>
-                  ) : (
-                    <>
-                      Upgrade to {plan.name}
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </>
-                  )}
-                </button>
+                  <h3 className="text-xl font-medium text-white mb-2">{plan.name}</h3>
+                  <div className="flex items-baseline justify-center gap-1 mb-6">
+                    <span className="text-4xl font-bold text-white">{currencySymbol}{displayPrice}</span>
+                    <span className="text-sm font-medium text-zinc-300">/ month</span>
+                  </div>
+
+                  <div className="text-sm text-zinc-300 mb-8 min-h-[40px]">
+                    {plan.bestFor ? (
+                      <div>
+                        <span className="block text-white mb-1">{plan.credits} credits per month</span>
+                        <span className="block text-xs">Best for: {plan.bestFor}</span>
+                      </div>
+                    ) : (
+                      <span className="block leading-relaxed">
+                        Perfect for testing the quality of our AI-generated SEO content.
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-4 text-left w-full flex-grow mb-10">
+                    <div className="flex items-center gap-3">
+                      <Check className="w-5 h-5 flex-shrink-0 text-[#CA9700]" />
+                      <span className="text-sm text-white font-medium">{plan.credits} credits</span>
+                    </div>
+                    {plan.features.map((feature, idx) => (
+                      <div key={idx} className="flex items-start gap-3">
+                        <Check className="w-5 h-5 flex-shrink-0 text-white/50 mt-0.5" />
+                        <span className="text-sm text-white/80 leading-snug">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => handleUpgrade(key)}
+                    disabled={upgrading === key || isCurrentPlan}
+                    className="w-full py-3.5 rounded-full font-semibold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#CA9700]/50"
+                    style={{
+                      backgroundColor: isCurrentPlan ? 'rgba(255,255,255,0.1)' : '#FFFFFF',
+                      color: isCurrentPlan ? 'rgba(255,255,255,0.4)' : '#000000',
+                      cursor: isCurrentPlan ? 'not-allowed' : 'pointer',
+                      border: isCurrentPlan ? '1px solid rgba(255,255,255,0.2)' : 'none'
+                    }}
+                  >
+                    {upgrading === key ? (
+                      <span className="flex items-center justify-center">
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Processing...
+                      </span>
+                    ) : isCurrentPlan ? (
+                      'Current Plan'
+                    ) : (
+                      'Choose Plan'
+                    )}
+                  </button>
+                </div>
               </div>
             );
           })}
         </div>
 
-        {/* Free Tier Info */}
-        {plans.free && (
-          <div className="mt-8 max-w-4xl mx-auto animate-fade-in" style={{ animationDelay: '200ms' }}>
-            <div 
-              className="p-6 rounded-xl transition-all"
-              style={{
-                background: 'transparent',
-                border: `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-              }}
-              onMouseEnter={(e) => {
-                if (theme === 'light') {
-                  e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
-                } else {
-                  e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-              }}
-            >
-              <div className="flex items-start gap-4">
-                <div 
-                  className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: theme === 'dark' ? 'rgba(255, 192, 4, 0.2)' : 'rgba(171, 128, 0, 0.2)' }}
-                >
-                  <Sparkles className="w-5 h-5" style={{ color: '#FFC004' }} />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-[16px] font-medium mb-2" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
-                    Free Tier
-                  </h4>
-                  <p className="text-[13px] mb-3" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
-                    Get started with {plans.free.credits} free credits. Perfect for testing the quality of our AI-generated content.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {plans.free.features.map((feature, idx) => (
-                      <div 
-                        key={idx} 
-                        className="px-2 py-1 rounded text-[11px]"
-                        style={{
-                          background: theme === 'dark' ? 'rgba(255, 192, 4, 0.1)' : 'rgba(171, 128, 0, 0.1)',
-                          color: theme === 'dark' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)'
-                        }}
-                      >
-                        {feature}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Credit Breakdown */}
-        <div className="mt-12 max-w-4xl mx-auto animate-fade-in" style={{ animationDelay: '300ms' }}>
-          <div className="text-center mb-6">
-            <h3 className="text-[18px] font-semibold mb-2" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
-              How Credits Work
-            </h3>
-            <p className="text-[13px]" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
-              Credits are deducted based on what you generate
-            </p>
+        <div className="mt-24 max-w-4xl mx-auto animate-fade-in" style={{ animationDelay: '300ms' }}>
+          <div className="text-center mb-10">
+            <h3 className={`text-2xl font-semibold mb-3 ${theme === 'light' ? 'text-black' : 'text-white'}`}>How Credits Work</h3>
+            <p className={`text-sm ${theme === 'light' ? 'text-black/60' : 'text-zinc-400'}`}>Credits are deducted based on what you generate</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Blog Generation */}
-            <div 
-              className="p-5 rounded-xl transition-all"
-              style={{
-                background: 'transparent',
-                border: `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-              }}
-              onMouseEnter={(e) => {
-                if (theme === 'light') {
-                  e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
-                } else {
-                  e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-              }}
+            <div
+              className="p-8 rounded-2xl transition-all border border-white/5 backdrop-blur-xl"
+              style={{ background: theme === 'light' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(19, 17, 17, 0.75)' }}
             >
-              <h4 className="text-[15px] font-medium mb-3" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
-                Blog Generation
-              </h4>
-              <div className="space-y-2 text-[13px]">
-                <div className="flex justify-between">
-                  <span style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>1-10 blogs</span>
-                  <span className="font-medium" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>5 credits each</span>
+              <h4 className="text-lg font-medium mb-6 text-white text-center">Blog Generation</h4>
+              <div className="space-y-4 text-sm">
+                <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                  <span className="text-zinc-300">1-10 blogs</span>
+                  <span className="font-semibold text-white">5 credits each</span>
                 </div>
-                <div className="flex justify-between">
-                  <span style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>11-30 blogs</span>
-                  <span className="font-medium" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>4 credits each</span>
+                <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                  <span className="text-zinc-300">11-30 blogs</span>
+                  <span className="font-semibold text-white">4 credits each</span>
                 </div>
-                <div className="flex justify-between">
-                  <span style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>31-60 blogs</span>
-                  <span className="font-medium" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>3 credits each</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-300">31-60 blogs</span>
+                  <span className="font-semibold text-white">3 credits each</span>
                 </div>
               </div>
             </div>
 
             {/* Site Insights */}
-            <div 
-              className="p-5 rounded-xl transition-all"
-              style={{
-                background: 'transparent',
-                border: `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-              }}
-              onMouseEnter={(e) => {
-                if (theme === 'light') {
-                  e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
-                } else {
-                  e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-              }}
+            <div
+              className="p-8 rounded-2xl transition-all border border-white/5 backdrop-blur-xl"
+              style={{ background: theme === 'light' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(19, 17, 17, 0.75)' }}
             >
-              <h4 className="text-[15px] font-medium mb-3" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
-                Site Insights
-              </h4>
-              <div className="space-y-2 text-[13px]">
-                <div className="flex justify-between">
-                  <span style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>Per analysis</span>
-                  <span className="font-medium" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>20 credits</span>
+              <h4 className="text-lg font-medium mb-6 text-white text-center">Site Insights</h4>
+              <div className="space-y-4 text-sm h-full flex flex-col justify-start">
+                <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                  <span className="text-zinc-300">Per analysis</span>
+                  <span className="font-semibold text-white">20 credits</span>
                 </div>
-                <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}` }}>
-                  <p className="text-[12px]" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)' }}>
+                <div className="mt-auto pt-4 text-center">
+                  <p className="text-sm text-zinc-400 leading-relaxed">
                     Includes SERP analysis, competitor mapping, and AI recommendations
                   </p>
                 </div>
@@ -520,112 +361,51 @@ export default function PricingPage() {
         </div>
 
         {/* FAQ */}
-        <div className="mt-12 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '400ms' }}>
-          <h3 className="text-[18px] font-semibold mb-6 text-center" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
-            Frequently Asked Questions
-          </h3>
+        <div className="mt-24 mb-16 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '400ms' }}>
+          <h3 className={`text-2xl font-semibold mb-10 text-center ${theme === 'light' ? 'text-black' : 'text-white'}`}>Frequently Asked Questions</h3>
           <div className="space-y-4">
-            <details 
-              className="p-4 cursor-pointer rounded-xl transition-all"
-              style={{
-                background: 'transparent',
-                border: `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-              }}
-              onMouseEnter={(e) => {
-                if (theme === 'light') {
-                  e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
-                } else {
-                  e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-              }}
+            <details
+              className="p-5 cursor-pointer rounded-2xl border border-white/5 transition-all backdrop-blur-xl hover:brightness-110"
+              style={{ background: theme === 'light' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(19, 17, 17, 0.75)' }}
             >
-              <summary className="text-[14px] font-medium" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
-                Can I cancel anytime?
-              </summary>
-              <p className="mt-2 text-[13px]" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
+              <summary className="text-base font-medium text-white focus:outline-none">Can I cancel anytime?</summary>
+              <p className="mt-3 text-sm text-zinc-300 leading-relaxed">
                 Yes! You can cancel your subscription at any time. You'll keep your remaining credits until the end of your billing period.
               </p>
             </details>
 
-            <details 
-              className="p-4 cursor-pointer rounded-xl transition-all"
-              style={{
-                background: 'transparent',
-                border: `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-              }}
-              onMouseEnter={(e) => {
-                if (theme === 'light') {
-                  e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
-                } else {
-                  e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-              }}
+            <details
+              className="p-5 cursor-pointer rounded-2xl border border-white/5 transition-all backdrop-blur-xl hover:brightness-110"
+              style={{ background: theme === 'light' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(19, 17, 17, 0.75)' }}
             >
-              <summary className="text-[14px] font-medium" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
-                Do credits roll over?
-              </summary>
-              <p className="mt-2 text-[13px]" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
-                Credits reset monthly with your subscription. Unused credits don't roll over to the next month.
+              <summary className="text-base font-medium text-white focus:outline-none">Do credits roll over?</summary>
+              <p className="mt-3 text-sm text-zinc-300 leading-relaxed">
+                Credits reset monthly with your subscription. Unused credits don't roll over to the next month to ensure optimal server availability.
               </p>
             </details>
 
-            <details 
-              className="p-4 cursor-pointer rounded-xl transition-all"
-              style={{
-                background: 'transparent',
-                border: `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-              }}
-              onMouseEnter={(e) => {
-                if (theme === 'light') {
-                  e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
-                } else {
-                  e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-              }}
+            <details
+              className="p-5 cursor-pointer rounded-2xl border border-white/5 transition-all backdrop-blur-xl hover:brightness-110"
+              style={{ background: theme === 'light' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(19, 17, 17, 0.75)' }}
             >
-              <summary className="text-[14px] font-medium" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
-                What payment methods do you accept?
-              </summary>
-              <p className="mt-2 text-[13px]" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
+              <summary className="text-base font-medium text-white focus:outline-none">What payment methods do you accept?</summary>
+              <p className="mt-3 text-sm text-zinc-300 leading-relaxed">
                 We accept all major credit cards via Stripe (international) and UPI/cards via Razorpay (India).
               </p>
             </details>
 
-            <details 
-              className="p-4 cursor-pointer rounded-xl transition-all"
-              style={{
-                background: 'transparent',
-                border: `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`
-              }}
-              onMouseEnter={(e) => {
-                if (theme === 'light') {
-                  e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
-                } else {
-                  e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-              }}
+            <details
+              className="p-5 cursor-pointer rounded-2xl border border-white/5 transition-all backdrop-blur-xl hover:brightness-110"
+              style={{ background: theme === 'light' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(19, 17, 17, 0.75)' }}
             >
-              <summary className="text-[14px] font-medium" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
-                Can I upgrade or downgrade my plan?
-              </summary>
-              <p className="mt-2 text-[13px]" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }}>
-                Yes! You can upgrade or downgrade at any time. Changes take effect immediately, and we'll prorate the difference.
+              <summary className="text-base font-medium text-white focus:outline-none">Can I upgrade or downgrade my plan?</summary>
+              <p className="mt-3 text-sm text-zinc-300 leading-relaxed">
+                Yes! You can upgrade or downgrade at any time. Changes take effect immediately, and we'll prorate the difference automatically.
               </p>
             </details>
           </div>
         </div>
+
       </div>
     </div>
   );
