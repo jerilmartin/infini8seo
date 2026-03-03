@@ -16,6 +16,7 @@ export function UserMenu() {
     const [mounted, setMounted] = useState(false);
     const [imageError, setImageError] = useState(false);
     const [credits, setCredits] = useState<number | null>(null);
+    const [subscription, setSubscription] = useState<{ tier: string; creditsRemaining: number; creditsTotal: number } | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
     const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
@@ -33,6 +34,12 @@ export function UserMenu() {
                     setCredits(response.data.credits);
                 } catch (error) {
                     console.error('Error fetching credits:', error);
+                }
+                try {
+                    const subResponse = await api.get('/api/subscription/status');
+                    setSubscription(subResponse.data);
+                } catch (error) {
+                    console.log('No subscription status');
                 }
             }
         };
@@ -65,7 +72,7 @@ export function UserMenu() {
 
         document.addEventListener('mousedown', handleClickOutside);
         window.addEventListener('scroll', handleScroll, true);
-        
+
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
             window.removeEventListener('scroll', handleScroll, true);
@@ -102,59 +109,79 @@ export function UserMenu() {
             }}
         >
             {/* User Info */}
-            <div 
-                className="px-4 py-3" 
-                style={{ 
-                    borderBottom: theme === 'dark' 
-                        ? '1px solid rgba(255, 192, 4, 0.2)' 
-                        : '1px solid rgba(184, 134, 11, 0.2)' 
+            <div
+                className="px-4 py-3"
+                style={{
+                    borderBottom: theme === 'dark'
+                        ? '1px solid rgba(255, 192, 4, 0.2)'
+                        : '1px solid rgba(184, 134, 11, 0.2)'
                 }}
             >
-                <p 
+                <p
                     className="text-sm font-medium truncate"
                     style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
                 >
                     {displayName}
                 </p>
-                <p 
-                    className="text-xs truncate" 
+                <p
+                    className="text-xs truncate"
                     style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)' }}
                 >
                     {user.email}
                 </p>
             </div>
 
-            {/* Credits Display */}
-            {credits !== null && (
-                <div 
-                    className="px-4 py-3 flex items-center justify-between"
-                    style={{ 
-                        borderBottom: theme === 'dark' 
-                            ? '1px solid rgba(255, 192, 4, 0.2)' 
+            {/* Credits & Subscription Display */}
+            {(credits !== null || subscription) && (
+                <div
+                    className="px-4 py-3"
+                    style={{
+                        borderBottom: theme === 'dark'
+                            ? '1px solid rgba(255, 192, 4, 0.2)'
                             : '1px solid rgba(184, 134, 11, 0.2)',
-                        background: theme === 'dark' 
-                            ? 'rgba(255, 192, 4, 0.05)' 
+                        background: theme === 'dark'
+                            ? 'rgba(255, 192, 4, 0.05)'
                             : 'rgba(184, 134, 11, 0.05)'
                     }}
                 >
-                    <div className="flex items-center gap-2">
-                        <Coins 
-                            className="w-4 h-4" 
+                    {subscription && (
+                        <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-2">
+                                <Zap
+                                    className="w-3.5 h-3.5"
+                                    style={{ color: theme === 'dark' ? '#FFC004' : '#B8860B' }}
+                                />
+                                <span
+                                    className="text-xs font-medium"
+                                    style={{ color: theme === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }}
+                                >
+                                    {subscription.tier.charAt(0).toUpperCase() + subscription.tier.slice(1)} Plan
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Coins
+                                className="w-4 h-4"
+                                style={{ color: theme === 'dark' ? '#FFC004' : '#B8860B' }}
+                            />
+                            <span
+                                className="text-sm font-medium"
+                                style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
+                            >
+                                Credits
+                            </span>
+                        </div>
+                        <span
+                            className="text-sm font-bold"
                             style={{ color: theme === 'dark' ? '#FFC004' : '#B8860B' }}
-                        />
-                        <span 
-                            className="text-sm font-medium"
-                            style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
                         >
-                            Credits
+                            {subscription
+                                ? `${subscription.creditsRemaining} / ${subscription.creditsTotal}`
+                                : credits !== null ? credits.toLocaleString() : '—'}
                         </span>
                     </div>
-                    <span 
-                        className="text-sm font-bold"
-                        style={{ color: theme === 'dark' ? '#FFC004' : '#B8860B' }}
-                    >
-                        {credits.toLocaleString()}
-                    </span>
                 </div>
             )}
 
@@ -172,8 +199,8 @@ export function UserMenu() {
                             background: 'transparent'
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.background = theme === 'dark' 
-                                ? 'rgba(255, 192, 4, 0.1)' 
+                            e.currentTarget.style.background = theme === 'dark'
+                                ? 'rgba(255, 192, 4, 0.1)'
                                 : 'rgba(184, 134, 11, 0.1)';
                         }}
                         onMouseLeave={(e) => {
@@ -197,8 +224,8 @@ export function UserMenu() {
                         background: 'transparent'
                     }}
                     onMouseEnter={(e) => {
-                        e.currentTarget.style.background = theme === 'dark' 
-                            ? 'rgba(255, 192, 4, 0.1)' 
+                        e.currentTarget.style.background = theme === 'dark'
+                            ? 'rgba(255, 192, 4, 0.1)'
                             : 'rgba(184, 134, 11, 0.1)';
                     }}
                     onMouseLeave={(e) => {
@@ -219,8 +246,8 @@ export function UserMenu() {
                         background: 'transparent'
                     }}
                     onMouseEnter={(e) => {
-                        e.currentTarget.style.background = theme === 'dark' 
-                            ? 'rgba(255, 192, 4, 0.1)' 
+                        e.currentTarget.style.background = theme === 'dark'
+                            ? 'rgba(255, 192, 4, 0.1)'
                             : 'rgba(184, 134, 11, 0.1)';
                     }}
                     onMouseLeave={(e) => {
@@ -241,8 +268,8 @@ export function UserMenu() {
                         background: 'transparent'
                     }}
                     onMouseEnter={(e) => {
-                        e.currentTarget.style.background = theme === 'dark' 
-                            ? 'rgba(255, 192, 4, 0.1)' 
+                        e.currentTarget.style.background = theme === 'dark'
+                            ? 'rgba(255, 192, 4, 0.1)'
                             : 'rgba(184, 134, 11, 0.1)';
                     }}
                     onMouseLeave={(e) => {

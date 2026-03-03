@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { TrendingUp, Target, Lightbulb, Users, Clock, CheckCircle2, Circle, ArrowRight, ExternalLink, Copy, ChevronDown, ChevronUp, Star, Zap, AlertCircle } from 'lucide-react';
+import { TrendingUp, Target, Lightbulb, Users, Clock, CheckCircle2, Circle, ArrowRight, ExternalLink, Copy, ChevronDown, ChevronUp, Star, Zap, AlertCircle, BookOpen, DollarSign, Search } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 
 // ============================================================================
@@ -51,8 +51,8 @@ export function CompetitorTrackingSection({ competitors }: { competitors: Compet
                 {/* Competitors List */}
                 <div className="divide-y divide-border/30">
                     {competitors.map((comp, idx) => (
-                        <div 
-                            key={comp.domain} 
+                        <div
+                            key={comp.domain}
                             className="p-6 transition-all cursor-pointer"
                             style={{
                                 transition: 'all 0.2s ease'
@@ -265,8 +265,8 @@ export function ActionItemsSection({ items }: { items: ActionItem[] }) {
                 {/* Action Items List */}
                 <div className="divide-y divide-border/30">
                     {filteredItems.map((item, idx) => (
-                        <div 
-                            key={item.id} 
+                        <div
+                            key={item.id}
                             className="p-6 transition-all group cursor-pointer"
                             style={{
                                 transition: 'all 0.2s ease'
@@ -372,9 +372,9 @@ export function ContentRecommendationsSection({ recommendations }: { recommendat
     };
 
     const getIntentIcon = (intent: string) => {
-        if (intent === 'transactional') return '💰';
-        if (intent === 'informational') return '📚';
-        return '🔍';
+        if (intent === 'transactional') return <DollarSign className="w-4 h-4 text-emerald-500" />;
+        if (intent === 'informational') return <BookOpen className="w-4 h-4 text-blue-500" />;
+        return <Search className="w-4 h-4 text-amber-500" />;
     };
 
     return (
@@ -429,7 +429,7 @@ export function ContentRecommendationsSection({ recommendations }: { recommendat
                             <div className="flex items-start justify-between mb-3">
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-2">
-                                        <span className="text-lg">{getIntentIcon(rec.search_intent)}</span>
+                                        {getIntentIcon(rec.search_intent)}
                                         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                                             {rec.search_intent}
                                         </span>
@@ -511,7 +511,7 @@ export function RankingHistorySection({ history }: { history: RankingHistoryData
     const getPositionChange = (data: RankingHistoryData) => {
         const validPositions = data.history.filter(h => h.position !== null);
         if (validPositions.length < 2) return null;
-        
+
         const latest = validPositions[validPositions.length - 1].position!;
         const previous = validPositions[validPositions.length - 2].position!;
         return previous - latest; // Positive = improvement
@@ -564,8 +564,8 @@ export function RankingHistorySection({ history }: { history: RankingHistoryData
                     {selectedData && (
                         <div className="space-y-3">
                             {selectedData.history.map((point, idx) => (
-                                <div 
-                                    key={idx} 
+                                <div
+                                    key={idx}
                                     className="flex items-center gap-4 p-4 rounded-lg border border-border/30 cursor-pointer transition-all"
                                     style={{
                                         background: 'transparent',
