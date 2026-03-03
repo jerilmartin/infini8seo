@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  BookmarkCheck, 
-  ArrowLeft, 
-  Search, 
-  Star, 
-  Trash2, 
+import {
+  BookmarkCheck,
+  ArrowLeft,
+  Search,
+  Star,
+  Trash2,
   Download,
   Copy,
   Check,
@@ -63,10 +63,10 @@ export default function LibraryPage() {
       setLoading(true);
       const params: any = { limit: 100 };
       if (filterFavorites) params.isFavorite = 'true';
-      
+
       const res = await api.get('/api/library', { params });
       setSavedBlogs(res.data.savedBlogs || []);
-      
+
       if (res.data.savedBlogs?.length > 0 && !selectedBlog) {
         setSelectedBlog(res.data.savedBlogs[0]);
       }
@@ -79,12 +79,12 @@ export default function LibraryPage() {
 
   const handleUnsave = async (contentId: string) => {
     if (!confirm('Remove this blog from your library?')) return;
-    
+
     setDeletingId(contentId);
     try {
       await api.delete(`/api/library/unsave/${contentId}`);
       setSavedBlogs(prev => prev.filter(b => b.content_id !== contentId));
-      
+
       if (selectedBlog?.content_id === contentId) {
         setSelectedBlog(savedBlogs[0] || null);
       }
@@ -100,13 +100,13 @@ export default function LibraryPage() {
       await api.patch(`/api/library/update/${blog.content_id}`, {
         isFavorite: !blog.is_favorite
       });
-      
-      setSavedBlogs(prev => prev.map(b => 
-        b.content_id === blog.content_id 
+
+      setSavedBlogs(prev => prev.map(b =>
+        b.content_id === blog.content_id
           ? { ...b, is_favorite: !b.is_favorite }
           : b
       ));
-      
+
       if (selectedBlog?.content_id === blog.content_id) {
         setSelectedBlog({ ...selectedBlog, is_favorite: !selectedBlog.is_favorite });
       }
@@ -141,13 +141,13 @@ export default function LibraryPage() {
 
   if (loading) {
     return (
-      <div 
+      <div
         className="min-h-screen flex items-center justify-center relative overflow-hidden"
         style={{ background: theme === 'dark' ? '#000000' : '#FFFEF9' }}
       >
         {/* Dark mode golden blur */}
         {theme === 'dark' && (
-          <div 
+          <div
             className="absolute pointer-events-none z-0"
             style={{
               top: '0',
@@ -161,7 +161,7 @@ export default function LibraryPage() {
         )}
         {/* Light mode golden blur */}
         {theme === 'light' && (
-          <div 
+          <div
             className="absolute pointer-events-none z-0"
             style={{
               top: '0',
@@ -173,7 +173,7 @@ export default function LibraryPage() {
             }}
           />
         )}
-        
+
         <div className="flex flex-col items-center gap-3 relative z-10">
           <div className="relative w-16 h-16">
             <div className="absolute inset-0 border-4 border-[#FFC004]/20 rounded-full"></div>
@@ -194,7 +194,7 @@ export default function LibraryPage() {
     }}>
       {/* Dark mode golden blur - diagonal from top-left to bottom-right */}
       {theme === 'dark' && (
-        <div 
+        <div
           className="absolute pointer-events-none z-0"
           style={{
             top: '0',
@@ -208,7 +208,7 @@ export default function LibraryPage() {
       )}
       {/* Light mode golden blur - diagonal from top-left to bottom-right */}
       {theme === 'light' && (
-        <div 
+        <div
           className="absolute pointer-events-none z-0"
           style={{
             top: '0',
@@ -220,7 +220,7 @@ export default function LibraryPage() {
           }}
         />
       )}
-      
+
       {/* Header */}
       <header className="shrink-0 bg-transparent relative z-10">
         <div className="flex items-center justify-between px-3 sm:px-5 py-3">
@@ -242,8 +242,8 @@ export default function LibraryPage() {
                 className="hover:opacity-80 transition-opacity"
                 title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               >
-                <img 
-                  src={theme === 'dark' ? '/assets/button.svg' : '/assets/button1.svg'} 
+                <img
+                  src={theme === 'dark' ? '/assets/button.svg' : '/assets/button1.svg'}
                   alt="Theme toggle"
                   className="w-8 h-4"
                 />
@@ -272,24 +272,19 @@ export default function LibraryPage() {
               </div>
               <button
                 onClick={() => setFilterFavorites(!filterFavorites)}
-                className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
-                  filterFavorites
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-card text-muted-foreground hover:text-foreground border border-border'
-                }`}
+                className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${filterFavorites
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-card text-muted-foreground hover:text-foreground border border-border'
+                  }`}
                 title="Favorites Only"
               >
                 <Star className={`w-4 h-4 ${filterFavorites ? 'fill-current' : ''}`} />
               </button>
             </div>
           </div>
-          
-          {/* Saved Blogs Count */}
-          <div className="px-4 sm:px-5 py-3 shrink-0 border-b border-border">
-            <span className="text-sm font-normal" style={{ color: theme === 'dark' ? '#888888' : '#666666' }}>
-              {filteredBlogs.length} Saved {filteredBlogs.length === 1 ? 'Blog' : 'Blogs'}
-            </span>
-          </div>
+
+          {/* Saved Blogs Count - moved to below search */}
+          <div className="px-4 sm:px-5 py-3 shrink-0 border-b border-border" />
 
           {/* Blog List */}
           <div className="flex-1 overflow-y-auto">
@@ -308,11 +303,10 @@ export default function LibraryPage() {
                 <button
                   key={blog.id}
                   onClick={() => setSelectedBlog(blog)}
-                  className={`w-full text-left px-5 py-4 transition-all relative ${
-                    selectedBlog?.id === blog.id
-                      ? 'border-l-2 border-l-[#FFC004]'
-                      : 'hover:bg-white/5 border-l-2 border-l-transparent'
-                  }`}
+                  className={`w-full text-left px-5 py-4 transition-all relative ${selectedBlog?.id === blog.id
+                    ? 'border-l-2 border-l-[#FFC004]'
+                    : 'hover:bg-white/5 border-l-2 border-l-transparent'
+                    }`}
                   style={selectedBlog?.id === blog.id && theme === 'light' ? {
                     background: 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)'
                   } : selectedBlog?.id === blog.id ? {
@@ -328,17 +322,15 @@ export default function LibraryPage() {
                       className="shrink-0 mt-0.5"
                     >
                       <Star
-                        className={`w-4 h-4 transition-colors ${
-                          blog.is_favorite
-                            ? 'fill-yellow-500 text-yellow-500'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
+                        className={`w-4 h-4 transition-colors ${blog.is_favorite
+                          ? 'fill-yellow-500 text-yellow-500'
+                          : 'text-muted-foreground hover:text-foreground'
+                          }`}
                       />
                     </button>
                     <div className="min-w-0 flex-1">
-                      <p className={`text-[14px] leading-relaxed line-clamp-2 ${
-                        selectedBlog?.id === blog.id ? 'text-foreground font-semibold' : 'text-foreground font-medium'
-                      }`}>
+                      <p className={`text-[14px] leading-relaxed line-clamp-2 ${selectedBlog?.id === blog.id ? 'text-foreground font-semibold' : 'text-foreground font-medium'
+                        }`}>
                         {blog.contents.blog_title}
                       </p>
                       <p className="text-[11px] text-muted-foreground mt-1 font-medium">
@@ -355,13 +347,20 @@ export default function LibraryPage() {
         {/* Main Reading Area */}
         <main className="flex-1 flex flex-col overflow-hidden bg-transparent">
           {/* Content Library Header */}
-          <div className="shrink-0 px-4 sm:px-10 py-3 border-b border-border flex items-center justify-end gap-2">
-            <BookmarkCheck className="w-4 h-4" style={{ color: theme === 'dark' ? '#888888' : '#666666' }} />
-            <h2 className="text-sm font-normal" style={{ color: theme === 'dark' ? '#888888' : '#666666' }}>
-              Content Library
-            </h2>
+          <div className="shrink-0 px-4 sm:px-10 py-3 flex items-center justify-between">
+            <span className="text-sm font-normal" style={{ color: theme === 'dark' ? '#888888' : '#666666' }}>
+              {filteredBlogs.length} Saved {filteredBlogs.length === 1 ? 'Blog' : 'Blogs'}
+            </span>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 flex items-center justify-center rounded-md" style={{ border: '1.5px solid #CA9700' }}>
+                <BookmarkCheck className="w-3.5 h-3.5" style={{ color: '#CA9700' }} />
+              </div>
+              <h2 className="text-sm font-normal" style={{ color: theme === 'dark' ? '#888888' : '#666666' }}>
+                Content Library
+              </h2>
+            </div>
           </div>
-          
+
           {selectedBlog ? (
             <>
               {/* Article Header */}
@@ -408,7 +407,14 @@ export default function LibraryPage() {
                       <button
                         onClick={() => handleUnsave(selectedBlog.content_id)}
                         disabled={deletingId === selectedBlog.content_id}
-                        className="flex items-center gap-1.5 text-xs font-medium text-destructive hover:text-destructive/80 transition-colors disabled:opacity-50 px-3 py-1.5"
+                        className="flex items-center gap-1.5 text-xs font-medium hover:opacity-80 transition-all px-3 py-1.5 rounded-lg disabled:opacity-50"
+                        style={theme === 'light' ? {
+                          background: 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)',
+                          color: '#000000'
+                        } : {
+                          background: '#241A06',
+                          color: '#FFFFFF'
+                        }}
                       >
                         {deletingId === selectedBlog.content_id ? (
                           <><div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Removing...</>
@@ -420,8 +426,8 @@ export default function LibraryPage() {
                     {selectedBlog.contents.keywords.length > 0 && (
                       <div className="flex flex-wrap gap-2 justify-end ml-auto">
                         {selectedBlog.contents.keywords.slice(0, 4).map((k, i) => (
-                          <span 
-                            key={i} 
+                          <span
+                            key={i}
                             className="text-xs px-3 py-1.5 rounded-lg font-medium"
                             style={theme === 'light' ? {
                               background: 'linear-gradient(180deg, rgba(171, 128, 0, 0.15) 0%, rgba(255, 192, 4, 0.25) 50%, rgba(171, 128, 0, 0.15) 100%)',
@@ -441,7 +447,7 @@ export default function LibraryPage() {
               </div>
 
               {/* Article Content */}
-              <div 
+              <div
                 className="flex-1 overflow-y-auto px-4 sm:px-10 py-8"
                 style={{ width: '100%', height: '100%' }}
               >
