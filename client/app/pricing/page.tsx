@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Loader2, Zap, Shield, Sparkles } from 'lucide-react';
+import { Check, Loader2, Zap } from 'lucide-react';
 import { api } from '@/utils/api';
 import { UserMenu } from '@/components/UserMenu';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -111,15 +111,16 @@ export default function PricingPage() {
     >
 
       {/* Background large text "Pricing" and glow */}
-      <div className="absolute top-[12%] md:top-[14%] left-1/2 -translate-x-1/2 w-full text-center pointer-events-none z-0">
+      <div className="absolute top-[70px] md:top-[75px] left-1/2 -translate-x-1/2 w-full text-center pointer-events-none z-0" style={{ overflow: 'visible' }}>
         <h2 className="text-[#CA9700] text-xl md:text-3xl font-semibold tracking-wider mb-0 md:mb-2">Infini8 SEO</h2>
         <h1
-          className="text-[20vw] md:text-[18vw] font-bold tracking-tighter"
+          className="text-[18vw] md:text-[15vw] font-bold tracking-tighter"
           style={{
             background: 'linear-gradient(to right, #453400 0%, #CA9700 50%, #584200 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
-            lineHeight: 0.8,
+            lineHeight: 1.0,
+            paddingBottom: '0.1em',
             opacity: 0.85
           }}
         >
@@ -140,9 +141,14 @@ export default function PricingPage() {
             </button>
             <button
               onClick={toggleTheme}
-              className={`flex items-center justify-center w-10 h-10 rounded-lg hover:opacity-80 transition-opacity ${theme === 'light' ? 'text-black' : 'text-white'}`}
+              className="hover:opacity-80 transition-opacity"
+              title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
             >
-              <Sparkles className="w-5 h-5 opacity-70" />
+              <img
+                src={theme === 'dark' ? '/assets/button.svg' : '/assets/button1.svg'}
+                alt="Theme Toggle"
+                className="w-[62px] h-7"
+              />
             </button>
           </div>
           <div className="flex items-center gap-4">
@@ -171,39 +177,11 @@ export default function PricingPage() {
           </div>
         </header>
 
-        {/* Current Subscription Banner */}
-        {currentSubscription && currentSubscription.tier !== 'free' && (
-          <div className="mb-8 max-w-4xl mx-auto animate-fade-in relative z-20">
-            <div
-              className="p-4 flex items-center justify-between rounded-xl border border-[#CA9700]/30 backdrop-blur-md"
-              style={{ background: theme === 'light' ? 'rgba(202, 151, 0, 0.15)' : 'rgba(202, 151, 0, 0.1)' }}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[#CA9700]/20">
-                  <Shield className="w-5 h-5 text-[#CA9700]" />
-                </div>
-                <div>
-                  <div className={`text-sm font-medium ${theme === 'light' ? 'text-black' : 'text-white'}`}>
-                    Current Plan: <span className="text-[#CA9700]">{currentSubscription.tier.toUpperCase()}</span>
-                  </div>
-                  <div className={`text-xs ${theme === 'light' ? 'text-black/70' : 'text-white/70'}`}>
-                    {currentSubscription.creditsRemaining} / {currentSubscription.creditsTotal} credits remaining
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => router.push('/')}
-                className="text-xs h-9 px-5 rounded-full font-semibold bg-[#CA9700] text-black hover:brightness-110 transition-all"
-              >
-                Go to Dashboard
-              </button>
-            </div>
-          </div>
-        )}
+
 
         {/* Pricing Cards Layer */}
         <div
-          className="flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-8 max-w-6xl mx-auto mt-32 lg:mt-48 relative z-10"
+          className="flex flex-col lg:flex-row items-stretch justify-center gap-6 lg:gap-6 max-w-5xl mx-auto mt-44 lg:mt-56 relative z-10"
           onMouseLeave={() => setHoveredPlan(null)}
         >
           {displayPlans.map(({ key, plan }) => {
@@ -217,23 +195,15 @@ export default function PricingPage() {
               <div
                 key={key}
                 onMouseEnter={() => setHoveredPlan(key)}
-                className={`relative rounded-[26px] transition-all duration-300 flex-1 w-full max-w-[360px] ${isHighlighted ? 'z-20 scale-105 shadow-2xl shadow-[#CA9700]/10' : 'z-10 scale-100 opacity-90'}`}
+                className={`relative rounded-[20px] transition-all duration-300 flex-1 w-full max-w-[300px] ${isHighlighted ? 'z-20 scale-105' : 'z-10 scale-100'}`}
               >
-                {/* Glow effect for highlighted card */}
+                {/* Gradient Border Ring for highlighted card */}
                 {isHighlighted && (
                   <div
-                    className="absolute -inset-1 blur-2xl opacity-40 z-[-2]"
-                    style={{ background: 'linear-gradient(135deg, #453400 0%, #CA9700 100%)' }}
-                  />
-                )}
-
-                {/* Gradient Border Ring (Center remains perfectly transparent!) */}
-                {isHighlighted && (
-                  <div
-                    className="absolute z-[-1] pointer-events-none rounded-[26px]"
+                    className="absolute z-[-1] pointer-events-none rounded-[20px]"
                     style={{
                       inset: '-2px',
-                      padding: '2px', // Gradient border thickness
+                      padding: '2px',
                       background: 'linear-gradient(135deg, #453400 0%, #584200 26%, #CA9700 100%)',
                       WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
                       WebkitMaskComposite: 'xor',
@@ -243,40 +213,46 @@ export default function PricingPage() {
                 )}
 
                 <div
-                  className="h-full rounded-[24px] p-8 flex flex-col items-center text-center transition-colors duration-300 backdrop-blur-xl"
+                  className="h-full rounded-[18px] p-5 flex flex-col items-center text-center transition-all duration-300"
                   style={{
-                    background: theme === 'light' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(19, 17, 17, 0.75)',
-                    border: isHighlighted ? '1px solid transparent' : '1px solid rgba(255,255,255,0.05)'
+                    background: theme === 'light'
+                      ? 'rgba(0, 0, 0, 0.20)'
+                      : 'rgba(10, 10, 10, 0.30)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    border: isHighlighted
+                      ? '1px solid transparent'
+                      : '1px solid rgba(255, 255, 255, 0.06)',
                   }}
                 >
-                  <h3 className="text-xl font-medium text-white mb-2">{plan.name}</h3>
-                  <div className="flex items-baseline justify-center gap-1 mb-6">
-                    <span className="text-4xl font-bold text-white">{currencySymbol}{displayPrice}</span>
-                    <span className="text-sm font-medium text-zinc-300">/ month</span>
+                  <h3 className="text-base font-medium text-white mb-1">{plan.name}</h3>
+                  <div className="flex items-baseline justify-center gap-1 mb-4">
+                    <span className="text-3xl font-bold text-white">{currencySymbol}{displayPrice}</span>
+                    <span className="text-xs font-medium text-zinc-300">/ month</span>
                   </div>
 
-                  <div className="text-sm text-zinc-300 mb-8 min-h-[40px]">
+                  <div className="text-xs text-zinc-300 mb-5 min-h-[32px]">
                     {plan.bestFor ? (
                       <div>
-                        <span className="block text-white mb-1">{plan.credits} credits per month</span>
-                        <span className="block text-xs">Best for: {plan.bestFor}</span>
+                        <span className="block text-white text-xs mb-0.5">{plan.credits} credits per month</span>
+                        <span className="block text-[11px]">Best for: {plan.bestFor}</span>
                       </div>
                     ) : (
-                      <span className="block leading-relaxed">
+                      <span className="block leading-relaxed text-xs">
                         Perfect for testing the quality of our AI-generated SEO content.
                       </span>
                     )}
                   </div>
 
-                  <div className="flex flex-col gap-4 text-left w-full flex-grow mb-10">
-                    <div className="flex items-center gap-3">
-                      <Check className="w-5 h-5 flex-shrink-0 text-[#CA9700]" />
-                      <span className="text-sm text-white font-medium">{plan.credits} credits</span>
+                  <div className="flex flex-col gap-2.5 text-left w-full flex-grow mb-6">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 flex-shrink-0 text-[#CA9700]" />
+                      <span className="text-xs text-white font-medium">{plan.credits} credits</span>
                     </div>
                     {plan.features.map((feature, idx) => (
-                      <div key={idx} className="flex items-start gap-3">
-                        <Check className="w-5 h-5 flex-shrink-0 text-white/50 mt-0.5" />
-                        <span className="text-sm text-white/80 leading-snug">{feature}</span>
+                      <div key={idx} className="flex items-start gap-2">
+                        <Check className="w-4 h-4 flex-shrink-0 text-white/50 mt-0.5" />
+                        <span className="text-xs text-white/80 leading-snug">{feature}</span>
                       </div>
                     ))}
                   </div>
@@ -284,7 +260,7 @@ export default function PricingPage() {
                   <button
                     onClick={() => handleUpgrade(key)}
                     disabled={upgrading === key || isCurrentPlan}
-                    className="w-full py-3.5 rounded-full font-semibold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#CA9700]/50"
+                    className="w-full py-2.5 rounded-full font-semibold text-xs transition-all focus:outline-none focus:ring-2 focus:ring-[#CA9700]/50"
                     style={{
                       backgroundColor: isCurrentPlan ? 'rgba(255,255,255,0.1)' : '#FFFFFF',
                       color: isCurrentPlan ? 'rgba(255,255,255,0.4)' : '#000000',
@@ -364,45 +340,46 @@ export default function PricingPage() {
         <div className="mt-24 mb-16 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '400ms' }}>
           <h3 className={`text-2xl font-semibold mb-10 text-center ${theme === 'light' ? 'text-black' : 'text-white'}`}>Frequently Asked Questions</h3>
           <div className="space-y-4">
-            <details
-              className="p-5 cursor-pointer rounded-2xl border border-white/5 transition-all backdrop-blur-xl hover:brightness-110"
-              style={{ background: theme === 'light' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(19, 17, 17, 0.75)' }}
-            >
-              <summary className="text-base font-medium text-white focus:outline-none">Can I cancel anytime?</summary>
-              <p className="mt-3 text-sm text-zinc-300 leading-relaxed">
-                Yes! You can cancel your subscription at any time. You'll keep your remaining credits until the end of your billing period.
-              </p>
-            </details>
-
-            <details
-              className="p-5 cursor-pointer rounded-2xl border border-white/5 transition-all backdrop-blur-xl hover:brightness-110"
-              style={{ background: theme === 'light' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(19, 17, 17, 0.75)' }}
-            >
-              <summary className="text-base font-medium text-white focus:outline-none">Do credits roll over?</summary>
-              <p className="mt-3 text-sm text-zinc-300 leading-relaxed">
-                Credits reset monthly with your subscription. Unused credits don't roll over to the next month to ensure optimal server availability.
-              </p>
-            </details>
-
-            <details
-              className="p-5 cursor-pointer rounded-2xl border border-white/5 transition-all backdrop-blur-xl hover:brightness-110"
-              style={{ background: theme === 'light' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(19, 17, 17, 0.75)' }}
-            >
-              <summary className="text-base font-medium text-white focus:outline-none">What payment methods do you accept?</summary>
-              <p className="mt-3 text-sm text-zinc-300 leading-relaxed">
-                We accept all major credit cards via Stripe (international) and UPI/cards via Razorpay (India).
-              </p>
-            </details>
-
-            <details
-              className="p-5 cursor-pointer rounded-2xl border border-white/5 transition-all backdrop-blur-xl hover:brightness-110"
-              style={{ background: theme === 'light' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(19, 17, 17, 0.75)' }}
-            >
-              <summary className="text-base font-medium text-white focus:outline-none">Can I upgrade or downgrade my plan?</summary>
-              <p className="mt-3 text-sm text-zinc-300 leading-relaxed">
-                Yes! You can upgrade or downgrade at any time. Changes take effect immediately, and we'll prorate the difference automatically.
-              </p>
-            </details>
+            {[
+              { q: 'Can I cancel anytime?', a: "Yes! You can cancel your subscription at any time. You'll keep your remaining credits until the end of your billing period." },
+              { q: 'Do credits roll over?', a: "Credits reset monthly with your subscription. Unused credits don't roll over to the next month to ensure optimal server availability." },
+              { q: 'What payment methods do you accept?', a: 'We accept all major credit cards via Stripe (international) and UPI/cards via Razorpay (India).' },
+              { q: 'Can I upgrade or downgrade my plan?', a: "Yes! You can upgrade or downgrade at any time. Changes take effect immediately, and we'll prorate the difference automatically." },
+            ].map((faq, idx) => (
+              <details
+                key={idx}
+                className="group p-5 cursor-pointer rounded-2xl transition-all duration-200 backdrop-blur-xl"
+                style={{
+                  background: theme === 'light' ? 'rgba(220, 215, 200, 0.7)' : 'rgba(19, 17, 17, 0.75)',
+                  border: theme === 'light' ? '1px solid rgba(202, 151, 0, 0.15)' : '1px solid rgba(255, 255, 255, 0.05)',
+                }}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget as HTMLElement;
+                  if (theme === 'light') {
+                    el.style.background = 'rgba(202, 151, 0, 0.18)';
+                    el.style.borderColor = 'rgba(202, 151, 0, 0.4)';
+                  } else {
+                    el.style.background = 'rgba(202, 151, 0, 0.15)';
+                    el.style.borderColor = 'rgba(202, 151, 0, 0.35)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget as HTMLElement;
+                  if (theme === 'light') {
+                    el.style.background = 'rgba(220, 215, 200, 0.7)';
+                    el.style.borderColor = 'rgba(202, 151, 0, 0.15)';
+                  } else {
+                    el.style.background = 'rgba(19, 17, 17, 0.75)';
+                    el.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+                  }
+                }}
+              >
+                <summary className={`text-base font-medium focus:outline-none ${theme === 'light' ? 'text-black' : 'text-white'}`}>{faq.q}</summary>
+                <p className={`mt-3 text-sm leading-relaxed ${theme === 'light' ? 'text-black/70' : 'text-zinc-300'}`}>
+                  {faq.a}
+                </p>
+              </details>
+            ))}
           </div>
         </div>
 
