@@ -21,6 +21,7 @@ import {
   verifyToken
 } from '../services/authService.js';
 import subscriptionService from '../services/subscriptionService.js';
+import razorpayService from '../services/razorpayService.js';
 import adminService from '../services/adminService.js';
 import contentLibraryService from '../services/contentLibraryService.js';
 import requireAdmin from '../middleware/adminAuth.js';
@@ -464,7 +465,135 @@ app.post('/api/subscription/upgrade', async (req, res) => {
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
+});/**
+ * POST /api/subscription/razorpay-create
+ * Create a Razorpay subscription
+ */
+app.post('/api/subscription/razorpay-create', async (req, res) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { tier } = req.body;
+    const result = await subscriptionService.createRazorpaySubscription(req.userId, tier);
+
+    res.json(result);
+  } catch (error) {
+    logger.error('Error in /api/subscription/razorpay-create:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: error.message || 'Failed to initiate Razorpay subscription'
+    });
+  }
 });
+
+/**
+ * POST /api/subscription/razorpay-webhook
+ * Handle Razorpay webhooks
+ */
+app.post('/api/subscription/razorpay-webhook', async (req, res) => {
+  try {
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const signature = req.headers['x-razorpay-signature'];
+    
+    // Verify signature
+    const isValid = razorpayService.verifyWebhookSignature(
+      JSON.stringify(req.body),
+      signature,
+      secret
+    );
+
+    if (!isValid) {
+      logger.warn('Invalid Razorpay webhook signature');
+      return res.status(400).send('Invalid signature');
+    }
+
+    const event = req.body;
+    logger.info('Razorpay Webhook received:', event.event);
+
+    if (event.event === 'subscription.activated' || event.event === 'subscription.charged') {
+      const subscription = event.payload.subscription.entity;
+      const { userId, tier } = subscription.notes;
+
+      if (userId && tier) {
+        await subscriptionService.upgradeSubscription(userId, tier, {
+          provider: 'razorpay',
+          payment_id: event.payload.payment?.entity?.id || subscription.id,
+          metadata: { razorpay_subscription: subscription }
+        });
+        logger.info(`Razorpay Webhook: Upgraded user ${userId} to ${tier}`);
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Razorpay Webhook error:', error);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
+
+
+// Zoho Checkout implementation (Commented out)
+/*
+app.get('/api/subscription/zoho-checkout/:tier', async (req, res) => {
+  try {
+    if (!req.userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { tier } = req.params;
+    const { redirectUrl } = req.query;
+
+    const result = await subscriptionService.getZohoCheckoutUrl(
+      req.userId,
+      tier,
+      redirectUrl || `${FRONTEND_URL}/pricing/success`
+    );
+
+    res.json(result);
+  } catch (error) {
+    logger.error('Error in /api/subscription/zoho-checkout:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Failed to initiate Zoho checkout'
+    });
+  }
+});
+
+app.post('/api/subscription/zoho-webhook', async (req, res) => {
+  try {
+    const event = req.body;
+    logger.info('Zoho Webhook received:', event.event_type);
+
+    if (event.event_type === 'subscription_created' || event.event_type === 'subscription_renewed') {
+      const { subscription } = event.data;
+      const { customer } = subscription;
+      
+      // Find user by zoho_customer_id
+      const { data: user, error } = await UserRepository.supabase
+        .from('users')
+        .select('id')
+        .eq('zoho_customer_id', customer.customer_id)
+        .single();
+
+      if (user) {
+        await subscriptionService.upgradeSubscription(user.id, subscription.plan.plan_code, {
+          provider: 'zoho',
+          payment_id: subscription.subscription_id,
+          metadata: { zoho_subscription: subscription }
+        });
+        logger.info(`Zoho Webhook: Upgraded user ${user.id} to ${subscription.plan.plan_code}`);
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Zoho Webhook error:', error);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
+*/
 
 /**
  * POST /api/subscription/cancel

@@ -1,5 +1,7 @@
 import UserRepository from '../models/UserRepository.js';
 import logger from '../utils/logger.js';
+// import zohoService from './zohoService.js';
+import razorpayService from './razorpayService.js';
 
 /**
  * Subscription Service - Handles subscription logic and credit management
@@ -369,32 +371,87 @@ export function getPricingPlans() {
     };
 }
 
-/**
- * Calculate credit cost preview
- */
-export function calculateCreditCost(actionType, params = {}) {
-    if (actionType === 'blog_generation') {
-        const blogCount = params.totalBlogs || 0;
-        return {
-            type: 'blog_generation',
-            quantity: blogCount,
-            credits: UserRepository.calculateBlogCredits(blogCount),
-            breakdown: blogCount <= 10 
-                ? `${blogCount} blogs × 5 credits = ${blogCount * 5} credits`
-                : blogCount <= 30
-                ? `${blogCount} blogs × 4 credits = ${blogCount * 4} credits`
-                : `${blogCount} blogs × 3 credits = ${blogCount * 3} credits`
-        };
-    } else if (actionType === 'seo_scan') {
-        return {
-            type: 'seo_scan',
-            quantity: 1,
-            credits: 20,
-            breakdown: '1 site insight = 20 credits'
-        };
-    }
+// Zoho Checkout implementation (Commented out)
+/*
+export async function getZohoCheckoutUrl(userId, tier, redirectUrl) {
+    try {
+        const user = await UserRepository.findById(userId);
+        if (!user) throw new Error('User not found');
 
-    return null;
+        const tierDetails = UserRepository.getSubscriptionTierDetails(tier);
+        if (!tierDetails || tier === 'free') throw new Error('Invalid tier');
+
+        // 1. Get or create Zoho customer
+        const zohoCustomerId = user.zoho_customer_id || await zohoService.getOrCreateCustomer(user);
+        
+        // Update user with zoho_customer_id if new
+        if (!user.zoho_customer_id) {
+            await UserRepository.supabase
+                .from('users')
+                .update({ zoho_customer_id: zohoCustomerId })
+                .eq('id', userId);
+        }
+
+        // 2. Create Hosted Page
+        const hostedPage = await zohoService.createHostedPage(zohoCustomerId, tier, redirectUrl);
+
+        return {
+            success: true,
+            checkoutUrl: hostedPage.url,
+            hostedPageId: hostedPage.hostedpage_id
+        };
+    } catch (error) {
+        logger.error('getZohoCheckoutUrl failed:', error);
+        throw error;
+    }
+}
+*/
+
+/**
+ * Create a Razorpay subscription for a user
+ */
+export async function createRazorpaySubscription(userId, tier) {
+    try {
+        const user = await UserRepository.findById(userId);
+        if (!user) throw new Error('User not found');
+
+        // Map tiers to Razorpay Plan IDs (User needs to set these in .env)
+        const planId = tier === 'starter' 
+            ? process.env.RAZORPAY_PLAN_STARTER_ID 
+            : process.env.RAZORPAY_PLAN_PRO_ID;
+
+        if (!planId) {
+            throw new Error(`Razorpay Plan ID not configured for tier: ${tier}`);
+        }
+
+        const subscription = await razorpayService.createSubscription(planId, {
+            userId: user.id,
+            email: user.email,
+            tier: tier
+        });
+
+        // Update user with subscription ID (awaiting webhook for activation)
+        await UserRepository.supabase
+            .from('users')
+            .update({ razorpay_subscription_id: subscription.id })
+            .eq('id', userId);
+
+        return {
+            success: true,
+            subscriptionId: subscription.id,
+            keyId: process.env.RAZORPAY_KEY_ID,
+            amount: subscription.amount,
+            name: 'Infini8 SEO',
+            description: `${tier.charAt(0).toUpperCase() + tier.slice(1)} Plan`,
+            prefill: {
+                name: user.full_name,
+                email: user.email
+            }
+        };
+    } catch (error) {
+        logger.error('createRazorpaySubscription failed:', error);
+        throw error;
+    }
 }
 
 export default {
@@ -405,5 +462,7 @@ export default {
     cancelSubscription,
     getSubscriptionStatus,
     getPricingPlans,
-    calculateCreditCost
+    calculateCreditCost,
+    createRazorpaySubscription
+    // getZohoCheckoutUrl
 };

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Loader2, Zap } from 'lucide-react';
 import { api } from '@/utils/api';
+import Script from 'next/script';
 import { UserMenu } from '@/components/UserMenu';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Montserrat } from 'next/font/google';
@@ -69,21 +70,35 @@ export default function PricingPage() {
   };
 
   const handleUpgrade = async (tier: string) => {
+    if (tier === 'free') return;
+    
     setUpgrading(tier);
     try {
-      const response = await api.post('/api/subscription/upgrade', {
-        tier,
-        paymentData: {
-          provider: 'stripe',
-          payment_id: 'test_payment_' + Date.now()
+      // 1. Create subscription on backend
+      const response = await api.post('/api/subscription/razorpay-create', { tier });
+      
+      const options = {
+        key: response.data.keyId,
+        subscription_id: response.data.subscriptionId,
+        name: response.data.name,
+        description: response.data.description,
+        prefill: response.data.prefill,
+        handler: function (response: any) {
+          // 2. On success, redirect to success page or home
+          router.push('/');
+        },
+        theme: {
+          color: "#CA9700"
         }
-      });
+      };
 
-      if (response.data.success) {
-        router.push('/');
-      }
+      // @ts-ignore
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Upgrade failed');
+      console.error('Upgrade initiation failed:', error);
+      alert(error.response?.data?.message || 'Failed to initiate checkout. Please try again.');
     } finally {
       setUpgrading(null);
     }
@@ -109,6 +124,7 @@ export default function PricingPage() {
       className={`min-h-screen relative overflow-hidden transition-colors duration-300 ${montserrat.className}`}
       style={{ backgroundColor: theme === 'light' ? '#F3F3F3' : '#0A0A0A' }}
     >
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
 
       {/* Background large text "Pricing" and glow */}
       <div className="absolute top-[70px] md:top-[75px] left-1/2 -translate-x-1/2 w-full text-center pointer-events-none z-0" style={{ overflow: 'visible' }}>
