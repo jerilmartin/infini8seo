@@ -4,20 +4,15 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { loginWithGoogle } from '@/utils/auth';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 function LoginContent() {
     const searchParams = useSearchParams();
+    const { theme } = useTheme();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        const savedTheme = localStorage.getItem('results-theme') as 'dark' | 'light' | null;
-        if (savedTheme) {
-            document.documentElement.setAttribute('data-theme', savedTheme);
-        } else {
-            document.documentElement.setAttribute('data-theme', 'dark');
-        }
-
         // Check for error in URL params
         const errorParam = searchParams.get('error');
         if (errorParam) {
@@ -47,17 +42,44 @@ function LoginContent() {
     };
 
     return (
-        <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
-            {/* Background gradient */}
-            <div
-                className="fixed inset-0 -z-10"
-                style={{
-                    background: 'radial-gradient(ellipse at center top, rgba(59, 130, 246, 0.08) 0%, transparent 50%)',
-                }}
-            />
+        <div 
+            className="min-h-screen flex flex-col items-center justify-center px-6 relative overflow-hidden"
+            style={{
+                background: theme === 'dark' ? '#000000' : '#FFFEF9',
+                color: theme === 'dark' ? '#ffffff' : '#000000'
+            }}
+        >
+            {/* Dark mode golden blur - diagonal from top-left to bottom-right */}
+            {theme === 'dark' && (
+                <div 
+                    className="absolute pointer-events-none z-0"
+                    style={{
+                        top: '0',
+                        left: '0',
+                        right: '0',
+                        bottom: '0',
+                        background: 'linear-gradient(to bottom right, transparent 0%, transparent 20%, rgba(255, 192, 4, 0.15) 35%, rgba(255, 192, 4, 0.25) 50%, rgba(255, 192, 4, 0.15) 65%, transparent 80%, transparent 100%)',
+                        filter: 'blur(500px)'
+                    }}
+                />
+            )}
+            {/* Light mode golden blur - diagonal from top-left to bottom-right */}
+            {theme === 'light' && (
+                <div 
+                    className="absolute pointer-events-none z-0"
+                    style={{
+                        top: '0',
+                        left: '0',
+                        right: '0',
+                        bottom: '0',
+                        background: 'linear-gradient(to bottom right, transparent 0%, transparent 25%, rgba(171, 128, 0, 0.08) 40%, rgba(171, 128, 0, 0.12) 50%, rgba(171, 128, 0, 0.08) 60%, transparent 75%, transparent 100%)',
+                        filter: 'blur(350px)'
+                    }}
+                />
+            )}
 
             {/* Login Card */}
-            <div className="w-full max-w-md">
+            <div className="w-full max-w-md relative z-10">
                 {/* Brand */}
                 <div className="text-center mb-8">
                     <div className="flex items-center justify-center gap-2 mb-4">
@@ -195,7 +217,12 @@ function LoginContent() {
 
 function LoginSkeleton() {
     return (
-        <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
+        <div 
+            className="min-h-screen flex flex-col items-center justify-center px-6"
+            style={{
+                background: 'radial-gradient(ellipse 120% 80% at 50% 20%, #3d2f1a 0%, #2a2015 20%, #1a1510 40%, #0f0d0a 60%, #000000 100%)'
+            }}
+        >
             <div className="w-full max-w-md">
                 <div className="text-center mb-8">
                     <div className="flex items-center justify-center gap-2 mb-4">

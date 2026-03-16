@@ -1,4 +1,5 @@
 import { Zap, TrendingUp, Globe, Smartphone, Monitor, Target, AlertCircle } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface QuickWin {
     keyword: string;
@@ -48,10 +49,14 @@ interface DeviceComparison {
 }
 
 export function QuickWinsSection({ quickWins }: { quickWins: QuickWin[] }) {
+    const { theme } = useTheme();
     if (!quickWins || quickWins.length === 0) return null;
 
     return (
-        <div className="bg-card rounded-xl p-6 border border-border/30 mb-6">
+        <div className="rounded-xl p-6 border mb-6" style={{
+            background: 'transparent',
+            borderColor: '#FFC004'
+        }}>
             <div className="flex items-center gap-2 mb-4">
                 <Zap className="w-4 h-4 text-amber-500" />
                 <h3 className="text-sm font-semibold text-foreground">Quick Win Opportunities</h3>
@@ -59,13 +64,30 @@ export function QuickWinsSection({ quickWins }: { quickWins: QuickWin[] }) {
             </div>
             <div className="space-y-3">
                 {quickWins.map((qw, idx) => (
-                    <div key={idx} className="p-4 rounded-lg bg-secondary/30 border border-border/20">
+                    <div 
+                        key={idx} 
+                        className="p-4 rounded-lg border border-border/20 cursor-pointer transition-all"
+                        style={{
+                            background: 'transparent',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                            if (theme === 'light') {
+                                e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
+                            } else {
+                                e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                        }}
+                    >
                         <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="text-sm font-medium text-foreground">{qw.keyword}</span>
                                     {qw.current_position && (
-                                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-500">
+                                        <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-600">
                                             #{qw.current_position}
                                         </span>
                                     )}
@@ -95,10 +117,14 @@ export function QuickWinsSection({ quickWins }: { quickWins: QuickWin[] }) {
 }
 
 export function HighOpportunitiesSection({ opportunities }: { opportunities: HighOpportunity[] }) {
+    const { theme } = useTheme();
     if (!opportunities || opportunities.length === 0) return null;
 
     return (
-        <div className="bg-card rounded-xl p-6 border border-border/30 mb-6">
+        <div className="rounded-xl p-6 border mb-6" style={{
+            background: 'transparent',
+            borderColor: '#FFC004'
+        }}>
             <div className="flex items-center gap-2 mb-4">
                 <Target className="w-4 h-4 text-emerald-500" />
                 <h3 className="text-sm font-semibold text-foreground">High Opportunity Keywords</h3>
@@ -106,13 +132,30 @@ export function HighOpportunitiesSection({ opportunities }: { opportunities: Hig
             </div>
             <div className="space-y-3">
                 {opportunities.map((opp, idx) => (
-                    <div key={idx} className="p-4 rounded-lg bg-secondary/30 border border-border/20">
+                    <div 
+                        key={idx} 
+                        className="p-4 rounded-lg border border-border/20 cursor-pointer transition-all"
+                        style={{
+                            background: 'transparent',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                            if (theme === 'light') {
+                                e.currentTarget.style.background = 'linear-gradient(to right, rgb(223, 217, 199) 0%, rgb(235, 230, 215) 50%, rgb(245, 242, 235) 100%)';
+                            } else {
+                                e.currentTarget.style.background = 'rgba(171, 128, 0, 0.2)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                        }}
+                    >
                         <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="text-sm font-medium text-foreground">{opp.keyword}</span>
                                     {opp.current_position && (
-                                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-500">
+                                        <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-600">
                                             #{opp.current_position}
                                         </span>
                                     )}
@@ -147,9 +190,12 @@ export function RegionalRankingsSection({ regional }: { regional: RegionalAnalys
     if (!regional) return null;
 
     return (
-        <div className="bg-card rounded-xl p-6 border border-border/30 mb-6">
+        <div className="rounded-xl p-6 border mb-6" style={{
+            background: 'transparent',
+            borderColor: '#FFC004'
+        }}>
             <div className="flex items-center gap-2 mb-4">
-                <Globe className="w-4 h-4 text-blue-500" />
+                <Globe className="w-4 h-4 text-amber-500" />
                 <h3 className="text-sm font-semibold text-foreground">Regional Rankings</h3>
                 <span className="text-[11px] text-muted-foreground ml-auto">
                     {regional.keyword}
@@ -183,7 +229,10 @@ export function DeviceComparisonSection({ device }: { device: DeviceComparison |
     if (!device) return null;
 
     return (
-        <div className="bg-card rounded-xl p-6 border border-border/30 mb-6">
+        <div className="rounded-xl p-6 border mb-6" style={{
+            background: 'transparent',
+            borderColor: '#FFC004'
+        }}>
             <div className="flex items-center gap-2 mb-4">
                 <div className="flex items-center gap-1">
                     <Monitor className="w-4 h-4 text-purple-500" />

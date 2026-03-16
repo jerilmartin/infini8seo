@@ -1,9 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Loader2, Check, X, ArrowLeft, Circle } from 'lucide-react';
+import { Loader2, Circle, X, ArrowLeft } from 'lucide-react';
 import { api } from '@/utils/api';
+import { useTheme } from '@/contexts/ThemeContext';
+
+// Lazy load components
+const Navbar = lazy(() => import('@/components/Navbar'));
 
 interface GeneratedTitle {
   title: string;
@@ -27,6 +31,7 @@ export default function ProgressPage() {
   const router = useRouter();
   const params = useParams();
   const jobId = params?.jobId as string;
+  const { theme } = useTheme();
 
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
   const [error, setError] = useState('');
@@ -58,12 +63,6 @@ export default function ProgressPage() {
       return () => clearInterval(interval);
     }
   }, [jobId, polling, fetchJobStatus]);
-
-  // Theme initialization - read from localStorage
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('results-theme') as 'dark' | 'light' | null;
-    document.documentElement.setAttribute('data-theme', savedTheme || 'dark');
-  }, []);
 
   const formatTime = (seconds?: number) => {
     if (!seconds) return '—';
@@ -122,97 +121,146 @@ export default function ProgressPage() {
   }
 
   return (
-    <div className="h-screen bg-background overflow-hidden flex flex-col">
-      <div className="max-w-[1400px] w-full mx-auto px-6 py-6 h-full flex flex-col">
-        {/* Header - Compact */}
-        <header className="mb-6 animate-fade-in shrink-0">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-[18px] font-medium text-foreground tracking-tight">infini8seo</div>
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-secondary border border-border">
-              <div className={`w-1.5 h-1.5 rounded-full ${phase === 'complete' ? 'bg-emerald-500' :
-                phase === 'failed' ? 'bg-destructive' :
-                  'bg-primary animate-pulse'
-                }`} />
-              <span className="text-[11px] font-medium text-foreground uppercase tracking-wide">
-                {phase === 'complete' ? 'Complete' : phase === 'failed' ? 'Failed' : 'In Progress'}
-              </span>
-            </div>
-          </div>
+    <div className="h-screen overflow-hidden flex flex-col relative">
+      {/* Background - Black in dark mode, light cream in light mode */}
+      <div 
+        className="absolute inset-0"
+        style={{
+          background: theme === 'dark' ? '#000000' : '#FFFEF9'
+        }}
+      />
+      
+      {/* Dark mode golden blur - diagonal from top-left to bottom-right */}
+      {theme === 'dark' && (
+        <div 
+          className="absolute pointer-events-none"
+          style={{
+            top: '0',
+            left: '0',
+            right: '0',
+            bottom: '0',
+            background: 'linear-gradient(to bottom right, transparent 0%, transparent 20%, rgba(255, 192, 4, 0.15) 35%, rgba(255, 192, 4, 0.25) 50%, rgba(255, 192, 4, 0.15) 65%, transparent 80%, transparent 100%)',
+            filter: 'blur(500px)'
+          }}
+        />
+      )}
+      {/* Light mode golden blur - diagonal from top-left to bottom-right */}
+      {theme === 'light' && (
+        <div 
+          className="absolute pointer-events-none"
+          style={{
+            top: '0',
+            left: '0',
+            right: '0',
+            bottom: '0',
+            background: 'linear-gradient(to bottom right, transparent 0%, transparent 25%, rgba(171, 128, 0, 0.08) 40%, rgba(171, 128, 0, 0.12) 50%, rgba(171, 128, 0, 0.08) 60%, transparent 75%, transparent 100%)',
+            filter: 'blur(350px)'
+          }}
+        />
+      )}
 
+      <div className="relative z-10">
+        <Suspense fallback={<div className="h-16" />}>
+          <Navbar />
+        </Suspense>
+      </div>
+
+      <div className="max-w-[1400px] w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 h-full flex flex-col relative z-10">
+        {/* Page Header */}
+        <div className="mb-6 animate-fade-in shrink-0">
           <div className="flex items-baseline gap-3">
-            <h1 className="text-[24px] font-semibold text-foreground tracking-tight">
+            <h1 className="text-[24px] font-semibold tracking-tight" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
               {phase === 'complete' ? 'Your content is ready' : 'Building your content engine'}
             </h1>
             {jobStatus && (
-              <p className="text-[15px] text-secondary-foreground">
-                for <span className="text-foreground font-medium">"{jobStatus.niche}"</span>
+              <p className="text-[15px]" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
+                for <span className="font-medium">"{jobStatus.niche}"</span>
               </p>
             )}
           </div>
-        </header>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0 pb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 pb-4 sm:pb-6" style={{ height: 'calc(100vh - 200px)', minHeight: '500px' }}>
           {/* Left Column - Progress */}
-          <div className="animate-fade-in h-full min-h-0" style={{ animationDelay: '50ms' }}>
+          <div className="animate-fade-in h-full overflow-hidden" style={{ animationDelay: '50ms' }}>
             {/* Progress Card */}
-            <div className="bg-card border border-border rounded-xl p-6 h-full flex flex-col overflow-y-auto">
-              <div>
+            <div 
+              className="p-6 h-full flex flex-col"
+              style={{
+                background: theme === 'light' ? 'transparent' : 'rgba(176, 176, 176, 0.1)',
+                border: '1px solid rgba(176, 176, 176, 1)',
+                borderRadius: '50px',
+                maxHeight: '100%'
+              }}
+            >
+              <div className="flex-1 min-h-0 flex flex-col">
                 {/* Progress Bar */}
-                <div className="mb-6">
+                <div className="mb-6 shrink-0">
                   <div className="flex items-baseline justify-between mb-2">
-                    <span className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">Overall Progress</span>
-                    <span className="text-[20px] font-semibold text-foreground">{progress}%</span>
+                    <span className="text-[12px] font-medium uppercase tracking-wide" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>Overall Progress</span>
+                    <span className="text-[20px] font-semibold" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>{progress}%</span>
                   </div>
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-700 ease-out ${phase === 'complete' ? 'bg-emerald-500' : 'bg-primary'
-                        }`}
-                      style={{ width: `${progress}%` }}
+                      className="h-full rounded-full transition-all duration-700 ease-out"
+                      style={{ 
+                        width: `${progress}%`,
+                        background: 'linear-gradient(90deg, #A88000 0%, #FFC004 100%)'
+                      }}
                     />
                   </div>
                 </div>
 
                 {/* Step List */}
-                <div className="space-y-3">
+                <div className="space-y-3 flex-1 min-h-0 overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  <style jsx>{`
+                    div::-webkit-scrollbar {
+                      display: none;
+                    }
+                  `}</style>
                   <StepItem
                     state={phase === 'research' ? 'active' : ['writing', 'complete'].includes(phase) ? 'complete' : 'pending'}
                     title="Researching your niche"
                     subtitle={phase === 'research' ? 'Analyzing competitors...' : undefined}
+                    theme={theme}
                   />
                   <StepItem
                     state={['writing', 'complete'].includes(phase) ? 'complete' : phase === 'research' && progress > 10 ? 'active' : 'pending'}
                     title="Topic clustering"
+                    theme={theme}
                   />
                   <StepItem
                     state={['writing', 'complete'].includes(phase) ? 'complete' : 'pending'}
                     title="Keyword mapping"
+                    theme={theme}
                   />
                   <StepItem
                     state={phase === 'writing' ? 'active' : phase === 'complete' ? 'complete' : 'pending'}
                     title="Writing articles"
                     subtitle={phase === 'writing' ? `${generated}/${totalTarget} done` : undefined}
-                    highlight={phase === 'writing'}
+                    theme={theme}
                   />
                   <StepItem
                     state={phase === 'complete' ? 'complete' : 'pending'}
                     title="Optimization"
+                    theme={theme}
                   />
                 </div>
               </div>
 
               {/* Time estimate */}
               {jobStatus?.estimatedSecondsRemaining && phase !== 'complete' && (
-                <div className="mt-auto pt-4 border-t border-border/30">
+                <div className="mt-4 pt-4 border-t border-border/30 shrink-0">
                   <div className="flex items-center justify-between text-[13px]">
-                    <span className="text-secondary-foreground">Time remaining</span>
-                    <span className="text-foreground font-medium tabular-nums">{formatTime(jobStatus.estimatedSecondsRemaining)}</span>
+                    <span style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>Time remaining</span>
+                    <span className="font-medium tabular-nums" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>{formatTime(jobStatus.estimatedSecondsRemaining)}</span>
                   </div>
                 </div>
               )}
 
               {/* Error state */}
               {phase === 'failed' && jobStatus?.errorMessage && (
-                <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 shrink-0">
                   <p className="text-[13px] text-destructive">{jobStatus.errorMessage}</p>
                 </div>
               )}
@@ -220,28 +268,42 @@ export default function ProgressPage() {
           </div>
 
           {/* Right Column - Live Titles */}
-          <aside className="animate-fade-in h-full min-h-0" style={{ animationDelay: '100ms' }}>
-            <div className="bg-card border border-border rounded-xl p-6 h-full flex flex-col overflow-hidden">
+          <aside className="animate-fade-in h-full overflow-hidden" style={{ animationDelay: '100ms' }}>
+            <div 
+              className="border p-6 h-full flex flex-col"
+              style={{
+                background: theme === 'light' ? 'transparent' : 'rgba(176, 176, 176, 0.1)',
+                border: '1px solid rgba(176, 176, 176, 1)',
+                borderRadius: '50px',
+                overflow: 'hidden',
+                maxHeight: '100%'
+              }}
+            >
               <div className="flex items-center justify-between mb-4 shrink-0">
-                <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wide">Generated Content</p>
+                <p className="text-[12px] font-medium uppercase tracking-wide" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>Generated Content</p>
                 {titles.length > 0 && (
-                  <span className="text-[11px] text-foreground px-1.5 py-0.5 bg-secondary border border-border rounded">{titles.length}</span>
+                  <span className="text-[13px] px-2 py-0.5 rounded font-semibold" style={{ color: '#FFC004', background: 'transparent' }}>{titles.length}</span>
                 )}
               </div>
 
               {/* Live Titles List */}
-              <div className="space-y-2 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-2 flex-1" style={{ overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                <style jsx>{`
+                  div::-webkit-scrollbar {
+                    display: none;
+                  }
+                `}</style>
                 {titles.length === 0 && phase !== 'complete' ? (
                   <div className="flex flex-col items-center justify-center h-full text-center opacity-60">
                     {phase === 'research' ? (
                       <>
-                        <Loader2 className="w-6 h-6 text-primary animate-spin mb-3" />
-                        <p className="text-[14px] text-foreground">Researching...</p>
+                        <Loader2 className="w-6 h-6 animate-spin mb-3" style={{ color: '#FFC004' }} />
+                        <p className="text-[14px]" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>Researching...</p>
                       </>
                     ) : (
                       <>
                         <Circle className="w-6 h-6 text-muted-foreground/30 mb-3" />
-                        <p className="text-[13px] text-secondary-foreground">Waiting...</p>
+                        <p className="text-[13px]" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>Waiting...</p>
                       </>
                     )}
                   </div>
@@ -249,14 +311,38 @@ export default function ProgressPage() {
                   <>
                     {titles.slice(0, 15).map((item, i) => (
                       <div key={i} className="flex items-center gap-3 p-2 rounded hover:bg-white/5 transition-colors text-[13px]">
-                        <Check className="w-3 h-3 text-emerald-500 shrink-0" />
-                        <span className="flex-1 truncate text-foreground/90">{item.title}</span>
+                        <img src="/assets/tick.svg" alt="Complete" className="w-5 h-5 shrink-0" />
+                        <span className="flex-1 truncate" style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>{item.title}</span>
                       </div>
                     ))}
                     {phase === 'writing' && (
                       <div className="flex items-center gap-3 p-2 text-[13px] opacity-60">
-                        <Loader2 className="w-3 h-3 text-primary animate-spin shrink-0" />
-                        <span className="text-foreground/60">Writing next...</span>
+                        <div className="relative w-5 h-5 shrink-0">
+                          {/* Static outer circle */}
+                          <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" className="absolute inset-0">
+                            <path d="M10.6667 21.3333C16.5577 21.3333 21.3333 16.5577 21.3333 10.6667C21.3333 4.77563 16.5577 0 10.6667 0C4.77563 0 0 4.77563 0 10.6667C0 16.5577 4.77563 21.3333 10.6667 21.3333Z" fill="#8D7326" fillOpacity="0.5"/>
+                          </svg>
+                          {/* Rotating inner lines */}
+                          <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" className="absolute inset-0 animate-spin">
+                            <path d="M11 5V7.40003" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M15.2436 6.75781L13.5465 8.45489" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M17 11H14.6" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M15.2436 15.243L13.5465 13.5459" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M11 17.0006V14.6006" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M6.75664 15.243L8.45372 13.5459" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M5 11H7.40002" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M6.75664 6.75781L8.45372 8.45489" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M8.7043 5.45703L9.16351 6.56571" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M5.45586 8.7041L6.56452 9.16335" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M5.45586 13.2961L6.56452 12.8369" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M8.7043 16.5432L9.16351 15.4346" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M13.2956 16.5432L12.8363 15.4346" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M16.5442 13.2961L15.4355 12.8369" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M16.5442 8.7041L15.4355 9.16335" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M13.2956 5.45703L12.8363 6.56571" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                        <span style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>Writing next...</span>
                       </div>
                     )}
                   </>
@@ -275,32 +361,50 @@ function StepItem({
   state,
   title,
   subtitle,
-  highlight = false
+  theme
 }: {
   state: 'pending' | 'active' | 'complete' | 'failed';
   title: string;
   subtitle?: string;
-  highlight?: boolean;
+  theme: 'dark' | 'light';
 }) {
   return (
-    <div className={`flex items-center gap-3 ${highlight ? 'bg-primary/5 -mx-3 px-3 py-2 rounded-lg' : 'py-0.5'}`}>
-      <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${state === 'complete' ? 'bg-emerald-500/20' :
-        state === 'active' ? 'bg-primary/20' :
-          'bg-border/60'
-        }`}>
+    <div className="flex items-center gap-3 py-0.5">
+      <div className="w-5 h-5 flex items-center justify-center shrink-0 relative">
         {state === 'complete' ? (
-          <Check className="w-2.5 h-2.5 text-emerald-500" />
+          <img src="/assets/tick.svg" alt="Complete" className="w-5 h-5" />
         ) : state === 'active' ? (
-          <Loader2 className="w-2.5 h-2.5 text-primary animate-spin" />
+          <div className="relative w-5 h-5">
+            {/* Static outer circle */}
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" className="absolute inset-0">
+              <path d="M10.6667 21.3333C16.5577 21.3333 21.3333 16.5577 21.3333 10.6667C21.3333 4.77563 16.5577 0 10.6667 0C4.77563 0 0 4.77563 0 10.6667C0 16.5577 4.77563 21.3333 10.6667 21.3333Z" fill="#8D7326" fillOpacity="0.5"/>
+            </svg>
+            {/* Rotating inner lines */}
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" className="absolute inset-0 animate-spin">
+              <path d="M11 5V7.40003" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M15.2436 6.75781L13.5465 8.45489" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M17 11H14.6" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M15.2436 15.243L13.5465 13.5459" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M11 17.0006V14.6006" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M6.75664 15.243L8.45372 13.5459" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5 11H7.40002" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M6.75664 6.75781L8.45372 8.45489" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M8.7043 5.45703L9.16351 6.56571" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5.45586 8.7041L6.56452 9.16335" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5.45586 13.2961L6.56452 12.8369" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M8.7043 16.5432L9.16351 15.4346" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M13.2956 16.5432L12.8363 15.4346" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M16.5442 13.2961L15.4355 12.8369" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M16.5442 8.7041L15.4355 9.16335" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M13.2956 5.45703L12.8363 6.56571" stroke="#AB8000" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
         ) : (
-          <Circle className="w-1.5 h-1.5 text-muted-foreground" />
+          <img src="/assets/pending.svg" alt="Pending" className="w-5 h-5" />
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <div className={`text-[13px] font-medium truncate ${state === 'complete' ? 'text-foreground' :
-          state === 'active' ? 'text-foreground' :
-            'text-muted-foreground'
-          }`}>
+        <div className={`text-[13px] font-medium truncate`} style={{ color: theme === 'dark' ? '#FFFFFF' : '#000000' }}>
           {title}
           {subtitle && <span className="opacity-60 ml-2 font-normal">{subtitle}</span>}
         </div>

@@ -6,13 +6,15 @@ import { initializeNewUser } from './subscriptionService.js';
 const JWT_SECRET = process.env.JWT_SECRET || 'infini8seo-super-secret-key-change-in-production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
-// Initialize Supabase Admin client for auth
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-
 let supabaseAdmin = null;
 
 export const initAuthClient = () => {
+    // Read environment variables at runtime, not at module load time
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+    
+    logger.info(`Initializing auth client with URL: ${supabaseUrl ? 'present' : 'missing'}, Key: ${supabaseServiceKey ? 'present' : 'missing'}`);
+    
     if (!supabaseUrl || !supabaseServiceKey) {
         logger.warn('Supabase credentials not found for auth');
         return null;
@@ -25,12 +27,13 @@ export const initAuthClient = () => {
         }
     });
 
+    logger.info('Auth client initialized successfully');
     return supabaseAdmin;
 };
 
 export const getAuthClient = () => {
     if (!supabaseAdmin) {
-        initAuthClient();
+        supabaseAdmin = initAuthClient();
     }
     return supabaseAdmin;
 };

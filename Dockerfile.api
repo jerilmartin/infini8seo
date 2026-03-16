@@ -5,6 +5,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Set environment to skip Puppeteer download
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+
 # Install dependencies (production only)
 RUN npm ci --only=production
 

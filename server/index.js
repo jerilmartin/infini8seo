@@ -1,6 +1,9 @@
+import dotenv from 'dotenv';
+// Load environment variables FIRST before any other imports
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { initSupabase, testConnection } from '../config/supabase.js';
 import { createContentQueue } from '../config/redis.js';
 import logger from '../utils/logger.js';
@@ -21,8 +24,6 @@ import subscriptionService from '../services/subscriptionService.js';
 import adminService from '../services/adminService.js';
 import contentLibraryService from '../services/contentLibraryService.js';
 import requireAdmin from '../middleware/adminAuth.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -1739,7 +1740,15 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     initSupabase();
-    await testConnection();
+    
+    // Test Supabase connection but don't crash if it's temporarily unavailable
+    try {
+      await testConnection();
+    } catch (dbError) {
+      logger.warn('⚠️  Supabase connection test failed - server will start but database features may be unavailable');
+      logger.warn(`   Reason: ${dbError.message}`);
+      logger.warn('   The server will retry database operations when requests come in.');
+    }
 
     // Initialize auth client
     initAuthClient();
@@ -1747,6 +1756,10 @@ const startServer = async () => {
 
     contentQueue = createContentQueue();
     logger.info('BullMQ queue initialized');
+
+    // Small delay to allow Redis connection to establish
+    await new Promise(resolve => setTimeout(resolve, 100));
+    logger.info('Starting HTTP server...');
 
     app.listen(PORT, () => {
       logger.info(`Content Factory API Server running on port ${PORT}`);

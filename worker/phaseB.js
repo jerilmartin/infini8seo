@@ -303,7 +303,7 @@ BLOG HEADLINE:
 
 SEO KEYWORDS: ${scenario.target_keywords.join(', ')}
 BUSINESS SOLUTION: ${valuePropositions[0]}
-TARGET LENGTH: ${targetWordCount || 1200} words
+TARGET LENGTH: EXACTLY ${targetWordCount || 1200} words (strict requirement)
 
 === AIO-OPTIMIZED STRUCTURE ===
 
@@ -459,7 +459,9 @@ A: [Answer that naturally positions the solution as helpful.]
 - Include HTML mark tags for keyword highlighting
 - No preamble or meta-commentary
 - End with the FAQ section
-- Target word count: ${targetWordCount || 1200} words (±100)
+- CRITICAL: Target word count is EXACTLY ${targetWordCount || 1200} words (±50 words maximum)
+- DO NOT exceed ${(targetWordCount || 1200) + 50} words
+- DO NOT write less than ${(targetWordCount || 1200) - 50} words
 
 BEGIN WRITING NOW.
 `;
@@ -491,8 +493,10 @@ BEGIN WRITING NOW.
 
       const wordCount = countWords(blogContent);
 
-      if (wordCount < 1000) {
-        logger.warn(`Blog post ${scenario.scenario_id} too short (${wordCount} words), retrying...`);
+      // Check if word count is within acceptable range based on target
+      const minWords = Math.max(500, (targetWordCount || 1200) - 100);
+      if (wordCount < minWords) {
+        logger.warn(`Blog post ${scenario.scenario_id} too short (${wordCount} words, target: ${targetWordCount || 1200}), retrying...`);
         attempts++;
         if (attempts >= maxAttempts) {
           logger.warn(`Accepting short blog post ${scenario.scenario_id} after ${maxAttempts} attempts (${wordCount} words)`);
@@ -501,7 +505,7 @@ BEGIN WRITING NOW.
         continue;
       }
 
-      logger.info(`Blog post ${scenario.scenario_id} generated: ${wordCount} words in ${generationTime}ms`);
+      logger.info(`Blog post ${scenario.scenario_id} generated: ${wordCount} words (target: ${targetWordCount || 1200}) in ${generationTime}ms`);
 
       return blogContent;
 
