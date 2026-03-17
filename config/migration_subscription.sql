@@ -27,8 +27,6 @@ CREATE TABLE IF NOT EXISTS users (
     -- Payment Info (for Stripe/Razorpay)
     stripe_customer_id VARCHAR(255),
     razorpay_customer_id VARCHAR(255),
-    zoho_customer_id VARCHAR(255),
-    zoho_subscription_id VARCHAR(255),
     payment_method_last4 VARCHAR(4),
     payment_method_brand VARCHAR(50),
     

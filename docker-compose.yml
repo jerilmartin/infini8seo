@@ -52,7 +52,7 @@ services:
       - ./models:/app/models
       - ./utils:/app/utils
       - ./logs:/app/logs
-    command: node --watch-path=./server --watch-path=./config --watch-path=./models --watch-path=./utils server/index.js
+    command: node server/index.js
 
   worker:
     build:

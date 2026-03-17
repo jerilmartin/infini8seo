@@ -3,10 +3,17 @@ import logger from '../utils/logger.js';
 
 class RazorpayService {
     constructor() {
-        this.instance = new Razorpay({
-            key_id: process.env.RAZORPAY_KEY_ID,
-            key_secret: process.env.RAZORPAY_KEY_SECRET,
-        });
+        this._instance = null;
+    }
+
+    get instance() {
+        if (!this._instance) {
+            this._instance = new Razorpay({
+                key_id: process.env.RAZORPAY_KEY_ID,
+                key_secret: process.env.RAZORPAY_KEY_SECRET,
+            });
+        }
+        return this._instance;
     }
 
     /**

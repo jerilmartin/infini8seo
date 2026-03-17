@@ -151,9 +151,9 @@ app.get('/api/auth/callback', async (req, res) => {
   try {
     const { code, error: authError, error_description } = req.query;
 
-    logger.info('OAuth callback received:', { 
-      hasCode: !!code, 
-      authError, 
+    logger.info('OAuth callback received:', {
+      hasCode: !!code,
+      authError,
       error_description,
       queryKeys: Object.keys(req.query)
     });
@@ -496,7 +496,7 @@ app.post('/api/subscription/razorpay-webhook', async (req, res) => {
   try {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers['x-razorpay-signature'];
-    
+
     // Verify signature
     const isValid = razorpayService.verifyWebhookSignature(
       JSON.stringify(req.body),
@@ -534,66 +534,7 @@ app.post('/api/subscription/razorpay-webhook', async (req, res) => {
 });
 
 
-// Zoho Checkout implementation (Commented out)
-/*
-app.get('/api/subscription/zoho-checkout/:tier', async (req, res) => {
-  try {
-    if (!req.userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
 
-    const { tier } = req.params;
-    const { redirectUrl } = req.query;
-
-    const result = await subscriptionService.getZohoCheckoutUrl(
-      req.userId,
-      tier,
-      redirectUrl || `${FRONTEND_URL}/pricing/success`
-    );
-
-    res.json(result);
-  } catch (error) {
-    logger.error('Error in /api/subscription/zoho-checkout:', error);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: 'Failed to initiate Zoho checkout'
-    });
-  }
-});
-
-app.post('/api/subscription/zoho-webhook', async (req, res) => {
-  try {
-    const event = req.body;
-    logger.info('Zoho Webhook received:', event.event_type);
-
-    if (event.event_type === 'subscription_created' || event.event_type === 'subscription_renewed') {
-      const { subscription } = event.data;
-      const { customer } = subscription;
-      
-      // Find user by zoho_customer_id
-      const { data: user, error } = await UserRepository.supabase
-        .from('users')
-        .select('id')
-        .eq('zoho_customer_id', customer.customer_id)
-        .single();
-
-      if (user) {
-        await subscriptionService.upgradeSubscription(user.id, subscription.plan.plan_code, {
-          provider: 'zoho',
-          payment_id: subscription.subscription_id,
-          metadata: { zoho_subscription: subscription }
-        });
-        logger.info(`Zoho Webhook: Upgraded user ${user.id} to ${subscription.plan.plan_code}`);
-      }
-    }
-
-    res.json({ success: true });
-  } catch (error) {
-    logger.error('Zoho Webhook error:', error);
-    res.status(500).json({ error: 'Webhook processing failed' });
-  }
-});
-*/
 
 /**
  * POST /api/subscription/cancel
@@ -891,7 +832,7 @@ app.get('/api/status/:jobId', async (req, res) => {
           title: c.blog_title,
           type: c.persona_archetype || 'Article'
         }));
-        
+
         // If no content yet but we have scenarios, show scenario titles as preview
         if (response.generatedTitles.length === 0 && job.scenarios && job.scenarios.length > 0) {
           response.generatedTitles = job.scenarios.slice(0, 15).map(s => ({
@@ -902,7 +843,7 @@ app.get('/api/status/:jobId', async (req, res) => {
       } catch (err) {
         logger.warn('Could not fetch generated titles:', err.message);
         response.generatedTitles = [];
-        
+
         // Fallback to scenarios if available
         if (job.scenarios && job.scenarios.length > 0) {
           response.generatedTitles = job.scenarios.slice(0, 15).map(s => ({
@@ -1044,7 +985,7 @@ app.get('/api/content/:jobId/export/bulk', async (req, res) => {
     }
 
     const archive = exportService.createZipArchive();
-    
+
     // Set response headers
     const filename = `${job.niche.replace(/\s+/g, '-').toLowerCase()}-content.zip`;
     res.setHeader('Content-Type', 'application/zip');
@@ -1056,7 +997,7 @@ app.get('/api/content/:jobId/export/bulk', async (req, res) => {
     // Add each blog post to archive
     for (const post of content) {
       const safeFilename = exportService.generateSafeFilename(post.blog_title, format);
-      
+
       if (format === 'docx') {
         const docxBuffer = await exportService.markdownToDocx(post.blog_title, post.blog_content);
         exportService.addFileToArchive(archive, docxBuffer, safeFilename);
@@ -1097,13 +1038,13 @@ app.get('/api/content/:contentId/export', async (req, res) => {
 
     if (format === 'docx') {
       const docxBuffer = await exportService.markdownToDocx(content.blog_title, content.blog_content);
-      
+
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
       res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
       res.send(docxBuffer);
     } else {
       const mdContent = `# ${content.blog_title}\n\n${content.blog_content}`;
-      
+
       res.setHeader('Content-Type', 'text/markdown');
       res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
       res.send(mdContent);
@@ -1474,7 +1415,7 @@ app.post('/api/library/save', async (req, res) => {
     res.json(result);
   } catch (error) {
     logger.error('Error in /api/library/save:', error);
-    
+
     if (error.message.includes('already saved')) {
       return res.status(409).json({
         error: 'Conflict',
@@ -1688,7 +1629,7 @@ app.get('/api/library/stats', async (req, res) => {
 app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   try {
     const stats = await adminService.getPlatformStats();
-    
+
     res.json({
       success: true,
       stats
@@ -1709,7 +1650,7 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
 app.get('/api/admin/users', requireAdmin, async (req, res) => {
   try {
     const { tier, status, search, limit, offset } = req.query;
-    
+
     const result = await adminService.getAllUsers({
       tier,
       status,
@@ -1717,7 +1658,7 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
       limit: limit ? parseInt(limit) : undefined,
       offset: offset ? parseInt(offset) : undefined
     });
-    
+
     res.json({
       success: true,
       ...result
@@ -1738,9 +1679,9 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
 app.get('/api/admin/users/:userId', requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     const details = await adminService.getUserDetails(userId);
-    
+
     res.json({
       success: true,
       ...details
@@ -1762,28 +1703,28 @@ app.post('/api/admin/users/:userId/grant-credits', requireAdmin, async (req, res
   try {
     const { userId } = req.params;
     const { amount, reason } = req.body;
-    
+
     if (!amount || amount <= 0) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Amount must be a positive number'
       });
     }
-    
+
     if (!reason || reason.trim().length === 0) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Reason is required'
       });
     }
-    
+
     const result = await adminService.grantBonusCredits(
       userId,
       amount,
       reason,
       req.adminUser.email
     );
-    
+
     res.json({
       success: true,
       ...result
@@ -1805,28 +1746,28 @@ app.post('/api/admin/users/:userId/adjust-credits', requireAdmin, async (req, re
   try {
     const { userId } = req.params;
     const { amount, reason } = req.body;
-    
+
     if (!amount || amount === 0) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Amount must be a non-zero number'
       });
     }
-    
+
     if (!reason || reason.trim().length === 0) {
       return res.status(400).json({
         error: 'Validation Error',
         message: 'Reason is required'
       });
     }
-    
+
     const result = await adminService.adjustUserCredits(
       userId,
       amount,
       reason,
       req.adminUser.email
     );
-    
+
     res.json({
       success: true,
       ...result
@@ -1869,7 +1810,7 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     initSupabase();
-    
+
     // Test Supabase connection but don't crash if it's temporarily unavailable
     try {
       await testConnection();

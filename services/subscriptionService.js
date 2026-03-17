@@ -1,6 +1,6 @@
 import UserRepository from '../models/UserRepository.js';
 import logger from '../utils/logger.js';
-// import zohoService from './zohoService.js';
+
 import razorpayService from './razorpayService.js';
 
 /**
@@ -371,41 +371,7 @@ export function getPricingPlans() {
     };
 }
 
-// Zoho Checkout implementation (Commented out)
-/*
-export async function getZohoCheckoutUrl(userId, tier, redirectUrl) {
-    try {
-        const user = await UserRepository.findById(userId);
-        if (!user) throw new Error('User not found');
 
-        const tierDetails = UserRepository.getSubscriptionTierDetails(tier);
-        if (!tierDetails || tier === 'free') throw new Error('Invalid tier');
-
-        // 1. Get or create Zoho customer
-        const zohoCustomerId = user.zoho_customer_id || await zohoService.getOrCreateCustomer(user);
-        
-        // Update user with zoho_customer_id if new
-        if (!user.zoho_customer_id) {
-            await UserRepository.supabase
-                .from('users')
-                .update({ zoho_customer_id: zohoCustomerId })
-                .eq('id', userId);
-        }
-
-        // 2. Create Hosted Page
-        const hostedPage = await zohoService.createHostedPage(zohoCustomerId, tier, redirectUrl);
-
-        return {
-            success: true,
-            checkoutUrl: hostedPage.url,
-            hostedPageId: hostedPage.hostedpage_id
-        };
-    } catch (error) {
-        logger.error('getZohoCheckoutUrl failed:', error);
-        throw error;
-    }
-}
-*/
 
 /**
  * Create a Razorpay subscription for a user
@@ -454,6 +420,19 @@ export async function createRazorpaySubscription(userId, tier) {
     }
 }
 
+/**
+ * Calculate credit cost for an action
+ */
+export function calculateCreditCost(actionType, params = {}) {
+    if (actionType === 'blog_generation') {
+        const blogCount = params.totalBlogs || 1;
+        return UserRepository.calculateBlogCredits(blogCount);
+    } else if (actionType === 'seo_scan') {
+        return 20;
+    }
+    return 0;
+}
+
 export default {
     initializeNewUser,
     canPerformAction,
@@ -464,5 +443,4 @@ export default {
     getPricingPlans,
     calculateCreditCost,
     createRazorpaySubscription
-    // getZohoCheckoutUrl
 };
